@@ -82,7 +82,7 @@ export default function FinanceApp() {
     const txQuery = query(collection(db, 'users', user.uid, 'transactions'));
     const unsubscribeTxs = onSnapshot(txQuery, (snapshot) => {
       const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      txs.sort((a, b) => new Date(b.date) - new Date(a.date));
+      txs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setTransactions(txs);
       setIsLoading(false);
     }, console.error);
