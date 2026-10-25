@@ -44,8 +44,8 @@ const Icons = {
 
 export default function FinanceApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [transactions, setTransactions] = useState([]);
-  const [cards, setCards] = useState([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [cards, setCards] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
