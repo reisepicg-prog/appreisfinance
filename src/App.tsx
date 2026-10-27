@@ -44,7 +44,7 @@ const Icons = {
   Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
 };
 
-// --- Funções de Máscara de Moeda ---
+// --- Funções de Formatação (Máscaras e Exibição) ---
 const formatCurrencyInput = (value: number | string): string => {
   const digits = String(value).replace(/\D/g, '');
   if (!digits) return '';
@@ -56,6 +56,10 @@ const parseCurrencyToNumber = (formattedValue: string): number => {
   const digits = String(formattedValue).replace(/\D/g, '');
   if (!digits) return 0;
   return Number(digits) / 100;
+};
+
+const formatBRL = (value: number | string): string => {
+  return (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 // --- Modal da Calculadora Rápida ---
@@ -131,8 +135,6 @@ export default function FinanceApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [transactions, setTransactions] = useState<any[]>([]);
   const [cards, setCards] = useState<any[]>([]);
-  
-  // Novos estados para aba de Investimentos
   const [investments, setInvestments] = useState<any[]>([]);
   const [salesHistory, setSalesHistory] = useState<any[]>([]);
 
@@ -141,7 +143,6 @@ export default function FinanceApp() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [loginError, setLoginError] = useState('');
 
-  // --- Autenticação ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -153,19 +154,12 @@ export default function FinanceApp() {
   const handleGoogleLogin = async () => {
     setLoginError('');
     const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Erro no login:", error);
-      setLoginError("Erro ao fazer login. Tente novamente.");
-    }
+    try { await signInWithPopup(auth, provider); } 
+    catch (error) { console.error("Erro no login:", error); setLoginError("Erro ao fazer login. Tente novamente."); }
   };
 
-  const handleLogout = () => {
-    signOut(auth);
-  };
+  const handleLogout = () => signOut(auth);
 
-  // --- Buscar Dados Principais do Firestore ---
   useEffect(() => {
     if (!user) return;
 
@@ -179,8 +173,7 @@ export default function FinanceApp() {
 
     const cardsQuery = query(collection(db, 'users', user.uid, 'cards'));
     const unsubscribeCards = onSnapshot(cardsQuery, (snapshot) => {
-      const cds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setCards(cds);
+      setCards(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, console.error);
 
     const invQuery = query(collection(db, 'users', user.uid, 'investments'));
@@ -200,14 +193,9 @@ export default function FinanceApp() {
 
   const handleDeleteDoc = async (id: string) => {
     if (!user) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
-    } catch(e) { console.error(e) }
+    try { await deleteDoc(doc(db, 'users', user.uid, 'transactions', id)); } 
+    catch(e) { console.error(e) }
   };
-
-  // ==========================================
-  // COMPONENTES DAS ABAS
-  // ==========================================
 
   const Dashboard = () => {
     const availableMonths = [...new Set(transactions.map(tx => {
@@ -240,14 +228,9 @@ export default function FinanceApp() {
       <div className="space-y-6 animate-fadeIn pb-10">
         <div className="flex justify-between items-end">
           <h2 className="text-2xl font-bold text-gray-800">Visão Geral</h2>
-          
           <div className="flex bg-gray-200 p-1 rounded-lg">
-            <button onClick={() => setViewMode('month')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === 'month' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-              Por Mês
-            </button>
-            <button onClick={() => setViewMode('all')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === 'all' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-              Geral
-            </button>
+            <button onClick={() => setViewMode('month')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === 'month' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Por Mês</button>
+            <button onClick={() => setViewMode('all')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === 'all' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Geral</button>
           </div>
         </div>
 
@@ -271,37 +254,27 @@ export default function FinanceApp() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-100 shadow-sm relative overflow-hidden">
             <h3 className="text-emerald-800 text-sm font-medium mb-1">Minhas Receitas (Ganhos)</h3>
-            <p className="text-3xl font-bold text-emerald-600">R$ {totalIncomes.toFixed(2)}</p>
-            <div className="absolute -right-4 -bottom-4 opacity-10">
-              <Icons.Wallet size={100} />
-            </div>
+            <p className="text-3xl font-bold text-emerald-600">R$ {formatBRL(totalIncomes)}</p>
+            <div className="absolute -right-4 -bottom-4 opacity-10"><Icons.Wallet size={100} /></div>
           </div>
-
           <div className="bg-red-50 p-5 rounded-xl border border-red-100 shadow-sm relative overflow-hidden">
             <h3 className="text-red-800 text-sm font-medium mb-1">Minhas Despesas (Gasto)</h3>
-            <p className="text-3xl font-bold text-red-600">R$ {totalExpenses.toFixed(2)}</p>
-            <div className="absolute -right-4 -bottom-4 opacity-10">
-              <Icons.CreditCard size={100} />
-            </div>
+            <p className="text-3xl font-bold text-red-600">R$ {formatBRL(totalExpenses)}</p>
+            <div className="absolute -right-4 -bottom-4 opacity-10"><Icons.CreditCard size={100} /></div>
           </div>
-          
           <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm relative overflow-hidden md:col-span-2">
             <div className="flex justify-between items-center z-10 relative">
                <div>
                   <h3 className="text-blue-800 text-sm font-medium mb-1">A Receber de Terceiros</h3>
-                  <p className="text-2xl font-bold text-blue-700">R$ {totalReceivables.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-blue-700">R$ {formatBRL(totalReceivables)}</p>
                   <p className="text-xs text-blue-600 mt-1">Valores divididos aguardando pagamento</p>
                </div>
                <div className="text-right">
                   <h3 className="text-blue-800 text-sm font-medium mb-1">Saldo do Período</h3>
-                  <p className={`text-xl font-bold ${saldo >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    R$ {saldo.toFixed(2)}
-                  </p>
+                  <p className={`text-xl font-bold ${saldo >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>R$ {formatBRL(saldo)}</p>
                </div>
             </div>
-            <div className="absolute -right-4 -bottom-8 opacity-5">
-              <Icons.Users size={120} />
-            </div>
+            <div className="absolute -right-4 -bottom-8 opacity-5"><Icons.Users size={120} /></div>
           </div>
         </div>
       </div>
@@ -316,11 +289,7 @@ export default function FinanceApp() {
       e.preventDefault();
       if (!user) return;
       try {
-        const cardData = {
-          ...newCard,
-          limit: parseFloat(newCard.limit) || 0,
-          cashbackPct: parseFloat(newCard.cashbackPct) || 0
-        };
+        const cardData = { ...newCard, limit: parseFloat(newCard.limit) || 0, cashbackPct: parseFloat(newCard.cashbackPct) || 0 };
         await setDoc(doc(collection(db, 'users', user.uid, 'cards')), cardData);
         setIsAdding(false);
         setNewCard({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: '', cashbackPct: '' });
@@ -392,32 +361,27 @@ export default function FinanceApp() {
               <div key={c.id} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col group">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
-                      <Icons.CreditCard />
-                    </div>
+                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center"><Icons.CreditCard /></div>
                     <div>
                       <h3 className="font-bold text-gray-800">{c.name} <span className="text-xs text-gray-500 font-normal">({c.brand})</span></h3>
                       <p className="text-sm text-gray-500">Fecha dia {c.closingDay} • Vence dia {c.dueDay}</p>
                       {c.cashbackPct > 0 && <p className="text-xs text-green-600 font-medium">{c.cashbackPct}% de Cashback</p>}
                     </div>
                   </div>
-                  <button onClick={() => handleDeleteCard(c.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg">
-                    <Icons.Trash />
-                  </button>
+                  <button onClick={() => handleDeleteCard(c.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Icons.Trash /></button>
                 </div>
-                
                 {cardLimit > 0 && (
                   <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-500">Limite Disponível</span>
-                      <span className={`font-bold ${availableLimit < 0 ? 'text-red-600' : 'text-green-600'}`}>R$ {availableLimit.toFixed(2)}</span>
+                      <span className={`font-bold ${availableLimit < 0 ? 'text-red-600' : 'text-green-600'}`}>R$ {formatBRL(availableLimit)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
                       <div className={`h-1.5 rounded-full ${availableLimit < (cardLimit*0.2) ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${Math.min(100, Math.max(0, availablePct))}%` }}></div>
                     </div>
                     <div className="flex justify-between text-xs text-gray-400">
-                      <span>Utilizado: R$ {usedLimit.toFixed(2)}</span>
-                      <span>Total: R$ {cardLimit.toFixed(2)}</span>
+                      <span>Utilizado: R$ {formatBRL(usedLimit)}</span>
+                      <span>Total: R$ {formatBRL(cardLimit)}</span>
                     </div>
                   </div>
                 )}
@@ -439,7 +403,7 @@ export default function FinanceApp() {
     // --- ESTADOS DA MÁSCARA E CALCULADORA ---
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
-    const [isCalcOpen, setIsCalcOpen] = useState(false);
+    const [calcTarget, setCalcTarget] = useState<any>(null); // 'main' | número do index da pessoa
 
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
     const [firstInstallmentDate, setFirstInstallmentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -450,7 +414,7 @@ export default function FinanceApp() {
     const [isSplit, setIsSplit] = useState(false);
     const [autoSplit, setAutoSplit] = useState(true);
     const [includeMe, setIncludeMe] = useState(true);
-    const [splits, setSplits] = useState([{ name: '', amount: '', paid: false }]);
+    const [splits, setSplits] = useState<any[]>([{ name: '', amount: 0, displayAmount: '', paid: false }]);
     const [errorMsg, setErrorMsg] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -459,20 +423,16 @@ export default function FinanceApp() {
         setFirstInstallmentDate(purchaseDate);
         return;
       }
-      
       const card = cards.find(c => c.id === methodId);
       if (card) {
         const pDate = new Date(purchaseDate + 'T12:00:00'); 
         let targetMonth = pDate.getMonth();
         let targetYear = pDate.getFullYear();
-        
         const pd = pDate.getDate();
         const cd = parseInt(card.closingDay);
         const dd = parseInt(card.dueDay);
-
         if (pd >= cd) targetMonth += 1;
         if (dd < cd) targetMonth += 1;
-
         const firstDate = new Date(targetYear, targetMonth, dd);
         setFirstInstallmentDate(firstDate.toISOString().split('T')[0]);
       }
@@ -483,19 +443,30 @@ export default function FinanceApp() {
         const total = typeof amount === 'number' ? amount : parseFloat(amount as string) || 0;
         const numPeople = splits.length + (includeMe ? 1 : 0);
         if (numPeople > 0) {
-            const equalShare = (total / numPeople).toFixed(2);
-            setSplits(prev => prev.map(s => ({ ...s, amount: equalShare })));
+            const equalShare = total / numPeople;
+            setSplits(prev => prev.map(s => ({ 
+              ...s, 
+              amount: equalShare, 
+              displayAmount: formatCurrencyInput(Math.round(equalShare * 100)) 
+            })));
         }
       }
     }, [amount, splits.length, isSplit, autoSplit, includeMe]);
 
-    const handleAddSplit = () => setSplits([...splits, { name: '', amount: '', paid: false }]);
+    const handleAddSplit = () => setSplits([...splits, { name: '', amount: 0, displayAmount: '', paid: false }]);
     const handleRemoveSplit = (index: number) => setSplits(splits.filter((_, i) => i !== index));
+    
     const handleSplitChange = (index: number, field: string, value: any) => {
       const newSplits = [...splits];
-      (newSplits as any)[index][field] = value;
+      if (field === 'displayAmount') {
+         const fmt = formatCurrencyInput(value);
+         newSplits[index].displayAmount = fmt;
+         newSplits[index].amount = parseCurrencyToNumber(fmt);
+         setAutoSplit(false);
+      } else {
+         newSplits[index][field] = value;
+      }
       setSplits(newSplits);
-      if (field === 'amount') setAutoSplit(false);
     };
 
     const totalSplits = splits.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
@@ -505,29 +476,20 @@ export default function FinanceApp() {
     const handleSubmit = async (e: any) => {
       e.preventDefault();
       if (!user) return;
-      
-      if (!desc || !amount) {
-        setErrorMsg("Preencha descrição e valor total."); return;
-      }
+      if (!desc || !amount) { setErrorMsg("Preencha descrição e valor total."); return; }
       
       if (txType === 'expense') {
-        if (installments < 1) {
-          setErrorMsg("Preencha a quantidade de parcelas."); return;
-        }
-        if (isSplit && includeMe && myShare < -0.05) {
-          setErrorMsg("A soma das divisões não pode ser maior que o valor total."); return;
-        }
+        if (installments < 1) { setErrorMsg("Preencha a quantidade de parcelas."); return; }
+        if (isSplit && includeMe && myShare < -0.05) { setErrorMsg("A soma das divisões não pode ser maior que o valor total."); return; }
         if (isSplit && !includeMe && Math.abs(parsedTotalAmount - totalSplits) > 0.05) {
           setErrorMsg("Como você não participa da compra, a soma das divisões deve ser exatamente igual ao valor total."); return;
         }
       }
 
-      setIsSaving(true);
-      setErrorMsg('');
+      setIsSaving(true); setErrorMsg('');
 
       try {
         const groupId = Date.now().toString();
-        
         const numPeriods = installments;
         const isRecurring = txType === 'income' || expenseType === 'fixed';
         const cardName = txType === 'income' ? 'Conta / Pix' : (methodId === 'pix' ? 'Pix/Débito' : cards.find(c => c.id === methodId)?.name || 'Cartão');
@@ -536,13 +498,9 @@ export default function FinanceApp() {
         for (let i = 0; i < numPeriods; i++) {
             let formattedDate;
             if (txType === 'income' || methodId === 'pix') {
-                const d = new Date(purchaseDate + 'T12:00:00');
-                d.setMonth(d.getMonth() + i);
-                formattedDate = d.toISOString().split('T')[0];
+                const d = new Date(purchaseDate + 'T12:00:00'); d.setMonth(d.getMonth() + i); formattedDate = d.toISOString().split('T')[0];
             } else {
-                const d = new Date(firstInstallmentDate + 'T12:00:00');
-                d.setMonth(d.getMonth() + i);
-                formattedDate = d.toISOString().split('T')[0];
+                const d = new Date(firstInstallmentDate + 'T12:00:00'); d.setMonth(d.getMonth() + i); formattedDate = d.toISOString().split('T')[0];
             }
 
             const suffix = numPeriods > 1 ? ` (${i + 1}/${numPeriods})` : '';
@@ -561,31 +519,16 @@ export default function FinanceApp() {
             const initialStatus = txType === 'income' ? (isFuture ? 'pending' : 'paid') : 'pending';
 
             const newTx = {
-              type: txType,
-              desc: desc + suffix,
-              totalAmount: instTotalAmt,
-              myAmount: instMyAmt,
-              purchaseDate: purchaseDate,
-              date: formattedDate,
-              method: cardName,
-              methodId: finalMethodId,
-              splits: instSplits,
-              groupId,
-              status: initialStatus,
+              type: txType, desc: desc + suffix, totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
+              date: formattedDate, method: cardName, methodId: finalMethodId, splits: instSplits, groupId, status: initialStatus,
               createdAt: new Date().toISOString()
             };
-
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
         
-        setDesc(''); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
-      } catch (err) {
-        console.error(err);
-        setErrorMsg("Erro ao salvar.");
-      } finally {
-        setIsSaving(false);
-      }
+      } catch (err) { console.error(err); setErrorMsg("Erro ao salvar."); } finally { setIsSaving(false); }
     };
 
     return (
@@ -593,18 +536,8 @@ export default function FinanceApp() {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Novo Lançamento</h2>
         
         <div className="flex bg-gray-200 p-1 rounded-xl mb-6">
-          <button 
-            onClick={() => setTxType('expense')} 
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${txType === 'expense' ? 'bg-white text-red-600 shadow' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Despesa (Gasto)
-          </button>
-          <button 
-            onClick={() => setTxType('income')} 
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${txType === 'income' ? 'bg-white text-emerald-600 shadow' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Receita (Ganho)
-          </button>
+          <button onClick={() => setTxType('expense')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${txType === 'expense' ? 'bg-white text-red-600 shadow' : 'text-gray-500 hover:text-gray-700'}`}>Despesa (Gasto)</button>
+          <button onClick={() => setTxType('income')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${txType === 'income' ? 'bg-white text-emerald-600 shadow' : 'text-gray-500 hover:text-gray-700'}`}>Receita (Ganho)</button>
         </div>
 
         <form onSubmit={handleSubmit} className={`p-6 rounded-xl shadow-sm border ${txType === 'income' ? 'bg-emerald-50/30 border-emerald-100' : 'bg-white border-gray-200'} space-y-5`}>
@@ -630,14 +563,7 @@ export default function FinanceApp() {
                   placeholder="R$ 0,00" 
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-bold text-gray-800" 
                 />
-                <button 
-                  type="button" 
-                  onClick={() => setIsCalcOpen(true)} 
-                  className="px-4 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors text-xl"
-                  title="Abrir Calculadora"
-                >
-                  🧮
-                </button>
+                <button type="button" onClick={() => setCalcTarget('main')} className="px-4 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors text-xl" title="Calculadora">🧮</button>
               </div>
             </div>
           </div>
@@ -693,7 +619,6 @@ export default function FinanceApp() {
 
           {txType === 'expense' && (
             <>
-              {/* SESSÃO DE DIVISÃO */}
               <div className="pt-4 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <label className="flex items-center gap-3 cursor-pointer">
@@ -714,9 +639,23 @@ export default function FinanceApp() {
                           <div className="flex-1">
                             <input type="text" placeholder="Nome (Ex: Mãe)" value={split.name} onChange={e => handleSplitChange(index, 'name', e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none" />
                           </div>
-                          <div className="flex-1 relative">
-                            <span className="absolute left-3 top-3 text-gray-500 text-sm">R$</span>
-                            <input type="number" step="0.01" placeholder="Valor" value={split.amount} onChange={e => handleSplitChange(index, 'amount', e.target.value)} className="w-full p-2.5 pl-9 border border-gray-300 rounded-lg text-sm outline-none" />
+                          <div className="flex-1 flex gap-1 relative">
+                            <input 
+                              type="text" 
+                              inputMode="numeric" 
+                              placeholder="R$ 0,00" 
+                              value={split.displayAmount || ''} 
+                              onChange={e => handleSplitChange(index, 'displayAmount', e.target.value)} 
+                              className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none font-medium" 
+                            />
+                            <button 
+                              type="button" 
+                              onClick={() => setCalcTarget(index)} 
+                              className="px-2.5 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors text-lg flex items-center justify-center"
+                              title="Calculadora para Divisão"
+                            >
+                              🧮
+                            </button>
                           </div>
                           <button type="button" onClick={() => handleRemoveSplit(index)} className="p-2.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                             <Icons.Trash />
@@ -736,17 +675,17 @@ export default function FinanceApp() {
                     <div className="mt-4 pt-4 border-t border-blue-200 flex flex-col gap-1 text-sm">
                       <div className="flex justify-between">
                          <span className="text-gray-600">Terceiros assumem:</span>
-                         <strong>R$ {totalSplits.toFixed(2)}</strong>
+                         <strong>R$ {formatBRL(totalSplits)}</strong>
                       </div>
                       {includeMe ? (
                         <div className="flex justify-between">
                            <span className="text-gray-600">Sua parte:</span>
-                           <strong className={`text-base ${myShare < 0 ? 'text-red-600' : 'text-blue-700'}`}>R$ {Math.max(0, myShare).toFixed(2)}</strong>
+                           <strong className={`text-base ${myShare < 0 ? 'text-red-600' : 'text-blue-700'}`}>R$ {formatBRL(Math.max(0, myShare))}</strong>
                         </div>
                       ) : (
                         <div className="flex justify-between">
                            <span className="text-gray-600">Sua parte:</span>
-                           <strong className="text-base text-gray-400">R$ 0.00 (Isento)</strong>
+                           <strong className="text-base text-gray-400">R$ 0,00 (Isento)</strong>
                         </div>
                       )}
                     </div>
@@ -762,12 +701,16 @@ export default function FinanceApp() {
         </form>
 
         <CalculatorModal 
-          isOpen={isCalcOpen} 
-          onClose={() => setIsCalcOpen(false)} 
+          isOpen={calcTarget !== null} 
+          onClose={() => setCalcTarget(null)} 
           onApply={(val) => {
             const fmt = formatCurrencyInput(Math.round(val * 100));
-            setDisplayAmount(fmt);
-            setAmount(val);
+            if (calcTarget === 'main') {
+              setDisplayAmount(fmt);
+              setAmount(val);
+            } else if (typeof calcTarget === 'number') {
+              handleSplitChange(calcTarget, 'displayAmount', fmt);
+            }
           }} 
         />
       </div>
@@ -838,9 +781,9 @@ export default function FinanceApp() {
       let text = `Olá, aqui é o resumo das suas contas comigo:\n\n`;
       unpaidItems.forEach(item => {
         const dateFormatted = new Date(item.date).toLocaleDateString('pt-BR');
-        text += `- ${item.desc} (Venc: ${dateFormatted}): R$ ${item.amount.toFixed(2)}\n`;
+        text += `- ${item.desc} (Venc: ${dateFormatted}): R$ ${formatBRL(item.amount)}\n`;
       });
-      text += `\n*Total a pagar: R$ ${total.toFixed(2)}*`;
+      text += `\n*Total a pagar: R$ ${formatBRL(total)}*`;
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
@@ -903,7 +846,7 @@ export default function FinanceApp() {
                     {isAllPaid ? (
                       <span className="font-bold text-sm bg-green-100 text-green-700 px-2 py-1 rounded-lg">Tudo Pago!</span>
                     ) : (
-                      <span className="font-bold text-blue-600">Restante: R$ {totalOwed.toFixed(2)}</span>
+                      <span className="font-bold text-blue-600">Restante: R$ {formatBRL(totalOwed)}</span>
                     )}
                   </div>
                   <div className="space-y-2 mb-4">
@@ -921,7 +864,7 @@ export default function FinanceApp() {
                           </span>
                         </div>
                         <span className={`${item.paid ? 'line-through text-gray-400' : 'text-gray-800 font-medium'}`}>
-                          R$ {item.amount.toFixed(2)}
+                          R$ {formatBRL(item.amount)}
                         </span>
                       </div>
                     ))}
@@ -1109,9 +1052,9 @@ export default function FinanceApp() {
                         <p className="text-xs text-gray-500">Vencimento: {invoice.dateLabel}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-lg text-gray-800">R$ {invoice.totalAmount.toFixed(2)}</p>
+                        <p className="font-bold text-lg text-gray-800">R$ {formatBRL(invoice.totalAmount)}</p>
                         {cashbackAmount > 0 && (
-                          <p className="text-xs text-green-600 font-medium">+ R$ {cashbackAmount.toFixed(2)} de Cashback</p>
+                          <p className="text-xs text-green-600 font-medium">+ R$ {formatBRL(cashbackAmount)} de Cashback</p>
                         )}
                       </div>
                     </div>
@@ -1132,10 +1075,10 @@ export default function FinanceApp() {
                             </div>
                             <div className="text-right">
                               <p className={`text-sm ${tx.type === 'income' ? 'text-emerald-600 font-bold' : 'text-gray-800'}`}>
-                                R$ {tx.totalAmount.toFixed(2)}
+                                R$ {formatBRL(tx.totalAmount)}
                               </p>
                               {tx.type !== 'income' && tx.myAmount !== tx.totalAmount && (
-                                <p className="text-[10px] text-blue-600 font-medium">Sua parte: R$ {tx.myAmount.toFixed(2)}</p>
+                                <p className="text-[10px] text-blue-600 font-medium">Sua parte: R$ {formatBRL(tx.myAmount)}</p>
                               )}
                             </div>
                           </div>
@@ -1145,7 +1088,7 @@ export default function FinanceApp() {
                               {tx.splits.map((s: any, i: number) => (
                                 <div key={i} className="flex justify-between text-gray-500">
                                   <span>{s.name}</span>
-                                  <span>R$ {parseFloat(s.amount).toFixed(2)}</span>
+                                  <span>R$ {formatBRL(s.amount)}</span>
                                 </div>
                               ))}
                             </div>
@@ -1230,7 +1173,6 @@ export default function FinanceApp() {
     );
   };
 
-  // --- ABA 5: INVESTIMENTOS (B3) ---
   const InvestmentsTab = () => {
     const [prices, setPrices] = useState<any>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -1363,19 +1305,19 @@ export default function FinanceApp() {
           <div className="flex justify-between items-start mb-2">
             <div>
               <span className="text-xs text-blue-200">Patrimônio B3</span>
-              <p className="text-3xl font-extrabold mt-0.5">R$ {totalMarketValue.toFixed(2)}</p>
+              <p className="text-3xl font-extrabold mt-0.5">R$ {formatBRL(totalMarketValue)}</p>
             </div>
             <button onClick={refreshQuotes} className={`p-2 rounded-xl bg-white/10 ${isRefreshing ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
           </div>
           <div className="flex justify-between items-end text-xs border-t border-white/10 pt-3 mt-3">
             <div>
               <span className="text-blue-300">Total Investido</span>
-              <p className="font-semibold text-sm">R$ {totalInvested.toFixed(2)}</p>
+              <p className="font-semibold text-sm">R$ {formatBRL(totalInvested)}</p>
             </div>
             <div className="text-right">
               <span className="text-blue-300">Lucro / Prejuízo</span>
               <p className={`font-bold text-sm ${totalProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {totalProfit >= 0 ? '+' : ''}R$ {totalProfit.toFixed(2)} ({totalProfitPct.toFixed(2)}%)
+                {totalProfit >= 0 ? '+' : ''}R$ {formatBRL(totalProfit)} ({formatBRL(totalProfitPct)}%)
               </p>
             </div>
           </div>
@@ -1408,17 +1350,17 @@ export default function FinanceApp() {
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{inv.type}</span>
                         <span className="text-xs text-gray-400 font-medium">{inv.broker}</span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">{inv.quantity} cotas • PM: R$ {inv.unitPrice.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{inv.quantity} cotas • PM: R$ {formatBRL(inv.unitPrice)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-gray-900">R$ {currentVal.toFixed(2)}</p>
+                      <p className="font-bold text-gray-900">R$ {formatBRL(currentVal)}</p>
                       <p className={`text-xs font-bold ${profitVal >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {profitVal >= 0 ? '+' : ''}{profitPct.toFixed(2)}% (R$ {profitVal.toFixed(2)})
+                        {profitVal >= 0 ? '+' : ''}{formatBRL(profitPct)}% (R$ {formatBRL(profitVal)})
                       </p>
                     </div>
                   </div>
                   <div className="flex justify-between items-center border-t border-gray-50 pt-2 text-xs">
-                    <span className="text-gray-400">Cotação: <b className="text-gray-700">R$ {currentPrice.toFixed(2)}</b></span>
+                    <span className="text-gray-400">Cotação: <b className="text-gray-700">R$ {formatBRL(currentPrice)}</b></span>
                     <button onClick={() => setSellingAsset(inv)} className="text-blue-600 font-semibold px-2 py-1 bg-blue-50 rounded-lg">Registrar Venda</button>
                   </div>
                 </div>
@@ -1434,12 +1376,12 @@ export default function FinanceApp() {
               <div key={s.id} className="bg-white p-3.5 rounded-2xl border shadow-sm text-xs space-y-1">
                 <div className="flex justify-between items-center font-bold">
                   <span>{s.ticker} ({s.quantitySold} cotas)</span>
-                  <span className={s.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}>Resultado: R$ {s.netProfit.toFixed(2)}</span>
+                  <span className={s.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}>Resultado: R$ {formatBRL(s.netProfit)}</span>
                 </div>
                 <div className="flex justify-between text-gray-400">
                   <span>Venda em {s.saleDate}</span>
                   <span className="font-semibold text-gray-700">
-                    {s.taxPayable > 0 ? `DARF a Pagar: R$ ${s.taxPayable.toFixed(2)}` : 'Isento de IR'}
+                    {s.taxPayable > 0 ? `DARF a Pagar: R$ ${formatBRL(s.taxPayable)}` : 'Isento de IR'}
                   </span>
                 </div>
                 <p className="text-[10px] text-gray-400 italic">{s.taxRule}</p>
@@ -1629,7 +1571,6 @@ export default function FinanceApp() {
     );
   };
 
-  // --- Rotinas de Autenticação Visual ---
   if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-blue-600 font-bold">Carregando...</div>;
 
   if (!user) {
