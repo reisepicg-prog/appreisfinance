@@ -44,7 +44,7 @@ const Icons = {
   Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
 };
 
-// --- Funções de Formatação ---
+// --- Funções de Formatação (Máscaras e Exibição) ---
 const formatCurrencyInput = (value: number | string): string => {
   const digits = String(value).replace(/\D/g, '');
   if (!digits) return '';
@@ -1200,6 +1200,7 @@ export default function FinanceApp() {
     const [displaySellFees, setDisplaySellFees] = useState('');
     const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
 
+    // Efeito para busca dinâmica de Tickers (Autocomplete)
     useEffect(() => {
       const timeout = setTimeout(async () => {
         if (tickerInput.length >= 2) {
@@ -1250,19 +1251,16 @@ export default function FinanceApp() {
          setIsSavingAsset(false); return;
       }
 
-      try {
-        const res = await fetch(`https://brapi.dev/api/quote/${tickerClean}`);
-        const data = await res.json();
-        
-        if (data.error || !data.results || data.results.length === 0) {
-           setAssetError(`O ativo ${tickerClean} não foi encontrado na B3.`);
-           setIsSavingAsset(false); return;
-        }
+      // Validação de formato da B3 (4 Letras + 1 ou 2 números + opcional F)
+      const tickerRegex = /^[A-Z]{4}[0-9]{1,2}F?$/;
+      if (!tickerRegex.test(tickerClean)) {
+          setAssetError('Código inválido. Digite um ticker oficial (ex: VALE3, MXRF11).');
+          setIsSavingAsset(false); return;
+      }
 
-        const actualName = data.results[0].shortName || tickerClean;
+      try {
         const newAsset = {
           ticker: tickerClean,
-          companyName: actualName,
           type: tickerClean.endsWith('11') ? 'FII' : 'Ação',
           quantity: qty,
           unitPrice: price,
@@ -1274,7 +1272,7 @@ export default function FinanceApp() {
         await addDoc(collection(db, 'users', user.uid, 'investments'), newAsset);
         setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false); setAssetError('');
       } catch (err) { 
-        console.error(err); setAssetError('Erro de conexão ao validar o ativo na B3.');
+        console.error(err); setAssetError('Erro ao salvar o ativo.');
       } finally { setIsSavingAsset(false); }
     };
 
@@ -1483,6 +1481,7 @@ export default function FinanceApp() {
               {assetError && <div className="p-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg">{assetError}</div>}
               
               <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
+                
                 <div className="relative">
                   <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border rounded-xl font-bold uppercase" required disabled={!!editingAsset} />
                   {isSearching && !editingAsset && <span className="absolute right-3 top-3 text-xs text-gray-400">Buscando...</span>}
