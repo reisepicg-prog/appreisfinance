@@ -1129,5 +1129,49 @@ export default function FinanceApp() {
         {activeTab === 'history' && <HistoryTab />}
       </main>
 
-      {/* Navegação Inferior (5 Ícones Restaurados) */}
-      <nav className
+{/* Navegação Inferior (5 Ícones Restaurados) */}
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex justify-around items-center h-16 px-1 z-20">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center justify-center w-12 ${activeTab === 'dashboard' ? 'text-blue-600 font-bold' : 'text-gray-400'}`}
+        >
+          <Icons.Wallet size={19} />
+          <span className="text-[9px] mt-1">Início</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('collections')}
+          className={`flex flex-col items-center justify-center w-12 ${activeTab === 'collections' ? 'text-blue-600 font-bold' : 'text-gray-400'}`}
+        >
+          <Icons.Users size={19} />
+          <span className="text-[9px] mt-1">Divisão</span>
+        </button>
+
+        <div className="relative -top-4">
+          <button
+            onClick={() => setActiveTab('add')}
+            className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition-all active:scale-95 border-2 border-white"
+          >
+            <Icons.Plus size={22} />
+          </button>
+        </div>
+
+        <button
+          onClick={() => setActiveTab('investments')}
+          className={`flex flex-col items-center justify-center w-12 ${activeTab === 'investments' ? 'text-blue-600 font-bold' : 'text-gray-400'}`}
+        >
+          <Icons.TrendingUp size={19} />
+          <span className="text-[9px] mt-1">Ativos</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`flex flex-col items-center justify-center w-12 ${activeTab === 'history' ? 'text-blue-600 font-bold' : 'text-gray-400'}`}
+        >
+          <Icons.Calendar size={19} />
+          <span className="text-[9px] mt-1">Extrato</span>
+        </button>
+      </nav>
+    </div>
+  );
+}
