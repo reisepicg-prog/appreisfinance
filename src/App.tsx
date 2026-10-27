@@ -38,6 +38,9 @@ const Icons = {
   Wallet: ({ size = 20, className = "" }: any) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
   ),
+  Users: ({ size = 20, className = "" }: any) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  ),
   CreditCard: ({ size = 20, className = "" }: any) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
   ),
@@ -58,7 +61,7 @@ const Icons = {
   )
 };
 
-// --- FORMATAÇÃO MONETÁRIA AUTOMÁTICA ---
+// --- MÁSCARA MONETÁRIA AUTOMÁTICA ---
 const formatCurrencyInput = (value: number | string): string => {
   const digits = String(value).replace(/\D/g, '');
   if (!digits) return '';
@@ -76,7 +79,7 @@ const parseCurrencyToNumber = (formattedValue: string): number => {
   return Number(digits) / 100;
 };
 
-// --- MODAL DE CALCULADORA CLÁSSICA ---
+// --- CALCULADORA TRADICIONAL ---
 const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClose: () => void; onApply: (val: number) => void }) => {
   const [display, setDisplay] = useState('0');
   const [history, setHistory] = useState('');
@@ -191,7 +194,7 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
   );
 };
 
-// --- COMPONENTE PRINCIPAL ---
+// --- APLICAÇÃO PRINCIPAL ---
 export default function FinanceApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -201,7 +204,6 @@ export default function FinanceApp() {
   const [user, setUser] = useState<any>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
-  // Monitorar Autenticação
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -220,7 +222,7 @@ export default function FinanceApp() {
 
   const handleLogout = () => signOut(auth);
 
-  // Sincronização Firestore
+  // Sincronização Firestore em Tempo Real
   useEffect(() => {
     if (!user) {
       setTransactions([]);
@@ -258,7 +260,7 @@ export default function FinanceApp() {
     };
   }, [user]);
 
-  // --- ABA: DASHBOARD ---
+  // --- ABA 1: DASHBOARD ---
   const Dashboard = () => {
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -282,7 +284,7 @@ export default function FinanceApp() {
             />
           </div>
           <div className="text-right">
-            <span className="text-xs text-gray-400">Saldo Geral</span>
+            <span className="text-xs text-gray-400">Saldo do Período</span>
             <p className={`text-xl font-bold ${balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               R$ {balance.toFixed(2)}
             </p>
@@ -301,16 +303,16 @@ export default function FinanceApp() {
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <h3 className="font-bold text-gray-800 text-sm mb-3">Últimas Movimentações</h3>
+          <h3 className="font-bold text-gray-800 text-sm mb-3">Últimas Transações</h3>
           {filtered.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-4">Nenhum lançamento registrado no mês.</p>
+            <p className="text-xs text-gray-400 text-center py-4">Nenhum lançamento registrado neste mês.</p>
           ) : (
             <ul className="divide-y divide-gray-100 text-sm">
               {filtered.slice(0, 6).map((tx: any) => (
                 <li key={tx.id} className="py-2.5 flex justify-between items-center">
                   <div>
                     <p className="font-semibold text-gray-800">{tx.description}</p>
-                    <span className="text-xs text-gray-400">{tx.date} • {tx.method}</span>
+                    <span className="text-xs text-gray-400">{tx.date} • {tx.method} • {tx.splits?.[0]?.name || 'Geral'}</span>
                   </div>
                   <span className={`font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
                     {tx.type === 'income' ? '+' : '-'} R$ {parseFloat(tx.amount).toFixed(2)}
@@ -324,28 +326,96 @@ export default function FinanceApp() {
     );
   };
 
-  // --- ABA: CARTÕES & FATURAS ---
-  const CardsTab = () => {
+  // --- ABA 2: DIVISÃO DE CONTAS & COBRANÇAS ---
+  const CollectionsTab = () => {
+    const today = new Date();
+    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
+
+    const filteredTxs = transactions.filter((t: any) => t.date.startsWith(selectedMonth));
+
+    // Agrupar débitos por pessoa
+    const personBreakdown: any = {};
+    filteredTxs.forEach((t: any) => {
+      if (t.type === 'expense' && t.splits && Array.isArray(t.splits)) {
+        t.splits.forEach((s: any) => {
+          if (!personBreakdown[s.name]) {
+            personBreakdown[s.name] = { total: 0, items: [] };
+          }
+          const itemVal = parseFloat(s.amount) || 0;
+          personBreakdown[s.name].total += itemVal;
+          personBreakdown[s.name].items.push({
+            desc: t.description,
+            date: t.date,
+            amount: itemVal
+          });
+        });
+      }
+    });
+
+    const generateWhatsAppText = (personName: string, data: any) => {
+      let msg = `*Resumo de Contas - ${selectedMonth}*\nOlá ${personName}, seguem suas despesas:\n\n`;
+      data.items.forEach((it: any) => {
+        msg += `• ${it.desc} (${it.date}): R$ ${it.amount.toFixed(2)}\n`;
+      });
+      msg += `\n*Total a acertar: R$ ${data.total.toFixed(2)}*`;
+      return encodeURIComponent(msg);
+    };
+
     return (
-      <div className="p-4 space-y-4 pb-24">
-        <h2 className="font-bold text-gray-800 text-lg">Cartões & Faturas</h2>
-        {cards.length === 0 ? (
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 text-center text-gray-400 text-sm">
-            Nenhum cartão cadastrado ainda.
+      <div className="p-4 space-y-4 pb-28">
+        <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+          <div>
+            <h2 className="font-bold text-gray-800 text-sm">Cobranças & Divisão</h2>
+            <p className="text-xs text-gray-400">Total rateado por pessoa</p>
+          </div>
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="p-1.5 border rounded-lg text-xs font-semibold bg-gray-50 outline-none"
+          />
+        </div>
+
+        {Object.keys(personBreakdown).length === 0 ? (
+          <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-gray-400 text-sm">
+            Nenhuma despesa dividida registrada no mês selecionado.
           </div>
         ) : (
-          <div className="space-y-3">
-            {cards.map((c: any) => (
-              <div key={c.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold text-gray-800">{c.name}</h3>
-                  <p className="text-xs text-gray-400">Limite Total: R$ {parseFloat(c.limit || 0).toFixed(2)}</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-md">
-                    Cashback: {c.cashbackPct || 0}%
+          <div className="space-y-4">
+            {Object.entries(personBreakdown).map(([name, data]: any) => (
+              <div key={name} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-gray-900 text-base">{name}</span>
+                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-medium">
+                      {data.items.length} {data.items.length === 1 ? 'item' : 'itens'}
+                    </span>
+                  </div>
+                  <span className="font-extrabold text-gray-900 text-lg">
+                    R$ {data.total.toFixed(2)}
                   </span>
                 </div>
+
+                {/* Lista de Itens da Pessoa */}
+                <ul className="text-xs divide-y divide-gray-50 space-y-1">
+                  {data.items.map((it: any, idx: number) => (
+                    <li key={idx} className="pt-1 flex justify-between text-gray-600">
+                      <span>{it.desc} <span className="text-[10px] text-gray-400">({it.date})</span></span>
+                      <span className="font-medium text-gray-800">R$ {it.amount.toFixed(2)}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Botão de Cobrança WhatsApp */}
+                <a
+                  href={`https://api.whatsapp.com/send?text=${generateWhatsAppText(name, data)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm mt-2"
+                >
+                  💬 Enviar Cobrança via WhatsApp
+                </a>
               </div>
             ))}
           </div>
@@ -354,7 +424,7 @@ export default function FinanceApp() {
     );
   };
 
-  // --- ABA: LANÇAMENTO COM MÁSCARA E CALCULADORA ---
+  // --- ABA 3: NOVO LANÇAMENTO (COM CALCULADORA E MÁSCARA) ---
   const AddTab = () => {
     const [type, setType] = useState('expense');
     const [description, setDescription] = useState('');
@@ -362,6 +432,7 @@ export default function FinanceApp() {
     const [displayAmount, setDisplayAmount] = useState('');
     const [date, setDate] = useState(new Date().toISOString().substring(0, 10));
     const [method, setMethod] = useState('pix');
+    const [person, setPerson] = useState('Eu');
     const [isCalcOpen, setIsCalcOpen] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -374,6 +445,7 @@ export default function FinanceApp() {
         amount,
         date,
         method,
+        splits: [{ name: person.trim() || 'Eu', amount }],
         createdAt: new Date().toISOString()
       };
 
@@ -382,9 +454,10 @@ export default function FinanceApp() {
         setDescription('');
         setAmount(0);
         setDisplayAmount('');
+        setPerson('Eu');
         setActiveTab('dashboard');
       } catch (err) {
-        console.error("Erro ao salvar:", err);
+        console.error("Erro ao salvar lançamento:", err);
       }
     };
 
@@ -442,7 +515,7 @@ export default function FinanceApp() {
               <label className="block text-xs font-semibold text-gray-500 mb-1">Descrição</label>
               <input
                 type="text"
-                placeholder="Ex: Almoço, Supermercado, Salário"
+                placeholder="Ex: Mercado, Combustível, Salário"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium outline-none text-sm focus:bg-white"
@@ -479,6 +552,18 @@ export default function FinanceApp() {
               </div>
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Referente a quem? (Para divisão)</label>
+              <input
+                type="text"
+                placeholder="Ex: Eu, Mãe, Carlos, Amigo"
+                value={person}
+                onChange={(e) => setPerson(e.target.value)}
+                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium outline-none text-sm focus:bg-white"
+                required
+              />
+            </div>
+
             <button
               type="submit"
               className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-98"
@@ -501,30 +586,26 @@ export default function FinanceApp() {
     );
   };
 
-  // --- ABA: INVESTIMENTOS (B3, COTAÇÃO, VENDA E IR) ---
+  // --- ABA 4: INVESTIMENTOS (B3, COTAÇÃO, VENDA E IR) ---
   const InvestmentsTab = () => {
     const [prices, setPrices] = useState<any>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [sellingAsset, setSellingAsset] = useState<any>(null);
 
-    // Formulário de Novo Ativo
+    // Formulário de Cadastro
     const [tickerInput, setTickerInput] = useState('');
     const [quantityInput, setQuantityInput] = useState('');
-    const [unitPriceInput, setUnitPriceInput] = useState('');
     const [displayUnitPrice, setDisplayUnitPrice] = useState('');
     const [brokerInput, setBrokerInput] = useState('');
     const [buyDateInput, setBuyDateInput] = useState(new Date().toISOString().substring(0, 10));
 
     // Formulário de Venda
     const [sellQuantity, setSellQuantity] = useState('');
-    const [sellUnitPrice, setSellUnitPrice] = useState('');
     const [displaySellUnitPrice, setDisplaySellUnitPrice] = useState('');
-    const [sellFees, setSellFees] = useState('');
     const [displaySellFees, setDisplaySellFees] = useState('');
     const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
 
-    // Busca Cotações na Brapi
     const refreshQuotes = async () => {
       if (investments.length === 0) return;
       setIsRefreshing(true);
@@ -552,7 +633,6 @@ export default function FinanceApp() {
       }
     }, [investments.length]);
 
-    // Cadastrar Ativo
     const handleSaveAsset = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!user) return;
@@ -588,7 +668,6 @@ export default function FinanceApp() {
       }
     };
 
-    // Executar Venda e Cálculo de IR
     const handleConfirmSale = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!user || !sellingAsset) return;
@@ -603,30 +682,24 @@ export default function FinanceApp() {
       const totalCostBasis = qty * sellingAsset.unitPrice;
       const netProfit = (totalSaleGross - totalCostBasis) - fees;
 
-      // Classificação Day Trade vs Swing Trade
       const isDayTrade = sellDate === sellingAsset.buyDate;
-      let taxRate = 0;
       let taxPayable = 0;
       let taxRule = '';
 
       if (netProfit > 0) {
         if (isDayTrade) {
-          taxRate = 0.20;
-          taxPayable = netProfit * taxRate;
-          taxRule = 'Day Trade (20% sem isenção)';
+          taxPayable = netProfit * 0.20;
+          taxRule = 'Day Trade (20% s/ lucro, sem isenção)';
         } else if (sellingAsset.type === 'FII') {
-          taxRate = 0.20;
-          taxPayable = netProfit * taxRate;
-          taxRule = 'FII Swing Trade (20% sobre lucro)';
+          taxPayable = netProfit * 0.20;
+          taxRule = 'FII Swing Trade (20% s/ lucro)';
         } else {
-          // Ações Swing Trade: Isenção até R$ 20.000 no mês
           if (totalSaleGross <= 20000) {
             taxPayable = 0;
             taxRule = 'Ações Swing Trade (Isento: vendas ≤ R$ 20k/mês)';
           } else {
-            taxRate = 0.15;
-            taxPayable = netProfit * taxRate;
-            taxRule = 'Ações Swing Trade (15% sobre lucro)';
+            taxPayable = netProfit * 0.15;
+            taxRule = 'Ações Swing Trade (15% s/ lucro)';
           }
         }
       }
@@ -652,7 +725,6 @@ export default function FinanceApp() {
       try {
         await addDoc(collection(db, 'users', user.uid, 'salesHistory'), saleRecord);
 
-        // Atualizar ou remover o ativo restante
         const remainingQty = sellingAsset.quantity - qty;
         if (remainingQty <= 0) {
           await deleteDoc(doc(db, 'users', user.uid, 'investments', sellingAsset.id));
@@ -671,7 +743,6 @@ export default function FinanceApp() {
       }
     };
 
-    // Totais da Carteira
     let totalInvested = 0;
     let totalMarketValue = 0;
 
@@ -689,7 +760,6 @@ export default function FinanceApp() {
 
     return (
       <div className="p-4 space-y-4 pb-28">
-        {/* Painel Patrimonial */}
         <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
           <div className="flex justify-between items-start mb-2">
             <div>
@@ -719,7 +789,6 @@ export default function FinanceApp() {
           </div>
         </div>
 
-        {/* Botão de Adicionar */}
         <div className="flex justify-between items-center">
           <h3 className="font-bold text-gray-800 text-base">Meus Ativos</h3>
           <button
@@ -730,10 +799,9 @@ export default function FinanceApp() {
           </button>
         </div>
 
-        {/* Lista de Ativos */}
         {investments.length === 0 ? (
           <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-gray-400 text-sm">
-            Nenhum ativo cadastrado. Toque no botão acima para incluir suas ações ou fundos imobiliários.
+            Nenhum ativo cadastrado. Toque no botão acima para incluir ações ou fundos imobiliários.
           </div>
         ) : (
           <div className="space-y-3">
@@ -784,7 +852,6 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {/* Histórico Fiscal de Vendas */}
         {salesHistory.length > 0 && (
           <div className="mt-6 space-y-2">
             <h4 className="font-bold text-gray-800 text-sm">Histórico de Vendas & IR</h4>
@@ -850,10 +917,7 @@ export default function FinanceApp() {
                       inputMode="numeric"
                       placeholder="R$ 0,00"
                       value={displayUnitPrice}
-                      onChange={(e) => {
-                        const formatted = formatCurrencyInput(e.target.value);
-                        setDisplayUnitPrice(formatted);
-                      }}
+                      onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))}
                       className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none font-semibold focus:bg-white"
                       required
                     />
@@ -894,7 +958,7 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {/* Modal: Registrar Venda e IR */}
+        {/* Modal: Registrar Venda */}
         {sellingAsset && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
@@ -925,7 +989,7 @@ export default function FinanceApp() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Preço de Venda Unit.</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Preço Unitário</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -940,7 +1004,7 @@ export default function FinanceApp() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Taxas B3 / Corretagem</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Taxas B3 / Custos</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -964,7 +1028,7 @@ export default function FinanceApp() {
 
                 {sellDate === sellingAsset.buyDate && (
                   <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg font-medium">
-                    ⚠️ Operação no mesmo dia identificada como <b>Day Trade</b> (Alíquota de 20% sobre eventual lucro).
+                    ⚠️ Operação identificada como <b>Day Trade</b> (Alíquota de 20% sobre eventual lucro).
                   </p>
                 )}
 
@@ -982,7 +1046,7 @@ export default function FinanceApp() {
     );
   };
 
-  // --- ABA: HISTÓRICO GERAL ---
+  // --- ABA 5: HISTÓRICO GERAL & EXTRATO ---
   const HistoryTab = () => {
     return (
       <div className="p-4 space-y-3 pb-24">
@@ -995,7 +1059,7 @@ export default function FinanceApp() {
               <li key={tx.id} className="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
                 <div>
                   <p className="font-semibold text-gray-800 text-sm">{tx.description}</p>
-                  <p className="text-xs text-gray-400">{tx.date} • {tx.method}</p>
+                  <p className="text-xs text-gray-400">{tx.date} • {tx.method} • {tx.splits?.[0]?.name || 'Geral'}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`font-bold text-sm ${tx.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -1013,7 +1077,7 @@ export default function FinanceApp() {
     );
   };
 
-  // --- VERIFICAÇÃO DE LOGIN ---
+  // --- CONTROLE DE TELAS (AUTH) ---
   if (isAuthChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -1042,7 +1106,7 @@ export default function FinanceApp() {
     );
   }
 
-  // --- ESTRUTURA PRINCIPAL COM OS 5 ÍCONES ---
+  // --- RENDERIZAÇÃO PRINCIPAL ---
   return (
     <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative shadow-2xl overflow-hidden flex flex-col font-sans">
       <header className="p-4 bg-white border-b border-gray-100 flex justify-between items-center sticky top-0 z-10">
@@ -1059,56 +1123,11 @@ export default function FinanceApp() {
 
       <main className="flex-1 overflow-y-auto">
         {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'cards' && <CardsTab />}
+        {activeTab === 'collections' && <CollectionsTab />}
         {activeTab === 'add' && <AddTab />}
         {activeTab === 'investments' && <InvestmentsTab />}
         {activeTab === 'history' && <HistoryTab />}
       </main>
 
-      {/* Barra de Navegação Inferior (5 Ícones) */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex justify-around items-center h-16 px-1 z-20">
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex flex-col items-center justify-center w-12 ${activeTab === 'dashboard' ? 'text-blue-600 font-bold' : 'text-gray-400'}`}
-        >
-          <Icons.Wallet size={19} />
-          <span className="text-[9px] mt-1">Início</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('cards')}
-          className={`flex flex-col items-center justify-center w-12 ${activeTab === 'cards' ? 'text-blue-600 font-bold' : 'text-gray-400'}`}
-        >
-          <Icons.CreditCard size={19} />
-          <span className="text-[9px] mt-1">Cartões</span>
-        </button>
-
-        {/* Botão Central de Adicionar */}
-        <div className="relative -top-4">
-          <button
-            onClick={() => setActiveTab('add')}
-            className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition-all active:scale-95 border-2 border-white"
-          >
-            <Icons.Plus size={22} />
-          </button>
-        </div>
-
-        <button
-          onClick={() => setActiveTab('investments')}
-          className={`flex flex-col items-center justify-center w-12 ${activeTab === 'investments' ? 'text-blue-600 font-bold' : 'text-gray-400'}`}
-        >
-          <Icons.TrendingUp size={19} />
-          <span className="text-[9px] mt-1">Ativos</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`flex flex-col items-center justify-center w-12 ${activeTab === 'history' ? 'text-blue-600 font-bold' : 'text-gray-400'}`}
-        >
-          <Icons.Calendar size={19} />
-          <span className="text-[9px] mt-1">Extrato</span>
-        </button>
-      </nav>
-    </div>
-  );
-}
+      {/* Navegação Inferior (5 Ícones Restaurados) */}
+      <nav className
