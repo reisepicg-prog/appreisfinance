@@ -44,7 +44,7 @@ const Icons = {
   Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
 };
 
-// --- Funções de Formatação (Máscaras e Exibição) ---
+// --- Funções de Formatação ---
 const formatCurrencyInput = (value: number | string): string => {
   const digits = String(value).replace(/\D/g, '');
   if (!digits) return '';
@@ -403,7 +403,7 @@ export default function FinanceApp() {
     // --- ESTADOS DA MÁSCARA E CALCULADORA ---
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
-    const [calcTarget, setCalcTarget] = useState<any>(null); // 'main' | número do index da pessoa
+    const [calcTarget, setCalcTarget] = useState<any>(null);
 
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
     const [firstInstallmentDate, setFirstInstallmentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1176,19 +1176,45 @@ export default function FinanceApp() {
   const InvestmentsTab = () => {
     const [prices, setPrices] = useState<any>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
+    
+    // --- Controle de Modais ---
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [sellingAsset, setSellingAsset] = useState<any>(null);
+    const [editingAsset, setEditingAsset] = useState<any>(null);
 
+    const [isSavingAsset, setIsSavingAsset] = useState(false);
+    const [assetError, setAssetError] = useState('');
+
+    // --- Inputs Add/Edit Ativo ---
     const [tickerInput, setTickerInput] = useState('');
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
     const [quantityInput, setQuantityInput] = useState('');
     const [displayUnitPrice, setDisplayUnitPrice] = useState('');
     const [brokerInput, setBrokerInput] = useState('');
     const [buyDateInput, setBuyDateInput] = useState(new Date().toISOString().substring(0, 10));
 
+    // --- Inputs Venda ---
     const [sellQuantity, setSellQuantity] = useState('');
     const [displaySellUnitPrice, setDisplaySellUnitPrice] = useState('');
     const [displaySellFees, setDisplaySellFees] = useState('');
     const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
+
+    useEffect(() => {
+      const timeout = setTimeout(async () => {
+        if (tickerInput.length >= 2) {
+          setIsSearching(true);
+          try {
+            const res = await fetch(`https://brapi.dev/api/quote/list?search=${tickerInput}&limit=5`);
+            const data = await res.json();
+            if (data.stocks) setSuggestions(data.stocks);
+            else setSuggestions([]);
+          } catch (err) { setSuggestions([]); } 
+          finally { setIsSearching(false); }
+        } else { setSuggestions([]); }
+      }, 500);
+      return () => clearTimeout(timeout);
+    }, [tickerInput]);
 
     const refreshQuotes = async () => {
       if (investments.length === 0) return;
@@ -1212,27 +1238,78 @@ export default function FinanceApp() {
     const handleSaveAsset = async (e: any) => {
       e.preventDefault();
       if (!user) return;
+      setAssetError('');
+      setIsSavingAsset(true);
 
       const tickerClean = tickerInput.trim().toUpperCase();
       const qty = parseFloat(quantityInput);
       const price = parseCurrencyToNumber(displayUnitPrice);
 
-      if (!tickerClean || qty <= 0 || price <= 0) return;
-
-      const newAsset = {
-        ticker: tickerClean,
-        type: tickerClean.endsWith('11') ? 'FII' : 'Ação',
-        quantity: qty,
-        unitPrice: price,
-        broker: brokerInput.trim() || 'Principal',
-        buyDate: buyDateInput,
-        createdAt: new Date().toISOString()
-      };
+      if (!tickerClean || qty <= 0 || price <= 0) {
+         setAssetError('Preencha todos os campos corretamente.');
+         setIsSavingAsset(false); return;
+      }
 
       try {
+        const res = await fetch(`https://brapi.dev/api/quote/${tickerClean}`);
+        const data = await res.json();
+        
+        if (data.error || !data.results || data.results.length === 0) {
+           setAssetError(`O ativo ${tickerClean} não foi encontrado na B3.`);
+           setIsSavingAsset(false); return;
+        }
+
+        const actualName = data.results[0].shortName || tickerClean;
+        const newAsset = {
+          ticker: tickerClean,
+          companyName: actualName,
+          type: tickerClean.endsWith('11') ? 'FII' : 'Ação',
+          quantity: qty,
+          unitPrice: price,
+          broker: brokerInput.trim() || 'Principal',
+          buyDate: buyDateInput,
+          createdAt: new Date().toISOString()
+        };
+
         await addDoc(collection(db, 'users', user.uid, 'investments'), newAsset);
-        setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false);
-      } catch (err) { console.error(err); }
+        setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false); setAssetError('');
+      } catch (err) { 
+        console.error(err); setAssetError('Erro de conexão ao validar o ativo na B3.');
+      } finally { setIsSavingAsset(false); }
+    };
+
+    const handleDeleteAsset = async (id: string) => {
+      if (window.confirm("Deseja realmente excluir este ativo da sua carteira? O histórico de vendas passadas não será afetado.")) {
+        try { await deleteDoc(doc(db, 'users', user.uid, 'investments', id)); } 
+        catch (err) { console.error(err); }
+      }
+    };
+
+    const openEditAsset = (inv: any) => {
+      setEditingAsset(inv);
+      setTickerInput(inv.ticker);
+      setQuantityInput(inv.quantity.toString());
+      setDisplayUnitPrice(formatCurrencyInput(Math.round(inv.unitPrice * 100)));
+      setBrokerInput(inv.broker || '');
+      setBuyDateInput(inv.buyDate || '');
+    };
+
+    const handleSaveEditAsset = async (e: any) => {
+      e.preventDefault();
+      if (!user || !editingAsset) return;
+      setIsSavingAsset(true);
+      try {
+        const price = parseCurrencyToNumber(displayUnitPrice);
+        await updateDoc(doc(db, 'users', user.uid, 'investments', editingAsset.id), {
+          ticker: tickerInput.toUpperCase(),
+          quantity: parseFloat(quantityInput),
+          unitPrice: price,
+          broker: brokerInput,
+          buyDate: buyDateInput
+        });
+        setEditingAsset(null); setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput('');
+      } catch (err) { console.error(err); } 
+      finally { setIsSavingAsset(false); }
     };
 
     const handleConfirmSale = async (e: any) => {
@@ -1325,7 +1402,7 @@ export default function FinanceApp() {
 
         <div className="flex justify-between items-center">
           <h3 className="font-bold text-gray-800 text-base">Meus Ativos</h3>
-          <button onClick={() => setIsAddOpen(true)} className="bg-blue-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1">
+          <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(true); }} className="bg-blue-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1">
             <Icons.Plus /> Novo Ativo
           </button>
         </div>
@@ -1359,9 +1436,14 @@ export default function FinanceApp() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center border-t border-gray-50 pt-2 text-xs">
-                    <span className="text-gray-400">Cotação: <b className="text-gray-700">R$ {formatBRL(currentPrice)}</b></span>
-                    <button onClick={() => setSellingAsset(inv)} className="text-blue-600 font-semibold px-2 py-1 bg-blue-50 rounded-lg">Registrar Venda</button>
+                  
+                  <div className="flex justify-between items-center border-t border-gray-50 pt-3 mt-2 text-xs">
+                    <span className="text-gray-500">Atual: <b className="text-gray-800 text-sm">R$ {formatBRL(currentPrice)}</b></span>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => openEditAsset(inv)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"><Icons.Edit /></button>
+                      <button onClick={() => handleDeleteAsset(inv.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Icons.Trash /></button>
+                      <button onClick={() => setSellingAsset(inv)} className="ml-1 text-blue-600 font-bold px-3 py-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">Vender</button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1390,12 +1472,32 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {isAddOpen && (
+        {(isAddOpen || editingAsset) && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
-              <div className="flex justify-between items-center"><h3 className="font-bold text-gray-800">Adicionar Ativo</h3><button onClick={() => setIsAddOpen(false)}>✕</button></div>
-              <form onSubmit={handleSaveAsset} className="space-y-3 text-sm">
-                <input type="text" placeholder="Ticker (Ex: PETR4)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border rounded-xl font-bold uppercase" required />
+            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 overflow-visible">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-gray-800">{editingAsset ? 'Editar Ativo' : 'Adicionar Ativo'}</h3>
+                <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }}>✕</button>
+              </div>
+              
+              {assetError && <div className="p-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg">{assetError}</div>}
+              
+              <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
+                <div className="relative">
+                  <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border rounded-xl font-bold uppercase" required disabled={!!editingAsset} />
+                  {isSearching && !editingAsset && <span className="absolute right-3 top-3 text-xs text-gray-400">Buscando...</span>}
+                  {suggestions.length > 0 && !editingAsset && (
+                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
+                      {suggestions.map(s => (
+                        <li key={s.stock} onClick={() => { setTickerInput(s.stock); setSuggestions([]); }} className="p-2 border-b border-gray-50 text-xs cursor-pointer hover:bg-blue-50 flex flex-col">
+                          <span className="font-bold text-gray-800">{s.stock}</span>
+                          <span className="text-gray-500 truncate">{s.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <input type="number" step="any" placeholder="Qtd" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
                   <input type="text" inputMode="numeric" placeholder="Preço Médio" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
@@ -1404,7 +1506,9 @@ export default function FinanceApp() {
                   <input type="text" placeholder="Corretora" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl" />
                   <input type="date" value={buyDateInput} onChange={(e) => setBuyDateInput(e.target.value)} className="w-full p-2 bg-gray-50 border rounded-xl text-xs" required />
                 </div>
-                <button type="submit" className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl mt-2">Salvar na Carteira</button>
+                <button type="submit" disabled={isSavingAsset} className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl mt-2 disabled:opacity-50">
+                   {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Ativo' : 'Salvar na Carteira')}
+                </button>
               </form>
             </div>
           </div>
