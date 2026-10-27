@@ -21,12 +21,12 @@ import {
 
 // --- CONFIGURAÇÃO DO FIREBASE ---
 const firebaseConfig = {
-  apiKey: "AIzaSyAs1-SEU-API-KEY",
+  apiKey: "AIzaSyBBM1n7doAL_Hn7sN7Da0e-Mz05SYKVW2A",
   authDomain: "reisfinance.firebaseapp.com",
   projectId: "reisfinance",
-  storageBucket: "reisfinance.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  storageBucket: "reisfinance.firebasestorage.app",
+  messagingSenderId: "85211553400",
+  appId: "1:85211553400:web:c1db7faeb9ad97cac1d78d"
 };
 
 const app = initializeApp(firebaseConfig);
