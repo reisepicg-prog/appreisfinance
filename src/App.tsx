@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 
-// --- Auto-Injeção do Tailwind CSS (Resolve o problema visual no CodeSandbox) ---
+// --- Auto-Injeção do Tailwind CSS ---
 if (typeof document !== 'undefined' && !document.getElementById('tailwind-script')) {
   const script = document.createElement('script');
   script.id = 'tailwind-script';
@@ -11,7 +11,7 @@ if (typeof document !== 'undefined' && !document.getElementById('tailwind-script
   document.head.appendChild(script);
 }
 
-// --- Inicialização do Firebase (Conectado ao seu projeto reisfinance) ---
+// --- Inicialização do Firebase ---
 const firebaseConfig = {
   apiKey: "AIzaSyBBM1n7doAL_Hn7sN7Da0e-Mz05SYKVW2A",
   authDomain: "reisfinance.firebaseapp.com",
@@ -39,19 +39,109 @@ const Icons = {
   Wallet: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
   Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
   Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
-  Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+  Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
+  TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+};
+
+// --- Funções de Máscara de Moeda ---
+const formatCurrencyInput = (value: number | string): string => {
+  const digits = String(value).replace(/\D/g, '');
+  if (!digits) return '';
+  const numberValue = Number(digits) / 100;
+  return numberValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+};
+
+const parseCurrencyToNumber = (formattedValue: string): number => {
+  const digits = String(formattedValue).replace(/\D/g, '');
+  if (!digits) return 0;
+  return Number(digits) / 100;
+};
+
+// --- Modal da Calculadora Rápida ---
+const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClose: () => void; onApply: (val: number) => void }) => {
+  const [display, setDisplay] = useState('0');
+  const [history, setHistory] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleNum = (num: string) => {
+    if (display === '0' || display === 'Erro') setDisplay(num);
+    else setDisplay(display + num);
+  };
+  const handleOp = (op: string) => { setHistory(`${display} ${op} `); setDisplay('0'); };
+  const handleClear = () => { setDisplay('0'); setHistory(''); };
+  const handleBackspace = () => setDisplay(display.length > 1 ? display.slice(0, -1) : '0');
+  const handleCalculate = () => {
+    try {
+      const fullExpression = (history + display).replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
+      const sanitized = fullExpression.replace(/[^0-9+\-*/.]/g, '');
+      const calcResult = Function(`'use strict'; return (${sanitized})`)();
+      if (!isFinite(calcResult) || isNaN(calcResult)) setDisplay('Erro');
+      else { setDisplay(String(Math.round(calcResult * 100) / 100).replace('.', ',')); setHistory(''); }
+    } catch { setDisplay('Erro'); }
+  };
+  const handleApply = () => {
+    let finalValue = parseFloat(display.replace(',', '.'));
+    if (isNaN(finalValue)) finalValue = 0;
+    onApply(finalValue);
+    onClose();
+  };
+
+  const btnClass = "h-11 rounded-xl font-semibold text-lg flex items-center justify-center active:scale-95 transition-all select-none";
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl border border-gray-100">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1"><span>🧮</span> Calculadora</h3>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold px-2 py-1">✕</button>
+        </div>
+        <div className="bg-gray-100 rounded-xl p-3 mb-4 text-right">
+          <div className="text-xs text-gray-400 h-4 font-mono">{history}</div>
+          <div className="text-2xl font-bold text-gray-800 font-mono overflow-x-auto">{display}</div>
+        </div>
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          <button type="button" onClick={handleClear} className={`${btnClass} bg-red-100 text-red-600 hover:bg-red-200`}>C</button>
+          <button type="button" onClick={handleBackspace} className={`${btnClass} bg-gray-200 text-gray-700 hover:bg-gray-300`}>⌫</button>
+          <button type="button" onClick={() => handleOp('÷')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>÷</button>
+          <button type="button" onClick={() => handleOp('×')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>×</button>
+          <button type="button" onClick={() => handleNum('7')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>7</button>
+          <button type="button" onClick={() => handleNum('8')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>8</button>
+          <button type="button" onClick={() => handleNum('9')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>9</button>
+          <button type="button" onClick={() => handleOp('-')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>-</button>
+          <button type="button" onClick={() => handleNum('4')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>4</button>
+          <button type="button" onClick={() => handleNum('5')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>5</button>
+          <button type="button" onClick={() => handleNum('6')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>6</button>
+          <button type="button" onClick={() => handleOp('+')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>+</button>
+          <button type="button" onClick={() => handleNum('1')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>1</button>
+          <button type="button" onClick={() => handleNum('2')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>2</button>
+          <button type="button" onClick={() => handleNum('3')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>3</button>
+          <button type="button" onClick={handleCalculate} className={`${btnClass} row-span-2 bg-blue-600 text-white hover:bg-blue-700 h-[96px]`}>=</button>
+          <button type="button" onClick={() => handleNum('0')} className={`${btnClass} col-span-2 bg-gray-100 hover:bg-gray-200`}>0</button>
+          <button type="button" onClick={() => handleNum(',')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>,</button>
+        </div>
+        <button type="button" onClick={handleApply} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold shadow-md text-sm">Aplicar Valor</button>
+      </div>
+    </div>
+  );
 };
 
 export default function FinanceApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [transactions, setTransactions] = useState([]);
-  const [cards, setCards] = useState([]);
-  const [user, setUser] = useState(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [cards, setCards] = useState<any[]>([]);
+  
+  // Novos estados para aba de Investimentos
+  const [investments, setInvestments] = useState<any[]>([]);
+  const [salesHistory, setSalesHistory] = useState<any[]>([]);
+
+  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [loginError, setLoginError] = useState('');
 
-  // --- Autenticação com Google ---
+  // --- Autenticação ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -75,14 +165,14 @@ export default function FinanceApp() {
     signOut(auth);
   };
 
-  // --- Buscar Dados (Transações e Cartões) ---
+  // --- Buscar Dados Principais do Firestore ---
   useEffect(() => {
     if (!user) return;
 
     const txQuery = query(collection(db, 'users', user.uid, 'transactions'));
     const unsubscribeTxs = onSnapshot(txQuery, (snapshot) => {
       const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      txs.sort((a, b) => new Date(b.date) - new Date(a.date));
+      txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setTransactions(txs);
       setIsLoading(false);
     }, console.error);
@@ -93,18 +183,32 @@ export default function FinanceApp() {
       setCards(cds);
     }, console.error);
 
-    return () => { unsubscribeTxs(); unsubscribeCards(); };
+    const invQuery = query(collection(db, 'users', user.uid, 'investments'));
+    const unsubscribeInv = onSnapshot(invQuery, (snapshot) => {
+      setInvestments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, console.error);
+
+    const salesQuery = query(collection(db, 'users', user.uid, 'salesHistory'));
+    const unsubscribeSales = onSnapshot(salesQuery, (snapshot) => {
+      const sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      sales.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+      setSalesHistory(sales);
+    }, console.error);
+
+    return () => { unsubscribeTxs(); unsubscribeCards(); unsubscribeInv(); unsubscribeSales(); };
   }, [user]);
 
-  // --- Funções Auxiliares Comuns ---
-  const handleDeleteDoc = async (id) => {
+  const handleDeleteDoc = async (id: string) => {
     if (!user) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
     } catch(e) { console.error(e) }
   };
 
-  // --- COMPONENTES DAS ABAS ---
+  // ==========================================
+  // COMPONENTES DAS ABAS
+  // ==========================================
+
   const Dashboard = () => {
     const availableMonths = [...new Set(transactions.map(tx => {
         const d = new Date(tx.date);
@@ -126,14 +230,14 @@ export default function FinanceApp() {
     const totalIncomes = filteredTxs.filter(tx => tx.type === 'income').reduce((acc, curr) => acc + (parseFloat(curr.totalAmount) || 0), 0);
     const totalExpenses = filteredTxs.filter(tx => tx.type !== 'income').reduce((acc, curr) => acc + (parseFloat(curr.myAmount) || 0), 0);
     const totalReceivables = filteredTxs.filter(tx => tx.type !== 'income').reduce((acc, curr) => {
-      const splitTotal = (curr.splits || []).reduce((sAcc, sCurr) => sAcc + (sCurr.paid ? 0 : (parseFloat(sCurr.amount) || 0)), 0);
+      const splitTotal = (curr.splits || []).reduce((sAcc: number, sCurr: any) => sAcc + (sCurr.paid ? 0 : (parseFloat(sCurr.amount) || 0)), 0);
       return acc + splitTotal;
     }, 0);
 
     const saldo = totalIncomes - totalExpenses;
 
     return (
-      <div className="space-y-6 animate-fadeIn">
+      <div className="space-y-6 animate-fadeIn pb-10">
         <div className="flex justify-between items-end">
           <h2 className="text-2xl font-bold text-gray-800">Visão Geral</h2>
           
@@ -208,7 +312,7 @@ export default function FinanceApp() {
     const [isAdding, setIsAdding] = useState(false);
     const [newCard, setNewCard] = useState({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: '', cashbackPct: '' });
 
-    const handleSaveCard = async (e) => {
+    const handleSaveCard = async (e: any) => {
       e.preventDefault();
       if (!user) return;
       try {
@@ -223,7 +327,7 @@ export default function FinanceApp() {
       } catch (err) { console.error(err); }
     };
 
-    const handleDeleteCard = async (id) => {
+    const handleDeleteCard = async (id: string) => {
       if (!user) return;
       try { await deleteDoc(doc(db, 'users', user.uid, 'cards', id)); } 
       catch (err) { console.error(err); }
@@ -331,7 +435,12 @@ export default function FinanceApp() {
   const TransactionForm = () => {
     const [txType, setTxType] = useState('expense');
     const [desc, setDesc] = useState('');
-    const [amount, setAmount] = useState('');
+    
+    // --- ESTADOS DA MÁSCARA E CALCULADORA ---
+    const [amount, setAmount] = useState<number | ''>(''); 
+    const [displayAmount, setDisplayAmount] = useState('');
+    const [isCalcOpen, setIsCalcOpen] = useState(false);
+
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
     const [firstInstallmentDate, setFirstInstallmentDate] = useState(new Date().toISOString().split('T')[0]);
     const [methodId, setMethodId] = useState('pix');
@@ -371,7 +480,7 @@ export default function FinanceApp() {
 
     useEffect(() => {
       if (isSplit && autoSplit && amount) {
-        const total = parseFloat(amount) || 0;
+        const total = typeof amount === 'number' ? amount : parseFloat(amount as string) || 0;
         const numPeople = splits.length + (includeMe ? 1 : 0);
         if (numPeople > 0) {
             const equalShare = (total / numPeople).toFixed(2);
@@ -381,19 +490,19 @@ export default function FinanceApp() {
     }, [amount, splits.length, isSplit, autoSplit, includeMe]);
 
     const handleAddSplit = () => setSplits([...splits, { name: '', amount: '', paid: false }]);
-    const handleRemoveSplit = (index) => setSplits(splits.filter((_, i) => i !== index));
-    const handleSplitChange = (index, field, value) => {
+    const handleRemoveSplit = (index: number) => setSplits(splits.filter((_, i) => i !== index));
+    const handleSplitChange = (index: number, field: string, value: any) => {
       const newSplits = [...splits];
-      newSplits[index][field] = value;
+      (newSplits as any)[index][field] = value;
       setSplits(newSplits);
       if (field === 'amount') setAutoSplit(false);
     };
 
     const totalSplits = splits.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-    const parsedTotalAmount = parseFloat(amount) || 0;
+    const parsedTotalAmount = typeof amount === 'number' ? amount : parseFloat(amount as string) || 0;
     const myShare = includeMe ? parsedTotalAmount - totalSplits : 0;
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: any) => {
       e.preventDefault();
       if (!user) return;
       
@@ -469,7 +578,7 @@ export default function FinanceApp() {
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
         
-        setDesc(''); setAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
       } catch (err) {
         console.error(err);
@@ -504,13 +613,31 @@ export default function FinanceApp() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-              <input type="text" value={desc} onChange={e => setDesc(e.target.value)} placeholder={txType === 'income' ? "Ex: Salário, Venda de Peças" : "Ex: Cafeteira Casas Bahia"} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" />
+              <input type="text" value={desc} onChange={e => setDesc(e.target.value)} placeholder={txType === 'income' ? "Ex: Salário, Venda" : "Ex: Mercado"} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Valor Total</label>
-              <div className="relative">
-                <span className={`absolute left-3 top-3.5 ${txType === 'income' ? 'text-emerald-500 font-bold' : 'text-gray-500'}`}>R$</span>
-                <input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" />
+              <div className="flex gap-2 relative">
+                <input 
+                  type="text" 
+                  inputMode="numeric" 
+                  value={displayAmount} 
+                  onChange={e => {
+                    const fmt = formatCurrencyInput(e.target.value);
+                    setDisplayAmount(fmt);
+                    setAmount(parseCurrencyToNumber(fmt));
+                  }} 
+                  placeholder="R$ 0,00" 
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-bold text-gray-800" 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setIsCalcOpen(true)} 
+                  className="px-4 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors text-xl"
+                  title="Abrir Calculadora"
+                >
+                  🧮
+                </button>
               </div>
             </div>
           </div>
@@ -549,8 +676,8 @@ export default function FinanceApp() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Comportamento do Valor</label>
                 <select value={expenseType} onChange={e => setExpenseType(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white">
-                  <option value="installment">Parcelado (Divide os R$ {amount || '0'} em {installments}x)</option>
-                  <option value="fixed">Fixo (Repete os R$ {amount || '0'} em todos os {installments} meses)</option>
+                  <option value="installment">Parcelado (Divide os {displayAmount || 'R$ 0,00'} em {installments}x)</option>
+                  <option value="fixed">Fixo (Repete os {displayAmount || 'R$ 0,00'} em todos os {installments} meses)</option>
                 </select>
               </div>
             )}
@@ -633,6 +760,16 @@ export default function FinanceApp() {
             {isSaving ? 'Processando...' : (txType === 'income' ? 'Salvar Receita' : 'Salvar Despesa')}
           </button>
         </form>
+
+        <CalculatorModal 
+          isOpen={isCalcOpen} 
+          onClose={() => setIsCalcOpen(false)} 
+          onApply={(val) => {
+            const fmt = formatCurrencyInput(Math.round(val * 100));
+            setDisplayAmount(fmt);
+            setAmount(val);
+          }} 
+        />
       </div>
     );
   };
@@ -652,7 +789,7 @@ export default function FinanceApp() {
     const [filterPerson, setFilterPerson] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
 
-    const debtsByPerson = {};
+    const debtsByPerson: any = {};
     
     const filteredTransactions = transactions.filter(tx => {
         const d = new Date(tx.date);
@@ -663,7 +800,7 @@ export default function FinanceApp() {
 
     filteredTransactions.forEach(tx => {
       if(tx.splits) {
-        tx.splits.forEach((split, splitIndex) => {
+        tx.splits.forEach((split: any, splitIndex: number) => {
           if (!debtsByPerson[split.name]) debtsByPerson[split.name] = [];
           debtsByPerson[split.name].push({ 
             txId: tx.id,
@@ -680,7 +817,7 @@ export default function FinanceApp() {
     const allPeopleNames = Object.keys(debtsByPerson).sort();
     const peopleToRender = allPeopleNames.filter(name => filterPerson === 'all' || name === filterPerson);
 
-    const toggleSplitPaid = async (txId, splitIndex, currentStatus) => {
+    const toggleSplitPaid = async (txId: string, splitIndex: number, currentStatus: boolean) => {
       if (!user) return;
       try {
         const tx = transactions.find(t => t.id === txId);
@@ -693,7 +830,7 @@ export default function FinanceApp() {
       } catch (err) { console.error(err); }
     };
 
-    const handleWhatsApp = (name, items) => {
+    const handleWhatsApp = (name: string, items: any[]) => {
       const unpaidItems = items.filter(i => !i.paid);
       if (unpaidItems.length === 0) return;
 
@@ -747,7 +884,7 @@ export default function FinanceApp() {
           <div className="space-y-4">
             {peopleToRender.map(name => {
               const items = debtsByPerson[name];
-              const filteredItems = items.filter(i => {
+              const filteredItems = items.filter((i: any) => {
                 if (filterStatus === 'pending') return !i.paid;
                 if (filterStatus === 'paid') return i.paid;
                 return true;
@@ -755,8 +892,8 @@ export default function FinanceApp() {
 
               if (filteredItems.length === 0) return null;
 
-              const unpaidItems = filteredItems.filter(i => !i.paid);
-              const totalOwed = unpaidItems.reduce((acc, curr) => acc + curr.amount, 0);
+              const unpaidItems = filteredItems.filter((i: any) => !i.paid);
+              const totalOwed = unpaidItems.reduce((acc: number, curr: any) => acc + curr.amount, 0);
               const isAllPaid = filteredItems.length > 0 && unpaidItems.length === 0;
 
               return (
@@ -770,7 +907,7 @@ export default function FinanceApp() {
                     )}
                   </div>
                   <div className="space-y-2 mb-4">
-                    {filteredItems.map((item, idx) => (
+                    {filteredItems.map((item: any, idx: number) => (
                       <div key={idx} className={`flex justify-between items-center text-sm p-2 rounded-lg ${item.paid ? 'bg-gray-50 opacity-60' : 'bg-blue-50/30'}`}>
                         <div className="flex items-center gap-3 overflow-hidden">
                           <input 
@@ -804,7 +941,7 @@ export default function FinanceApp() {
   };
 
   const History = () => {
-    const [editingTx, setEditingTx] = useState(null);
+    const [editingTx, setEditingTx] = useState<any>(null);
     const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '' });
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
@@ -814,15 +951,15 @@ export default function FinanceApp() {
     const [filterPerson, setFilterPerson] = useState('all');
 
     const availableMonths = [...new Set(transactions.map(t => t.date.substring(0,7)))].sort().reverse();
-    const availablePersons = [...new Set(transactions.flatMap(t => t.splits?.map(s => s.name) || []))].filter(Boolean).sort();
+    const availablePersons = [...new Set(transactions.flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
 
-    const groupedInvoices = {};
+    const groupedInvoices: any = {};
     
     const filteredTxsForHistory = transactions.filter(tx => {
       if (filterMonth !== 'all' && !tx.date.startsWith(filterMonth)) return false;
       if (filterType !== 'all' && tx.type !== filterType) return false;
       if (filterPerson !== 'all') {
-        const hasPerson = tx.splits?.some(s => s.name === filterPerson);
+        const hasPerson = tx.splits?.some((s: any) => s.name === filterPerson);
         if (!hasPerson) return false;
       }
       return true;
@@ -857,14 +994,14 @@ export default function FinanceApp() {
       }
     });
 
-    const invoicesArray = Object.values(groupedInvoices).sort((a, b) => b.monthYear.localeCompare(a.monthYear));
+    const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => b.monthYear.localeCompare(a.monthYear));
 
-    const handlePayInvoice = async (invoice) => {
+    const handlePayInvoice = async (invoice: any) => {
       if (!user) return;
       try {
         const updatePromises = invoice.transactions
-          .filter(tx => tx.status !== 'paid')
-          .map(tx => updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), { status: 'paid' }));
+          .filter((tx: any) => tx.status !== 'paid')
+          .map((tx: any) => updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), { status: 'paid' }));
         
         await Promise.all(updatePromises);
       } catch (err) {
@@ -872,7 +1009,7 @@ export default function FinanceApp() {
       }
     };
 
-    const handleToggleStatus = async (tx) => {
+    const handleToggleStatus = async (tx: any) => {
       if (!user) return;
       try {
         const newStatus = tx.status === 'paid' ? 'pending' : 'paid';
@@ -880,13 +1017,13 @@ export default function FinanceApp() {
       } catch (err) { console.error(err); }
     };
 
-    const openEditModal = (tx) => {
+    const openEditModal = (tx: any) => {
       setEditingTx(tx);
       setEditForm({ desc: tx.desc, totalAmount: tx.totalAmount, date: tx.date });
       setUpdateScope('single');
     };
 
-    const handleSaveEdit = async (e) => {
+    const handleSaveEdit = async (e: any) => {
       e.preventDefault();
       if (!user || !editingTx) return;
       setIsUpdating(true);
@@ -945,7 +1082,7 @@ export default function FinanceApp() {
             <label className="block text-xs font-bold text-gray-600 mb-1">Envolvidos</label>
             <select value={filterPerson} onChange={(e) => setFilterPerson(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos / Apenas Eu</option>
-              {availablePersons.map(name => <option key={name} value={name}>{name}</option>)}
+              {availablePersons.map(name => <option key={name as string} value={name as string}>{name as string}</option>)}
             </select>
           </div>
         </div>
@@ -957,7 +1094,7 @@ export default function FinanceApp() {
             {invoicesArray.length === 0 ? (
                <div className="bg-white p-6 rounded-xl border border-gray-200 text-center text-gray-500">Nenhum lançamento encontrado para estes filtros.</div>
             ) : (
-              invoicesArray.map(invoice => {
+              invoicesArray.map((invoice: any) => {
                 const cashbackPct = invoice.card ? parseFloat(invoice.card.cashbackPct) || 0 : 0;
                 const cashbackAmount = (invoice.totalAmount * (cashbackPct / 100));
 
@@ -980,7 +1117,7 @@ export default function FinanceApp() {
                     </div>
 
                     <ul className="divide-y divide-gray-100">
-                      {invoice.transactions.map(tx => (
+                      {invoice.transactions.map((tx: any) => (
                         <li key={tx.id} className={`p-4 relative group hover:bg-gray-50 ${tx.type === 'income' ? 'bg-emerald-50/20' : ''} ${tx.status === 'paid' ? 'opacity-60' : ''}`}>
                           <div className="flex justify-between items-start pr-24">
                             <div>
@@ -1005,7 +1142,7 @@ export default function FinanceApp() {
                           
                           {tx.splits?.length > 0 && (
                             <div className="mt-2 bg-blue-50/50 rounded p-1.5 text-[10px]">
-                              {tx.splits.map((s, i) => (
+                              {tx.splits.map((s: any, i: number) => (
                                 <div key={i} className="flex justify-between text-gray-500">
                                   <span>{s.name}</span>
                                   <span>R$ {parseFloat(s.amount).toFixed(2)}</span>
@@ -1093,44 +1230,309 @@ export default function FinanceApp() {
     );
   };
 
+  // --- ABA 5: INVESTIMENTOS (B3) ---
+  const InvestmentsTab = () => {
+    const [prices, setPrices] = useState<any>({});
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [sellingAsset, setSellingAsset] = useState<any>(null);
+
+    const [tickerInput, setTickerInput] = useState('');
+    const [quantityInput, setQuantityInput] = useState('');
+    const [displayUnitPrice, setDisplayUnitPrice] = useState('');
+    const [brokerInput, setBrokerInput] = useState('');
+    const [buyDateInput, setBuyDateInput] = useState(new Date().toISOString().substring(0, 10));
+
+    const [sellQuantity, setSellQuantity] = useState('');
+    const [displaySellUnitPrice, setDisplaySellUnitPrice] = useState('');
+    const [displaySellFees, setDisplaySellFees] = useState('');
+    const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
+
+    const refreshQuotes = async () => {
+      if (investments.length === 0) return;
+      setIsRefreshing(true);
+      const tickers = Array.from(new Set(investments.map((i: any) => i.ticker.toUpperCase()))).join(',');
+      try {
+        const res = await fetch(`https://brapi.dev/api/quote/${tickers}`);
+        const data = await res.json();
+        if (data && data.results) {
+          const map: any = {};
+          data.results.forEach((r: any) => { map[r.symbol] = r.regularMarketPrice; });
+          setPrices(map);
+        }
+      } catch (err) { console.error(err); } finally { setIsRefreshing(false); }
+    };
+
+    useEffect(() => {
+      if (investments.length > 0) refreshQuotes();
+    }, [investments.length]);
+
+    const handleSaveAsset = async (e: any) => {
+      e.preventDefault();
+      if (!user) return;
+
+      const tickerClean = tickerInput.trim().toUpperCase();
+      const qty = parseFloat(quantityInput);
+      const price = parseCurrencyToNumber(displayUnitPrice);
+
+      if (!tickerClean || qty <= 0 || price <= 0) return;
+
+      const newAsset = {
+        ticker: tickerClean,
+        type: tickerClean.endsWith('11') ? 'FII' : 'Ação',
+        quantity: qty,
+        unitPrice: price,
+        broker: brokerInput.trim() || 'Principal',
+        buyDate: buyDateInput,
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'investments'), newAsset);
+        setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false);
+      } catch (err) { console.error(err); }
+    };
+
+    const handleConfirmSale = async (e: any) => {
+      e.preventDefault();
+      if (!user || !sellingAsset) return;
+
+      const qty = parseFloat(sellQuantity);
+      const price = parseCurrencyToNumber(displaySellUnitPrice);
+      const fees = parseCurrencyToNumber(displaySellFees);
+
+      if (qty <= 0 || qty > sellingAsset.quantity || price <= 0) return;
+
+      const totalSaleGross = qty * price;
+      const totalCostBasis = qty * sellingAsset.unitPrice;
+      const netProfit = (totalSaleGross - totalCostBasis) - fees;
+      const isDayTrade = sellDate === sellingAsset.buyDate;
+      
+      let taxPayable = 0;
+      let taxRule = '';
+
+      if (netProfit > 0) {
+        if (isDayTrade) {
+          taxPayable = netProfit * 0.20;
+          taxRule = 'Day Trade (20% s/ lucro, sem isenção)';
+        } else if (sellingAsset.type === 'FII') {
+          taxPayable = netProfit * 0.20;
+          taxRule = 'FII Swing Trade (20% s/ lucro)';
+        } else {
+          if (totalSaleGross <= 20000) {
+            taxPayable = 0;
+            taxRule = 'Ações Swing Trade (Isento: vendas ≤ R$ 20k/mês)';
+          } else {
+            taxPayable = netProfit * 0.15;
+            taxRule = 'Ações Swing Trade (15% s/ lucro)';
+          }
+        }
+      }
+
+      const saleRecord = {
+        ticker: sellingAsset.ticker, type: sellingAsset.type, broker: sellingAsset.broker,
+        buyDate: sellingAsset.buyDate, saleDate, quantitySold: qty, unitSalePrice: price,
+        unitCostBasis: sellingAsset.unitPrice, totalSaleAmount: totalSaleGross, fees,
+        netProfit, isDayTrade, taxPayable, taxRule, createdAt: new Date().toISOString()
+      };
+
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'salesHistory'), saleRecord);
+        const remainingQty = sellingAsset.quantity - qty;
+        if (remainingQty <= 0) await deleteDoc(doc(db, 'users', user.uid, 'investments', sellingAsset.id));
+        else await updateDoc(doc(db, 'users', user.uid, 'investments', sellingAsset.id), { quantity: remainingQty });
+
+        setSellingAsset(null); setSellQuantity(''); setDisplaySellUnitPrice(''); setDisplaySellFees('');
+      } catch (err) { console.error(err); }
+    };
+
+    let totalInvested = 0;
+    let totalMarketValue = 0;
+    investments.forEach((inv: any) => {
+      const invested = inv.quantity * inv.unitPrice;
+      const currentPrice = prices[inv.ticker] || inv.unitPrice;
+      totalInvested += invested;
+      totalMarketValue += (inv.quantity * currentPrice);
+    });
+    const totalProfit = totalMarketValue - totalInvested;
+    const totalProfitPct = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
+
+    return (
+      <div className="p-4 space-y-4 pb-28 animate-fadeIn">
+        <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <span className="text-xs text-blue-200">Patrimônio B3</span>
+              <p className="text-3xl font-extrabold mt-0.5">R$ {totalMarketValue.toFixed(2)}</p>
+            </div>
+            <button onClick={refreshQuotes} className={`p-2 rounded-xl bg-white/10 ${isRefreshing ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
+          </div>
+          <div className="flex justify-between items-end text-xs border-t border-white/10 pt-3 mt-3">
+            <div>
+              <span className="text-blue-300">Total Investido</span>
+              <p className="font-semibold text-sm">R$ {totalInvested.toFixed(2)}</p>
+            </div>
+            <div className="text-right">
+              <span className="text-blue-300">Lucro / Prejuízo</span>
+              <p className={`font-bold text-sm ${totalProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {totalProfit >= 0 ? '+' : ''}R$ {totalProfit.toFixed(2)} ({totalProfitPct.toFixed(2)}%)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <h3 className="font-bold text-gray-800 text-base">Meus Ativos</h3>
+          <button onClick={() => setIsAddOpen(true)} className="bg-blue-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1">
+            <Icons.Plus /> Novo Ativo
+          </button>
+        </div>
+
+        {investments.length === 0 ? (
+          <div className="bg-white p-8 rounded-2xl border text-center text-gray-400 text-sm">Nenhum ativo cadastrado.</div>
+        ) : (
+          <div className="space-y-3">
+            {investments.map((inv: any) => {
+              const currentPrice = prices[inv.ticker] || inv.unitPrice;
+              const investedVal = inv.quantity * inv.unitPrice;
+              const currentVal = inv.quantity * currentPrice;
+              const profitVal = currentVal - investedVal;
+              const profitPct = inv.unitPrice > 0 ? ((currentPrice - inv.unitPrice) / inv.unitPrice) * 100 : 0;
+
+              return (
+                <div key={inv.id} className="bg-white p-4 rounded-2xl border shadow-sm space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900 text-base">{inv.ticker}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{inv.type}</span>
+                        <span className="text-xs text-gray-400 font-medium">{inv.broker}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">{inv.quantity} cotas • PM: R$ {inv.unitPrice.toFixed(2)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">R$ {currentVal.toFixed(2)}</p>
+                      <p className={`text-xs font-bold ${profitVal >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {profitVal >= 0 ? '+' : ''}{profitPct.toFixed(2)}% (R$ {profitVal.toFixed(2)})
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-gray-50 pt-2 text-xs">
+                    <span className="text-gray-400">Cotação: <b className="text-gray-700">R$ {currentPrice.toFixed(2)}</b></span>
+                    <button onClick={() => setSellingAsset(inv)} className="text-blue-600 font-semibold px-2 py-1 bg-blue-50 rounded-lg">Registrar Venda</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {salesHistory.length > 0 && (
+          <div className="mt-6 space-y-2">
+            <h4 className="font-bold text-gray-800 text-sm">Histórico de Vendas & IR</h4>
+            {salesHistory.map((s: any) => (
+              <div key={s.id} className="bg-white p-3.5 rounded-2xl border shadow-sm text-xs space-y-1">
+                <div className="flex justify-between items-center font-bold">
+                  <span>{s.ticker} ({s.quantitySold} cotas)</span>
+                  <span className={s.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}>Resultado: R$ {s.netProfit.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-gray-400">
+                  <span>Venda em {s.saleDate}</span>
+                  <span className="font-semibold text-gray-700">
+                    {s.taxPayable > 0 ? `DARF a Pagar: R$ ${s.taxPayable.toFixed(2)}` : 'Isento de IR'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-400 italic">{s.taxRule}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isAddOpen && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+              <div className="flex justify-between items-center"><h3 className="font-bold text-gray-800">Adicionar Ativo</h3><button onClick={() => setIsAddOpen(false)}>✕</button></div>
+              <form onSubmit={handleSaveAsset} className="space-y-3 text-sm">
+                <input type="text" placeholder="Ticker (Ex: PETR4)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border rounded-xl font-bold uppercase" required />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" step="any" placeholder="Qtd" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
+                  <input type="text" inputMode="numeric" placeholder="Preço Médio" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" placeholder="Corretora" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl" />
+                  <input type="date" value={buyDateInput} onChange={(e) => setBuyDateInput(e.target.value)} className="w-full p-2 bg-gray-50 border rounded-xl text-xs" required />
+                </div>
+                <button type="submit" className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl mt-2">Salvar na Carteira</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {sellingAsset && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+              <div className="flex justify-between items-center"><h3 className="font-bold text-gray-800">Registrar Venda</h3><button onClick={() => setSellingAsset(null)}>✕</button></div>
+              <form onSubmit={handleConfirmSale} className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Qtd. Venda</label>
+                    <input type="number" step="any" max={sellingAsset.quantity} placeholder={`Max: ${sellingAsset.quantity}`} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Preço Unitário</label>
+                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Taxas B3</label>
+                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border rounded-xl" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Data da Venda</label>
+                    <input type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-xs" required />
+                  </div>
+                </div>
+                <button type="submit" className="w-full py-3 bg-red-600 text-white font-bold rounded-xl mt-2">Confirmar Venda & Apurar IR</button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const SettingsTab = () => {
     const [importMsg, setImportMsg] = useState({ text: '', type: '' });
     const [isProcessing, setIsProcessing] = useState(false);
 
     const handleExportJSON = () => {
-      const data = { transactions, cards };
+      const data = { transactions, cards, investments, salesHistory };
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", `financas_backup_completo_${new Date().toISOString().split('T')[0]}.json`);
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
+      downloadAnchorNode.setAttribute("download", `financas_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove();
       setImportMsg({ text: 'Backup exportado com sucesso!', type: 'success' });
     };
 
-    const handleImportJSON = async (event) => {
+    const handleImportJSON = async (event: any) => {
       const file = event.target.files[0];
       if (!file || !user) return;
       setIsProcessing(true);
-      setImportMsg({ text: 'Restaurando backup na nuvem...', type: 'info' });
+      setImportMsg({ text: 'Restaurando backup...', type: 'info' });
       
       const reader = new FileReader();
-      reader.onload = async (e) => {
+      reader.onload = async (e: any) => {
         try {
           const data = JSON.parse(e.target.result);
-          if (data.cards) {
-            for (const card of data.cards) { await setDoc(doc(db, 'users', user.uid, 'cards', card.id), card); }
-          }
-          if (data.transactions) {
-            for (const tx of data.transactions) { await setDoc(doc(db, 'users', user.uid, 'transactions', tx.id), tx); }
-          }
+          if (data.cards) for (const card of data.cards) await setDoc(doc(db, 'users', user.uid, 'cards', card.id), card);
+          if (data.transactions) for (const tx of data.transactions) await setDoc(doc(db, 'users', user.uid, 'transactions', tx.id), tx);
+          if (data.investments) for (const inv of data.investments) await setDoc(doc(db, 'users', user.uid, 'investments', inv.id), inv);
+          if (data.salesHistory) for (const sale of data.salesHistory) await setDoc(doc(db, 'users', user.uid, 'salesHistory', sale.id), sale);
           setImportMsg({ text: 'Backup restaurado com sucesso!', type: 'success' });
-        } catch (err) {
-          setImportMsg({ text: 'Erro ao importar. Verifique se o arquivo JSON é válido.', type: 'error' });
-        } finally {
-          setIsProcessing(false); event.target.value = '';
-        }
+        } catch (err) { setImportMsg({ text: 'Erro ao importar.', type: 'error' }); } 
+        finally { setIsProcessing(false); event.target.value = ''; }
       };
       reader.readAsText(file);
     };
@@ -1138,74 +1540,44 @@ export default function FinanceApp() {
     const handleExportCSV = () => {
       let csvContent = "ID;Tipo;Descricao;Data;ValorTotal;MetodoID;Status\n";
       transactions.forEach(tx => {
-        const row = [
-          tx.id, 
-          tx.type, 
-          (tx.desc || '').replace(/;/g, ''),
-          tx.date, 
-          tx.totalAmount, 
-          tx.methodId, 
-          tx.status
-        ];
+        const row = [tx.id, tx.type, (tx.desc || '').replace(/;/g, ''), tx.date, tx.totalAmount, tx.methodId, tx.status];
         csvContent += row.join(";") + "\n";
       });
       const dataStr = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csvContent);
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
+      const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr);
       downloadAnchorNode.setAttribute("download", `planilha_lancamentos_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
-      setImportMsg({ text: 'Planilha CSV gerada! Abra no Excel.', type: 'success' });
+      document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove();
+      setImportMsg({ text: 'Planilha CSV gerada!', type: 'success' });
     };
 
-    const handleImportCSV = async (event) => {
+    const handleImportCSV = async (event: any) => {
       const file = event.target.files[0];
       if (!file || !user) return;
       setIsProcessing(true);
-      setImportMsg({ text: 'Lendo planilha e salvando na nuvem...', type: 'info' });
+      setImportMsg({ text: 'Lendo planilha...', type: 'info' });
 
       const reader = new FileReader();
-      reader.onload = async (e) => {
+      reader.onload = async (e: any) => {
         try {
           const text = e.target.result;
           const lines = text.split('\n');
-          
           let importCount = 0;
           for(let i = 1; i < lines.length; i++) {
             if(!lines[i].trim()) continue;
-            
             const cols = lines[i].split(';');
             if(cols.length < 5) continue;
-
-            const id = cols[0].trim();
-            const type = cols[1].trim();
-            const desc = cols[2].trim();
-            const date = cols[3].trim();
-            const valStr = cols[4].trim().replace(',', '.');
-            const val = parseFloat(valStr) || 0;
+            const id = cols[0].trim(), type = cols[1].trim(), desc = cols[2].trim(), date = cols[3].trim();
+            const val = parseFloat(cols[4].trim().replace(',', '.')) || 0;
             const methodId = cols[5]?.trim() || 'pix';
             const status = cols[6]?.trim() || 'pending';
 
-            if(id) {
-               await updateDoc(doc(db, 'users', user.uid, 'transactions', id), { 
-                 type, desc, date, totalAmount: val, methodId, status 
-               });
-            } else {
-               const newDocRef = doc(collection(db, 'users', user.uid, 'transactions'));
-               await setDoc(newDocRef, {
-                  type, desc, date, totalAmount: val, myAmount: val, methodId, status,
-                  method: 'Via Planilha', createdAt: new Date().toISOString()
-               });
-            }
+            if(id) await updateDoc(doc(db, 'users', user.uid, 'transactions', id), { type, desc, date, totalAmount: val, methodId, status });
+            else await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), { type, desc, date, totalAmount: val, myAmount: val, methodId, status, method: 'Via Planilha', createdAt: new Date().toISOString()});
             importCount++;
           }
-          setImportMsg({ text: `${importCount} lançamentos importados da planilha com sucesso!`, type: 'success' });
-        } catch (err) {
-          setImportMsg({ text: 'Erro ao ler a planilha. Verifique o formato.', type: 'error' });
-        } finally {
-          setIsProcessing(false); event.target.value = '';
-        }
+          setImportMsg({ text: `${importCount} lançamentos importados!`, type: 'success' });
+        } catch (err) { setImportMsg({ text: 'Erro ao ler a planilha.', type: 'error' }); } 
+        finally { setIsProcessing(false); event.target.value = ''; }
       };
       reader.readAsText(file);
     };
@@ -1221,30 +1593,22 @@ export default function FinanceApp() {
         )}
 
         <div className="space-y-4">
-          
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-4">
              <div className="flex items-center justify-between">
                 <div>
                    <h3 className="text-lg font-bold text-gray-800 mb-1">Minha Conta</h3>
                    <p className="text-sm text-gray-600">{user?.email}</p>
                 </div>
-                <button onClick={handleLogout} className="bg-red-100 text-red-600 hover:bg-red-200 px-4 py-2 rounded-lg font-medium transition-colors">
-                   Sair
-                </button>
+                <button onClick={handleLogout} className="bg-red-100 text-red-600 hover:bg-red-200 px-4 py-2 rounded-lg font-medium transition-colors">Sair</button>
              </div>
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <h3 className="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2"><Icons.Calendar /> Editar via Planilha (Excel/CSV)</h3>
-            <p className="text-sm text-gray-600 mb-4">Exporte uma planilha, adicione dezenas de novos gastos usando o Excel (deixando a coluna ID em branco) e importe de volta para cadastrar tudo de uma vez!</p>
-            
-            <div className="flex flex-col md:flex-row gap-3">
-              <button onClick={handleExportCSV} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors">
-                <Icons.Download /> Baixar Planilha CSV
-              </button>
-              
-              <label className={`flex-1 ${isProcessing ? 'bg-gray-400 cursor-not-allowed' : 'bg-white border border-green-600 text-green-700 hover:bg-green-50 cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors inline-flex`}>
-                <Icons.Upload /> {isProcessing ? 'Enviando...' : 'Importar Planilha CSV'}
+            <h3 className="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2"><Icons.Calendar /> Editar via Planilha (CSV)</h3>
+            <div className="flex flex-col md:flex-row gap-3 mt-4">
+              <button onClick={handleExportCSV} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium"><Icons.Download /> Baixar Planilha</button>
+              <label className={`flex-1 ${isProcessing ? 'bg-gray-400' : 'bg-white border border-green-600 text-green-700 hover:bg-green-50 cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium inline-flex`}>
+                <Icons.Upload /> {isProcessing ? 'Enviando...' : 'Importar Planilha'}
                 <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" disabled={isProcessing} />
               </label>
             </div>
@@ -1252,29 +1616,21 @@ export default function FinanceApp() {
 
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <h3 className="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2"><Icons.Cloud /> Backup do Sistema (JSON)</h3>
-            <p className="text-sm text-gray-600 mb-4">Este arquivo guarda absolutamente tudo (incluindo divisões e cartões). Use para fazer backup de segurança dos seus dados.</p>
-            
-            <div className="flex flex-col md:flex-row gap-3">
-              <button onClick={handleExportJSON} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors">
-                <Icons.Download /> Baixar Backup JSON
-              </button>
-              
-              <label className={`flex-1 ${isProcessing ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-900 text-white cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors inline-flex`}>
-                <Icons.Upload /> {isProcessing ? 'Enviando...' : 'Restaurar JSON'}
+            <div className="flex flex-col md:flex-row gap-3 mt-4">
+              <button onClick={handleExportJSON} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium"><Icons.Download /> Baixar Backup</button>
+              <label className={`flex-1 ${isProcessing ? 'bg-gray-400' : 'bg-gray-800 hover:bg-gray-900 text-white cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium inline-flex`}>
+                <Icons.Upload /> {isProcessing ? 'Enviando...' : 'Restaurar Backup'}
                 <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" disabled={isProcessing} />
               </label>
             </div>
           </div>
-
         </div>
       </div>
     );
   };
 
   // --- Rotinas de Autenticação Visual ---
-  if (isAuthChecking) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-blue-600 font-bold">Carregando...</div>;
-  }
+  if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-blue-600 font-bold">Carregando...</div>;
 
   if (!user) {
     return (
@@ -1285,9 +1641,7 @@ export default function FinanceApp() {
             </div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Finanças Inteligentes</h1>
             <p className="text-gray-500 mb-8 text-sm">Faça login com o Google para sincronizar seus dados de forma segura em todos os seus dispositivos.</p>
-            
             {loginError && <div className="mb-4 text-sm text-red-600 bg-red-50 p-2 rounded-lg">{loginError}</div>}
-
             <button onClick={handleGoogleLogin} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md flex justify-center items-center gap-2">
                Entrar com o Google
             </button>
@@ -1296,7 +1650,6 @@ export default function FinanceApp() {
     );
   }
 
-  // --- Renderização Principal (Usuário Logado) ---
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-24">
       <header className="bg-blue-700 text-white pt-8 pb-6 px-6 rounded-b-[2.5rem] shadow-sm relative z-10">
@@ -1318,18 +1671,19 @@ export default function FinanceApp() {
         {activeTab === 'cards' && <CardsManagement />}
         {activeTab === 'add' && <TransactionForm />}
         {activeTab === 'collections' && <CollectionsTab />}
+        {activeTab === 'investments' && <InvestmentsTab />}
         {activeTab === 'history' && <History />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50">
-        <div className="max-w-md mx-auto flex justify-between items-center px-2 py-1">
+        <div className="max-w-md mx-auto flex justify-between items-center px-1 py-1">
           
-          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center p-2 w-14 ${activeTab === 'dashboard' ? 'text-blue-700' : 'text-gray-400'}`}>
+          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'dashboard' ? 'text-blue-700' : 'text-gray-400'}`}>
             <Icons.Home /> <span className="text-[9px] font-medium mt-1">Início</span>
           </button>
 
-          <button onClick={() => setActiveTab('cards')} className={`flex flex-col items-center p-2 w-14 ${activeTab === 'cards' ? 'text-blue-700' : 'text-gray-400'}`}>
+          <button onClick={() => setActiveTab('cards')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'cards' ? 'text-blue-700' : 'text-gray-400'}`}>
             <Icons.Wallet /> <span className="text-[9px] font-medium mt-1">Cartões</span>
           </button>
           
@@ -1339,11 +1693,15 @@ export default function FinanceApp() {
             </button>
           </div>
 
-          <button onClick={() => setActiveTab('collections')} className={`flex flex-col items-center p-2 w-14 ${activeTab === 'collections' ? 'text-blue-700' : 'text-gray-400'}`}>
+          <button onClick={() => setActiveTab('collections')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'collections' ? 'text-blue-700' : 'text-gray-400'}`}>
             <Icons.Message /> <span className="text-[9px] font-medium mt-1">Cobrar</span>
           </button>
 
-          <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center p-2 w-14 ${activeTab === 'history' ? 'text-blue-700' : 'text-gray-400'}`}>
+          <button onClick={() => setActiveTab('investments')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'investments' ? 'text-blue-700' : 'text-gray-400'}`}>
+            <Icons.TrendingUp /> <span className="text-[9px] font-medium mt-1">Ativos</span>
+          </button>
+
+          <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'history' ? 'text-blue-700' : 'text-gray-400'}`}>
             <Icons.Calendar /> <span className="text-[9px] font-medium mt-1">Faturas</span>
           </button>
 
