@@ -1176,6 +1176,7 @@ export default function FinanceApp() {
   const InvestmentsTab = () => {
     const [prices, setPrices] = useState<any>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [lastSync, setLastSync] = useState('');
     
     // --- Controle de Modais ---
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -1228,6 +1229,8 @@ export default function FinanceApp() {
           const map: any = {};
           data.results.forEach((r: any) => { map[r.symbol] = r.regularMarketPrice; });
           setPrices(map);
+          const now = new Date();
+          setLastSync(`${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
         }
       } catch (err) { console.error(err); } finally { setIsRefreshing(false); }
     };
@@ -1251,8 +1254,8 @@ export default function FinanceApp() {
          setIsSavingAsset(false); return;
       }
 
-      // Validação de formato da B3 (4 Letras + 1 ou 2 números + opcional F)
-      const tickerRegex = /^[A-Z]{4}[0-9]{1,2}F?$/;
+      // Validação de formato da B3 (4 a 5 Caracteres Alfanuméricos + 1 ou 2 números + opcional F)
+      const tickerRegex = /^[A-Z0-9]{4}[0-9]{1,2}F?$/i;
       if (!tickerRegex.test(tickerClean)) {
           setAssetError('Código inválido. Digite um ticker oficial (ex: VALE3, MXRF11).');
           setIsSavingAsset(false); return;
@@ -1381,6 +1384,7 @@ export default function FinanceApp() {
             <div>
               <span className="text-xs text-blue-200">Patrimônio B3</span>
               <p className="text-3xl font-extrabold mt-0.5">R$ {formatBRL(totalMarketValue)}</p>
+              <p className="text-[10px] text-blue-300 mt-1">Última atualização: {lastSync || 'Pendente...'}</p>
             </div>
             <button onClick={refreshQuotes} className={`p-2 rounded-xl bg-white/10 ${isRefreshing ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
           </div>
