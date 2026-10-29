@@ -37,14 +37,15 @@ const Icons = {
   Message: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
   Cloud: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>,
   Wallet: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
-  Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+  Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0-2.73-.73l.15-.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
   Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
   Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
   TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
   Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>,
   ChevronDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
   ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
-  Filter: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+  Filter: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+  Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
 };
 
 // --- Funções de Formatação (Máscaras e Exibição) ---
@@ -151,12 +152,16 @@ export default function FinanceApp() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [loginError, setLoginError] = useState('');
 
-  // --- Listas Inteligentes de Memória ---
+  // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
+  const [filtersColl, setFiltersColl] = useState({ month: '', person: 'all', status: 'all' });
+  const [filtersHist, setFiltersHist] = useState({ month: '', type: 'all', person: 'all' });
+
+  // --- Listas Inteligentes de Memória (Autocomplete) ---
   const allDescriptions = [...new Set(transactions.map(t => {
       let d = t.desc || '';
       d = d.replace(/\s\(\d+\/\d+\)$/, ''); // Limpa " (1/10)"
       d = d.replace(/\s\(Mês\s\d+\)$/, ''); // Limpa " (Mês 1)"
-      return d;
+      return d.trim();
   }))].filter(Boolean).sort();
   
   const allSplitNames = [...new Set(transactions.flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
@@ -217,6 +222,10 @@ export default function FinanceApp() {
     try { await deleteDoc(doc(db, 'users', user.uid, 'transactions', id)); } 
     catch(e) { console.error(e) }
   };
+
+  // ==========================================
+  // COMPONENTES DAS ABAS
+  // ==========================================
 
   const Dashboard = () => {
     const availableMonths = [...new Set(transactions.map(tx => {
@@ -304,44 +313,104 @@ export default function FinanceApp() {
 
   const CardsManagement = () => {
     const [isAdding, setIsAdding] = useState(false);
-    const [newCard, setNewCard] = useState({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: '', cashbackPct: '' });
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [cardForm, setCardForm] = useState({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+    const [displayLimit, setDisplayLimit] = useState('');
 
     const handleSaveCard = async (e: any) => {
       e.preventDefault();
       if (!user) return;
       try {
-        const cardData = { ...newCard, limit: parseFloat(newCard.limit) || 0, cashbackPct: parseFloat(newCard.cashbackPct) || 0 };
-        await setDoc(doc(collection(db, 'users', user.uid, 'cards')), cardData);
+        const cardData = {
+          name: cardForm.name,
+          brand: cardForm.brand,
+          closingDay: cardForm.closingDay || '',
+          dueDay: cardForm.dueDay || '',
+          limit: parseCurrencyToNumber(displayLimit) || 0,
+          cashbackPct: parseFloat(cardForm.cashbackPct as any) || 0,
+          obs: cardForm.obs || '',
+          pixKey: cardForm.pixKey || '',
+          isDefaultPix: cardForm.isDefaultPix
+        };
+
+        if (cardData.isDefaultPix) {
+           const others = cards.filter(c => c.isDefaultPix && c.id !== editingId);
+           for (const o of others) {
+              await updateDoc(doc(db, 'users', user.uid, 'cards', o.id), { isDefaultPix: false });
+           }
+        }
+
+        if (editingId) {
+           await updateDoc(doc(db, 'users', user.uid, 'cards', editingId), cardData);
+        } else {
+           await addDoc(collection(db, 'users', user.uid, 'cards'), cardData);
+        }
+
         setIsAdding(false);
-        setNewCard({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: '', cashbackPct: '' });
+        setEditingId(null);
+        setCardForm({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+        setDisplayLimit('');
       } catch (err) { console.error(err); }
     };
 
     const handleDeleteCard = async (id: string) => {
       if (!user) return;
-      try { await deleteDoc(doc(db, 'users', user.uid, 'cards', id)); } 
-      catch (err) { console.error(err); }
+      if (window.confirm("Deseja realmente excluir este cartão/conta?")) {
+         try { await deleteDoc(doc(db, 'users', user.uid, 'cards', id)); } 
+         catch (err) { console.error(err); }
+      }
+    };
+
+    const openEditCard = (c: any) => {
+       setEditingId(c.id);
+       setCardForm({
+          name: c.name || '',
+          brand: c.brand || 'Mastercard',
+          closingDay: c.closingDay || '',
+          dueDay: c.dueDay || '',
+          limit: c.limit || 0,
+          cashbackPct: c.cashbackPct || 0,
+          obs: c.obs || '',
+          pixKey: c.pixKey || '',
+          isDefaultPix: c.isDefaultPix || false
+       });
+       setDisplayLimit(formatCurrencyInput(Math.round((c.limit || 0) * 100)));
+       setIsAdding(true);
+       window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelEdit = () => {
+       setIsAdding(false);
+       setEditingId(null);
+       setCardForm({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+       setDisplayLimit('');
     };
 
     return (
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Meus Cartões</h2>
-          <button onClick={() => setIsAdding(!isAdding)} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-sm font-medium">
-            {isAdding ? 'Cancelar' : '+ Novo Cartão'}
+          <h2 className="text-2xl font-bold text-gray-800">Contas e Cartões</h2>
+          <button onClick={() => isAdding ? cancelEdit() : setIsAdding(true)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isAdding ? 'bg-gray-100 text-gray-600' : 'bg-blue-50 text-blue-600'}`}>
+            {isAdding ? 'Cancelar' : '+ Adicionar'}
           </button>
         </div>
 
         {isAdding && (
-          <form onSubmit={handleSaveCard} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6">
+          <form onSubmit={handleSaveCard} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6 space-y-4">
+            <h3 className="font-bold text-gray-800 border-b pb-2">{editingId ? 'Editar Conta/Cartão' : 'Nova Conta ou Cartão'}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Nome do Cartão</label>
-                <input required type="text" value={newCard.name} onChange={e => setNewCard({...newCard, name: e.target.value})} placeholder="Ex: Nubank, Itaú..." className="w-full p-2 border rounded-lg" />
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nome (Instituição)</label>
+                <input required type="text" value={cardForm.name} onChange={e => setCardForm({...cardForm, name: e.target.value})} placeholder="Ex: Nubank, Itaú, Rico..." className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div className="col-span-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Limite (Deixe 0 se for Conta)</label>
+                <input type="text" inputMode="numeric" value={displayLimit} onChange={e => setDisplayLimit(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Bandeira</label>
-                <select value={newCard.brand} onChange={e => setNewCard({...newCard, brand: e.target.value})} className="w-full p-2 border rounded-lg">
+                <select value={cardForm.brand} onChange={e => setCardForm({...cardForm, brand: e.target.value})} className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="Conta/Pix">Somente Conta</option>
                   <option value="Mastercard">Mastercard</option>
                   <option value="Visa">Visa</option>
                   <option value="Elo">Elo</option>
@@ -350,22 +419,30 @@ export default function FinanceApp() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Dia de Fechamento</label>
-                <input required type="number" min="1" max="31" value={newCard.closingDay} onChange={e => setNewCard({...newCard, closingDay: e.target.value})} className="w-full p-2 border rounded-lg" />
+                <input type="number" min="1" max="31" value={cardForm.closingDay} onChange={e => setCardForm({...cardForm, closingDay: e.target.value})} placeholder="Opcional" className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Dia de Vencimento</label>
-                <input required type="number" min="1" max="31" value={newCard.dueDay} onChange={e => setNewCard({...newCard, dueDay: e.target.value})} className="w-full p-2 border rounded-lg" />
+                <input type="number" min="1" max="31" value={cardForm.dueDay} onChange={e => setCardForm({...cardForm, dueDay: e.target.value})} placeholder="Opcional" className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Limite (R$)</label>
-                <input required type="number" step="0.01" value={newCard.limit} onChange={e => setNewCard({...newCard, limit: e.target.value})} placeholder="Ex: 5000.00" className="w-full p-2 border rounded-lg" />
+              <div className="col-span-2 border-t pt-4">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Chave Pix da Instituição</label>
+                <input type="text" value={cardForm.pixKey} onChange={e => setCardForm({...cardForm, pixKey: e.target.value})} placeholder="CPF, Email, Telefone..." className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="flex items-center gap-2 mt-2 text-xs text-gray-700 cursor-pointer">
+                   <input type="checkbox" checked={cardForm.isDefaultPix} onChange={e => setCardForm({...cardForm, isDefaultPix: e.target.checked})} className="w-4 h-4 text-blue-600 rounded" />
+                   Esta é minha Chave Pix Padrão para cobranças
+                </label>
               </div>
-              <div>
+              <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-700 mb-1">Cashback (%)</label>
-                <input type="number" step="0.01" value={newCard.cashbackPct} onChange={e => setNewCard({...newCard, cashbackPct: e.target.value})} placeholder="Ex: 1.5" className="w-full p-2 border rounded-lg" />
+                <input type="number" step="0.01" value={cardForm.cashbackPct} onChange={e => setCardForm({...cardForm, cashbackPct: e.target.value as any})} placeholder="Ex: 1.5" className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Observações (Isenção, Senhas, etc)</label>
+                <textarea rows={2} value={cardForm.obs} onChange={e => setCardForm({...cardForm, obs: e.target.value})} placeholder="Detalhes sobre a conta..." className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
               </div>
             </div>
-            <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium mt-4">Salvar Cartão</button>
+            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-4 transition-colors">Salvar Conta / Cartão</button>
           </form>
         )}
 
@@ -377,22 +454,48 @@ export default function FinanceApp() {
             const cardLimit = parseFloat(c.limit) || 0;
             const availableLimit = cardLimit - usedLimit;
             const availablePct = cardLimit > 0 ? (availableLimit / cardLimit) * 100 : 0;
+            const isCard = cardLimit > 0;
 
             return (
-              <div key={c.id} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col group">
+              <div key={c.id} className={`bg-white p-5 rounded-xl border shadow-sm flex flex-col group ${c.isDefaultPix ? 'border-blue-300' : 'border-gray-200'}`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center"><Icons.CreditCard /></div>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isCard ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
+                      {isCard ? <Icons.CreditCard /> : <Icons.Wallet />}
+                    </div>
                     <div>
-                      <h3 className="font-bold text-gray-800">{c.name} <span className="text-xs text-gray-500 font-normal">({c.brand})</span></h3>
-                      <p className="text-sm text-gray-500">Fecha dia {c.closingDay} • Vence dia {c.dueDay}</p>
+                      <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                         {c.name} 
+                         {c.isDefaultPix && <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Check /> Pix Padrão</span>}
+                      </h3>
+                      {isCard ? (
+                        <p className="text-xs text-gray-500 mt-0.5">Fecha {c.closingDay} • Vence {c.dueDay} {c.brand !== 'Conta/Pix' && `(${c.brand})`}</p>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-0.5">Conta Bancária / Corretora</p>
+                      )}
+                      
                       {c.cashbackPct > 0 && <p className="text-xs text-green-600 font-medium">{c.cashbackPct}% de Cashback</p>}
                     </div>
                   </div>
-                  <button onClick={() => handleDeleteCard(c.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Icons.Trash /></button>
+                  <div className="flex gap-1">
+                     <button onClick={() => openEditCard(c)} className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Icons.Edit /></button>
+                     <button onClick={() => handleDeleteCard(c.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Icons.Trash /></button>
+                  </div>
                 </div>
-                {cardLimit > 0 && (
-                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+
+                {c.pixKey && (
+                  <div className="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2.5 mb-3 flex items-center gap-2">
+                     <span className="font-bold text-gray-600">Pix:</span> <span className="text-gray-800">{c.pixKey}</span>
+                  </div>
+                )}
+                {c.obs && (
+                  <div className="text-[11px] text-gray-500 italic border-l-2 border-gray-200 pl-2 mb-3">
+                     {c.obs}
+                  </div>
+                )}
+
+                {isCard && (
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 mt-auto">
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-500">Limite Disponível</span>
                       <span className={`font-bold ${availableLimit < 0 ? 'text-red-600' : 'text-green-600'}`}>R$ {formatBRL(availableLimit)}</span>
@@ -410,7 +513,7 @@ export default function FinanceApp() {
             );
           })}
           {cards.length === 0 && !isAdding && (
-            <p className="text-gray-500 text-center py-10 bg-white rounded-xl border border-gray-200">Nenhum cartão cadastrado ainda.</p>
+            <p className="text-gray-500 text-center py-10 bg-white rounded-xl border border-gray-200">Nenhum registro cadastrado ainda.</p>
           )}
         </div>
       </div>
@@ -421,7 +524,6 @@ export default function FinanceApp() {
     const [txType, setTxType] = useState('expense');
     const [desc, setDesc] = useState('');
     
-    // --- ESTADOS DA MÁSCARA E CALCULADORA ---
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
     const [calcTarget, setCalcTarget] = useState<any>(null);
@@ -445,7 +547,7 @@ export default function FinanceApp() {
         return;
       }
       const card = cards.find(c => c.id === methodId);
-      if (card) {
+      if (card && card.limit > 0) {
         const pDate = new Date(purchaseDate + 'T12:00:00'); 
         let targetMonth = pDate.getMonth();
         let targetYear = pDate.getFullYear();
@@ -456,6 +558,8 @@ export default function FinanceApp() {
         if (dd < cd) targetMonth += 1;
         const firstDate = new Date(targetYear, targetMonth, dd);
         setFirstInstallmentDate(firstDate.toISOString().split('T')[0]);
+      } else {
+        setFirstInstallmentDate(purchaseDate);
       }
     }, [methodId, purchaseDate, cards, txType]);
 
@@ -513,12 +617,17 @@ export default function FinanceApp() {
         const groupId = Date.now().toString();
         const numPeriods = installments;
         const isRecurring = txType === 'income' || expenseType === 'fixed';
-        const cardName = txType === 'income' ? 'Conta / Pix' : (methodId === 'pix' ? 'Pix/Débito' : cards.find(c => c.id === methodId)?.name || 'Cartão');
+        const selectedCard = cards.find(c => c.id === methodId);
+        
+        let cardName = 'Pix/Débito';
+        if (txType === 'income') cardName = 'Conta / Pix';
+        else if (selectedCard) cardName = selectedCard.name;
+        
         const finalMethodId = txType === 'income' ? 'pix' : methodId;
 
         for (let i = 0; i < numPeriods; i++) {
             let formattedDate;
-            if (txType === 'income' || methodId === 'pix') {
+            if (txType === 'income' || methodId === 'pix' || (selectedCard && !selectedCard.limit)) {
                 const d = new Date(purchaseDate + 'T12:00:00'); d.setMonth(d.getMonth() + i); formattedDate = d.toISOString().split('T')[0];
             } else {
                 const d = new Date(firstInstallmentDate + 'T12:00:00'); d.setMonth(d.getMonth() + i); formattedDate = d.toISOString().split('T')[0];
@@ -607,10 +716,10 @@ export default function FinanceApp() {
             
             {txType === 'expense' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento / Conta</label>
                 <select value={methodId} onChange={e => setMethodId(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                   <option value="pix">Pix / Débito / Dinheiro</option>
-                  <optgroup label="Meus Cartões de Crédito">
+                  <optgroup label="Minhas Contas e Cartões">
                     {cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </optgroup>
                 </select>
@@ -639,7 +748,7 @@ export default function FinanceApp() {
               </div>
             )}
 
-            {txType === 'expense' && methodId !== 'pix' && (
+            {txType === 'expense' && methodId !== 'pix' && cards.find(c => c.id === methodId)?.limit > 0 && (
               <div className={installments > 1 ? "md:col-span-2" : ""}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento (1ª Parcela)</label>
                 <input type="date" value={firstInstallmentDate} onChange={e => setFirstInstallmentDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white" />
@@ -766,19 +875,20 @@ export default function FinanceApp() {
 
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    const [selectedMonth, setSelectedMonth] = useState(
-        availableMonths.includes(currentMonthStr) ? currentMonthStr : (availableMonths[availableMonths.length - 1] || currentMonthStr)
-    );
     
-    const [filterPerson, setFilterPerson] = useState('all');
-    const [filterStatus, setFilterStatus] = useState('all');
-
+    // Fallback para filtro de mês
+    if (filtersColl.month === '' && availableMonths.length > 0) {
+       setFiltersColl(prev => ({ ...prev, month: availableMonths.includes(currentMonthStr) ? currentMonthStr : availableMonths[availableMonths.length - 1] }));
+    } else if (filtersColl.month === '' && availableMonths.length === 0) {
+       setFiltersColl(prev => ({ ...prev, month: currentMonthStr }));
+    }
+    
     const debtsByPerson: any = {};
     
     const filteredTransactions = transactions.filter(tx => {
         const d = new Date(tx.date);
         const txMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        if (selectedMonth !== 'all' && txMonthStr !== selectedMonth) return false;
+        if (filtersColl.month !== 'all' && txMonthStr !== filtersColl.month) return false;
         return true;
     });
 
@@ -799,7 +909,7 @@ export default function FinanceApp() {
     });
 
     const allPeopleNames = Object.keys(debtsByPerson).sort();
-    const peopleToRender = allPeopleNames.filter(name => filterPerson === 'all' || name === filterPerson);
+    const peopleToRender = allPeopleNames.filter(name => filtersColl.person === 'all' || name === filtersColl.person);
 
     const toggleSplitPaid = async (txId: string, splitIndex: number, currentStatus: boolean) => {
       if (!user) return;
@@ -825,17 +935,30 @@ export default function FinanceApp() {
         text += `- ${item.desc} (Venc: ${dateFormatted}): R$ ${formatBRL(item.amount)}\n`;
       });
       text += `\n*Total a pagar: R$ ${formatBRL(total)}*`;
+
+      // Encontrar chave PIX padrão
+      const defaultPix = cards.find(c => c.isDefaultPix && c.pixKey);
+      if (defaultPix) {
+         text += `\n\n*Minha chave Pix:* ${defaultPix.pixKey}`;
+         if (defaultPix.name) text += ` (${defaultPix.name})`;
+      }
+
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     return (
       <div className="animate-fadeIn pb-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Fechamento e Cobranças</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-800">Fechamento e Cobranças</h2>
+          {(filtersColl.month !== currentMonthStr || filtersColl.person !== 'all' || filtersColl.status !== 'all') && (
+            <button onClick={() => setFiltersColl({ month: currentMonthStr, person: 'all', status: 'all' })} className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          )}
+        </div>
         
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-1">Mês</label>
-            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={filtersColl.month} onChange={(e) => setFiltersColl({...filtersColl, month: e.target.value})} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos os Meses</option>
               {availableMonths.map(month => {
                   const [y, m] = month.split('-');
@@ -845,14 +968,14 @@ export default function FinanceApp() {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-1">Pessoa</label>
-            <select value={filterPerson} onChange={(e) => setFilterPerson(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={filtersColl.person} onChange={(e) => setFiltersColl({...filtersColl, person: e.target.value})} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todas as Pessoas</option>
               {allPeopleNames.map(name => <option key={name} value={name}>{name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-1">Status</label>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={filtersColl.status} onChange={(e) => setFiltersColl({...filtersColl, status: e.target.value})} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos</option>
               <option value="pending">Só Pendentes</option>
               <option value="paid">Só Pagos</option>
@@ -869,8 +992,8 @@ export default function FinanceApp() {
             {peopleToRender.map(name => {
               const items = debtsByPerson[name];
               const filteredItems = items.filter((i: any) => {
-                if (filterStatus === 'pending') return !i.paid;
-                if (filterStatus === 'paid') return i.paid;
+                if (filtersColl.status === 'pending') return !i.paid;
+                if (filtersColl.status === 'paid') return i.paid;
                 return true;
               });
 
@@ -930,20 +1053,16 @@ export default function FinanceApp() {
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
 
-    const [filterMonth, setFilterMonth] = useState('all');
-    const [filterType, setFilterType] = useState('all');
-    const [filterPerson, setFilterPerson] = useState('all');
-
     const availableMonths = [...new Set(transactions.map(t => t.date.substring(0,7)))].sort().reverse();
     const availablePersons = [...new Set(transactions.flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
 
     const groupedInvoices: any = {};
     
     const filteredTxsForHistory = transactions.filter(tx => {
-      if (filterMonth !== 'all' && !tx.date.startsWith(filterMonth)) return false;
-      if (filterType !== 'all' && tx.type !== filterType) return false;
-      if (filterPerson !== 'all') {
-        const hasPerson = tx.splits?.some((s: any) => s.name === filterPerson);
+      if (filtersHist.month !== 'all' && filtersHist.month !== '' && !tx.date.startsWith(filtersHist.month)) return false;
+      if (filtersHist.type !== 'all' && tx.type !== filtersHist.type) return false;
+      if (filtersHist.person !== 'all') {
+        const hasPerson = tx.splits?.some((s: any) => s.name === filtersHist.person);
         if (!hasPerson) return false;
       }
       return true;
@@ -981,9 +1100,13 @@ export default function FinanceApp() {
     // Ordenação Cronológica das Faturas (Ascendente - Antigas/Atuais primeiro)
     const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => a.monthYear.localeCompare(b.monthYear));
     
-    // Ordenação dos lançamentos individuais dentro de cada fatura (Por Data)
+    // Ordenação dos lançamentos individuais dentro de cada fatura (Por Data da Compra, ascendente)
     invoicesArray.forEach((inv: any) => {
-        inv.transactions.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        inv.transactions.sort((a: any, b: any) => {
+           const dateA = new Date(a.purchaseDate || a.date).getTime();
+           const dateB = new Date(b.purchaseDate || b.date).getTime();
+           return dateA - dateB;
+        });
     });
 
     const handlePayInvoice = async (invoice: any) => {
@@ -1047,12 +1170,17 @@ export default function FinanceApp() {
 
     return (
       <div className="animate-fadeIn pb-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Faturas e Lançamentos</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-800">Faturas e Lançamentos</h2>
+          {(filtersHist.month || filtersHist.type !== 'all' || filtersHist.person !== 'all') && (
+            <button onClick={() => setFiltersHist({ month: '', type: 'all', person: 'all' })} className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          )}
+        </div>
         
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-1">Mês</label>
-            <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={filtersHist.month} onChange={(e) => setFiltersHist({...filtersHist, month: e.target.value})} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos os Meses</option>
               {availableMonths.map(month => {
                   const [y, m] = month.split('-');
@@ -1062,7 +1190,7 @@ export default function FinanceApp() {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-1">Tipo</label>
-            <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={filtersHist.type} onChange={(e) => setFiltersHist({...filtersHist, type: e.target.value})} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos</option>
               <option value="income">Receitas (+)</option>
               <option value="expense">Despesas (-)</option>
@@ -1070,7 +1198,7 @@ export default function FinanceApp() {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-1">Envolvidos</label>
-            <select value={filterPerson} onChange={(e) => setFilterPerson(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={filtersHist.person} onChange={(e) => setFiltersHist({...filtersHist, person: e.target.value})} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos / Apenas Eu</option>
               {availablePersons.map(name => <option key={name as string} value={name as string}>{name as string}</option>)}
             </select>
@@ -1156,7 +1284,7 @@ export default function FinanceApp() {
                       ))}
                     </ul>
 
-                    {!invoice.isFullyPaid && invoice.card && (
+                    {!invoice.isFullyPaid && invoice.card && invoice.card.limit > 0 && (
                       <div className="p-3 bg-gray-50 border-t border-gray-100">
                         <button onClick={() => handlePayInvoice(invoice)} className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
                           Marcar Fatura como Paga (Liberar Limite)
@@ -1252,22 +1380,15 @@ export default function FinanceApp() {
     const [displaySellFees, setDisplaySellFees] = useState('');
     const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
 
-    // Efeito para busca dinâmica de Tickers
+    // Desativa rolagem do fundo quando abrir modais
     useEffect(() => {
-      const timeout = setTimeout(async () => {
-        if (tickerInput.length >= 2) {
-          setIsSearching(true);
-          try {
-            const res = await fetch(`https://brapi.dev/api/quote/list?search=${tickerInput}&limit=5`);
-            const data = await res.json();
-            if (data.stocks) setSuggestions(data.stocks);
-            else setSuggestions([]);
-          } catch (err) { setSuggestions([]); } 
-          finally { setIsSearching(false); }
-        } else { setSuggestions([]); }
-      }, 500);
-      return () => clearTimeout(timeout);
-    }, [tickerInput]);
+      if (isAddOpen || editingAsset || sellingAsset) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = 'auto';
+      }
+      return () => { document.body.style.overflow = 'auto'; };
+    }, [isAddOpen, editingAsset, sellingAsset]);
 
     // Agrupamento e Filtragem por Corretora
     const investmentsToRender = filterBroker === 'Geral' ? investments : investments.filter(inv => inv.broker === filterBroker);
@@ -1285,7 +1406,7 @@ export default function FinanceApp() {
       return acc;
     }, {})).map((g: any) => {
       g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
-      g.lots.sort((a: any, b: any) => new Date(a.buyDate).getTime() - new Date(b.buyDate).getTime());
+      g.lots.sort((a: any, b: any) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime());
       return g;
     });
 
@@ -1337,7 +1458,7 @@ export default function FinanceApp() {
       if (groupedInvestments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
         refreshQuotes();
       }
-    }, [investments.length]); // Somente disparado quando ocorrem inserções/exclusões reais
+    }, [investments.length]); 
 
     const handleSaveAsset = async (e: any) => {
       e.preventDefault();
@@ -1354,7 +1475,6 @@ export default function FinanceApp() {
          setIsSavingAsset(false); return;
       }
 
-      // Validação rápida de formato B3 (Sem consultar API para evitar bloqueio)
       const tickerRegex = /^[A-Z0-9]{4}[0-9]{1,2}F?$/i;
       if (!tickerRegex.test(tickerClean)) {
           setAssetError('Código inválido. Digite um ticker oficial (ex: VALE3, MXRF11).');
@@ -1374,7 +1494,7 @@ export default function FinanceApp() {
 
         await addDoc(collection(db, 'users', user.uid, 'investments'), newAsset);
         setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false); setAssetError('');
-        refreshQuotes(true); // Força atualização de preços ao cadastrar novo
+        refreshQuotes(true);
       } catch (err) { 
         console.error(err); setAssetError('Erro ao salvar o ativo.');
       } finally { setIsSavingAsset(false); }
@@ -1487,7 +1607,6 @@ export default function FinanceApp() {
       setExpandedTickers(prev => prev.includes(ticker) ? prev.filter(t => t !== ticker) : [...prev, ticker]);
     };
 
-    // Construção dos Cartões por Corretora
     const brokerCards = ['Geral', ...Array.from(new Set(investments.map((i: any) => i.broker))).filter(Boolean).sort()].map(brokerName => {
       const invs = brokerName === 'Geral' ? investments : investments.filter((i:any) => i.broker === brokerName);
       let totalInv = 0;
@@ -1538,7 +1657,7 @@ export default function FinanceApp() {
           </div>
           <p className="text-[10px] text-gray-400 text-right flex items-center justify-end gap-1 mt-1">
             Última atualização: {lastSync} 
-            <button onClick={() => refreshQuotes(true)} className={`p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 text-gray-600 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}><Icons.Refresh /></button>
+            <button onClick={() => refreshQuotes(true)} className={`p-1 bg-gray-100 rounded-md hover:bg-gray-200 text-gray-600 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}><Icons.Refresh /></button>
           </p>
         </div>
 
@@ -1637,7 +1756,7 @@ export default function FinanceApp() {
         {(isAddOpen || editingAsset) && (
           <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4">
-              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 overflow-visible">
                 <div className="flex justify-between items-center">
                   <h3 className="font-bold text-gray-800">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
                   <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
@@ -1647,22 +1766,11 @@ export default function FinanceApp() {
                 
                 <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
                   
-                  <div className="relative">
-                    <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500" required disabled={!!editingAsset} list="ticker-suggestions" />
+                  <div>
+                    <input type="text" placeholder="Ticker (Ex: PETR4, MXRF11)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500" required disabled={!!editingAsset} list="ticker-suggestions" />
                     <datalist id="ticker-suggestions">
                       {mergedTickersForSearch.map(t => <option key={t} value={t} />)}
                     </datalist>
-                    {isSearching && !editingAsset && <span className="absolute right-3 top-3 text-xs text-gray-400">Buscando...</span>}
-                    {suggestions.length > 0 && !editingAsset && (
-                      <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
-                        {suggestions.map(s => (
-                          <li key={s.stock} onClick={() => { setTickerInput(s.stock); setSuggestions([]); }} className="p-2 border-b border-gray-50 text-xs cursor-pointer hover:bg-blue-50 flex flex-col">
-                            <span className="font-bold text-gray-800">{s.stock}</span>
-                            <span className="text-gray-500 truncate">{s.name}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
