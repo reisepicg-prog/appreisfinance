@@ -37,7 +37,7 @@ const Icons = {
   Message: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
   Cloud: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>,
   Wallet: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
-  Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0-2.73-.73l.15-.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+  Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
   Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
   Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
   TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
@@ -45,7 +45,45 @@ const Icons = {
   ChevronDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
   ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
   Filter: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
-  Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  QrCode: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+};
+
+// --- Gerador de PIX BR Code (Copia e Cola) ---
+const generatePixPayload = (pixKey: string, amount: number, merchantName: string = 'Recebedor') => {
+  const formatLen = (id: string, value: string) => {
+      const valStr = String(value);
+      return id + String(valStr.length).padStart(2, '0') + valStr;
+  };
+  
+  // Limpa nome de caracteres especiais longos que podem quebrar o validador
+  const cleanName = merchantName.normalize('NFD').replace(/[\u0300-\u036f]/g, "").substring(0, 25).trim();
+
+  const payloadFormat = formatLen('00', '01');
+  const gui = formatLen('00', 'br.gov.bcb.pix');
+  const key = formatLen('01', pixKey);
+  const merchantAccount = formatLen('26', gui + key);
+  const merchantCategory = formatLen('52', '0000');
+  const currency = formatLen('53', '986');
+  const amountStr = amount ? formatLen('54', amount.toFixed(2)) : '';
+  const country = formatLen('58', 'BR');
+  const name = formatLen('59', cleanName || 'Recebedor');
+  const city = formatLen('60', 'Cidade');
+  const additionalData = formatLen('62', formatLen('05', '***'));
+  
+  let payload = payloadFormat + merchantAccount + merchantCategory + currency + amountStr + country + name + city + additionalData + '6304';
+  
+  // Calcula CRC16 CCITT
+  let crc = 0xFFFF;
+  for (let i = 0; i < payload.length; i++) {
+      crc ^= payload.charCodeAt(i) << 8;
+      for (let j = 0; j < 8; j++) {
+          if ((crc & 0x8000) !== 0) crc = (crc << 1) ^ 0x1021;
+          else crc = crc << 1;
+      }
+  }
+  const crcStr = (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+  return payload + crcStr;
 };
 
 // --- Funções de Formatação (Máscaras e Exibição) ---
@@ -65,9 +103,6 @@ const parseCurrencyToNumber = (formattedValue: string): number => {
 const formatBRL = (value: number | string): string => {
   return (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
-
-// --- Lista Estática Inteligente para Autocomplete (B3) ---
-const POPULAR_TICKERS = ["AAPL34", "ABEV3", "ALOS3", "ARZZ3", "ASAI3", "AZUL4", "B3SA3", "BBAS3", "BBDC3", "BBDC4", "BBSE3", "BPAC11", "BRAP4", "BRFS3", "BRKM5", "CCRO3", "CIEL3", "CMIG4", "COGN3", "CPFE3", "CPLE6", "CRFB3", "CSAN3", "CSNA3", "CVCB3", "CYRE3", "ELET3", "ELET6", "EMBR3", "ENEV3", "ENGI11", "EQTL3", "EZTC3", "FLRY3", "GGBR4", "GOAU4", "GOLL4", "HAPV3", "HGLG11", "HYPE3", "IGTI11", "IRBR3", "ITSA4", "ITUB4", "JBSS3", "KLBN11", "KNRI11", "LREN3", "LWSA3", "MGLU3", "MRFG3", "MRVE3", "MULT3", "MXRF11", "NTCO3", "PCAR3", "PETR3", "PETR4", "PETZ3", "PRIO3", "RADL3", "RAIL3", "RDOR3", "RENT3", "RRRP3", "SANB11", "SBSP3", "SIMH3", "SLCE3", "SOMA3", "SUZB3", "TAEE11", "TIMS3", "TOTS3", "UGPA3", "USIM5", "VALE3", "VAMO3", "VBBR3", "VILG11", "VISC11", "VIVT3", "WEGE3", "XPLG11", "XPML11", "YDUQ3"];
 
 // --- Modal da Calculadora Rápida ---
 const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClose: () => void; onApply: (val: number) => void }) => {
@@ -159,8 +194,8 @@ export default function FinanceApp() {
   // --- Listas Inteligentes de Memória (Autocomplete) ---
   const allDescriptions = [...new Set(transactions.map(t => {
       let d = t.desc || '';
-      d = d.replace(/\s\(\d+\/\d+\)$/, ''); // Limpa " (1/10)"
-      d = d.replace(/\s\(Mês\s\d+\)$/, ''); // Limpa " (Mês 1)"
+      d = d.replace(/\s\(\d+\/\d+\)$/, ''); 
+      d = d.replace(/\s\(Mês\s\d+\)$/, ''); 
       return d.trim();
   }))].filter(Boolean).sort();
   
@@ -245,18 +280,32 @@ export default function FinanceApp() {
         ? transactions 
         : transactions.filter(tx => tx.date.startsWith(selectedMonth));
 
-    const totalIncomes = filteredTxs.filter(tx => tx.type === 'income').reduce((acc, curr) => acc + (parseFloat(curr.totalAmount) || 0), 0);
-    const totalExpenses = filteredTxs.filter(tx => tx.type !== 'income').reduce((acc, curr) => acc + (parseFloat(curr.myAmount) || 0), 0);
-    const totalReceivables = filteredTxs.filter(tx => tx.type !== 'income').reduce((acc, curr) => {
+    const incomes = filteredTxs.filter(tx => tx.type === 'income');
+    const expenses = filteredTxs.filter(tx => tx.type !== 'income');
+
+    // Previsto vs Realizado (Receitas)
+    const plannedIncomes = incomes.reduce((acc, curr) => acc + (parseFloat(curr.totalAmount) || 0), 0);
+    const paidIncomes = incomes.filter(tx => tx.status === 'paid').reduce((acc, curr) => acc + (parseFloat(curr.totalAmount) || 0), 0);
+    const incomeProgress = plannedIncomes > 0 ? (paidIncomes / plannedIncomes) * 100 : 0;
+
+    // Previsto vs Realizado (Despesas) - Utilizando 'myAmount' (Sua parte da despesa)
+    const plannedExpenses = expenses.reduce((acc, curr) => acc + (parseFloat(curr.myAmount) || 0), 0);
+    const paidExpenses = expenses.filter(tx => tx.status === 'paid').reduce((acc, curr) => acc + (parseFloat(curr.myAmount) || 0), 0);
+    const expenseProgress = plannedExpenses > 0 ? (paidExpenses / plannedExpenses) * 100 : 0;
+
+    // Saldos
+    const saldoAtual = paidIncomes - paidExpenses; // Só o que realmente aconteceu
+    const saldoProjetado = plannedIncomes - plannedExpenses; // O que vai acontecer no mês todo
+
+    // A Receber (Splits não pagos)
+    const totalReceivables = expenses.reduce((acc, curr) => {
       const splitTotal = (curr.splits || []).reduce((sAcc: number, sCurr: any) => sAcc + (sCurr.paid ? 0 : (parseFloat(sCurr.amount) || 0)), 0);
       return acc + splitTotal;
     }, 0);
 
-    const saldo = totalIncomes - totalExpenses;
-
     return (
-      <div className="space-y-6 animate-fadeIn pb-10">
-        <div className="flex justify-between items-end">
+      <div className="space-y-5 animate-fadeIn pb-10">
+        <div className="flex justify-between items-end mb-2">
           <h2 className="text-2xl font-bold text-gray-800">Visão Geral</h2>
           <div className="flex bg-gray-200 p-1 rounded-lg">
             <button onClick={() => setViewMode('month')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === 'month' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Por Mês</button>
@@ -281,32 +330,57 @@ export default function FinanceApp() {
           </div>
         )}
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-100 shadow-sm relative overflow-hidden">
-            <h3 className="text-emerald-800 text-sm font-medium mb-1">Minhas Receitas (Ganhos)</h3>
-            <p className="text-3xl font-bold text-emerald-600">R$ {formatBRL(totalIncomes)}</p>
-            <div className="absolute -right-4 -bottom-4 opacity-10"><Icons.Wallet size={100} /></div>
+        {/* Painel de Saldos: Atual vs Projetado */}
+        <div className="grid grid-cols-2 gap-3">
+           <div className="bg-blue-600 p-4 rounded-xl text-white shadow-md relative overflow-hidden">
+              <span className="text-xs text-blue-200 font-medium">Saldo Atual (Efetivado)</span>
+              <p className="text-2xl font-bold mt-1">R$ {formatBRL(saldoAtual)}</p>
+              <Icons.Wallet className="absolute -right-3 -bottom-3 text-blue-500 opacity-30" size={80}/>
+           </div>
+           <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm relative overflow-hidden">
+              <span className="text-xs text-gray-500 font-medium">Projeção do Mês</span>
+              <p className={`text-2xl font-bold mt-1 ${saldoProjetado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>R$ {formatBRL(saldoProjetado)}</p>
+              <Icons.TrendingUp className="absolute -right-3 -bottom-3 text-gray-100" size={80}/>
+           </div>
+        </div>
+
+        {/* Progresso de Receitas */}
+        <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
+          <div className="flex justify-between items-end mb-2">
+             <div>
+                <h3 className="text-sm font-bold text-gray-800">Receitas</h3>
+                <p className="text-xs text-gray-500 mt-1">Recebido <strong className="text-emerald-600">R$ {formatBRL(paidIncomes)}</strong> de R$ {formatBRL(plannedIncomes)}</p>
+             </div>
+             <span className="text-sm font-bold text-emerald-600">{incomeProgress.toFixed(0)}%</span>
           </div>
-          <div className="bg-red-50 p-5 rounded-xl border border-red-100 shadow-sm relative overflow-hidden">
-            <h3 className="text-red-800 text-sm font-medium mb-1">Minhas Despesas (Gasto)</h3>
-            <p className="text-3xl font-bold text-red-600">R$ {formatBRL(totalExpenses)}</p>
-            <div className="absolute -right-4 -bottom-4 opacity-10"><Icons.CreditCard size={100} /></div>
-          </div>
-          <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm relative overflow-hidden md:col-span-2">
-            <div className="flex justify-between items-center z-10 relative">
-               <div>
-                  <h3 className="text-blue-800 text-sm font-medium mb-1">A Receber de Terceiros</h3>
-                  <p className="text-2xl font-bold text-blue-700">R$ {formatBRL(totalReceivables)}</p>
-                  <p className="text-xs text-blue-600 mt-1">Valores divididos aguardando pagamento</p>
-               </div>
-               <div className="text-right">
-                  <h3 className="text-blue-800 text-sm font-medium mb-1">Saldo do Período</h3>
-                  <p className={`text-xl font-bold ${saldo >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>R$ {formatBRL(saldo)}</p>
-               </div>
-            </div>
-            <div className="absolute -right-4 -bottom-8 opacity-5"><Icons.Users size={120} /></div>
+          <div className="w-full bg-gray-100 rounded-full h-2">
+             <div className="bg-emerald-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, incomeProgress)}%` }}></div>
           </div>
         </div>
+
+        {/* Progresso de Despesas */}
+        <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
+          <div className="flex justify-between items-end mb-2">
+             <div>
+                <h3 className="text-sm font-bold text-gray-800">Despesas</h3>
+                <p className="text-xs text-gray-500 mt-1">Pago <strong className="text-red-600">R$ {formatBRL(paidExpenses)}</strong> de R$ {formatBRL(plannedExpenses)}</p>
+             </div>
+             <span className="text-sm font-bold text-red-600">{expenseProgress.toFixed(0)}%</span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-2">
+             <div className="bg-red-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, expenseProgress)}%` }}></div>
+          </div>
+        </div>
+
+        {/* Terceiros */}
+        <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm flex justify-between items-center">
+           <div>
+              <h3 className="text-blue-800 text-sm font-bold mb-1">A Receber de Terceiros</h3>
+              <p className="text-xs text-blue-600">Aguardando pagamento / Pix</p>
+           </div>
+           <p className="text-xl font-bold text-blue-700">R$ {formatBRL(totalReceivables)}</p>
+        </div>
+
       </div>
     );
   };
@@ -314,7 +388,7 @@ export default function FinanceApp() {
   const CardsManagement = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [cardForm, setCardForm] = useState({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+    const [cardForm, setCardForm] = useState({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
     const [displayLimit, setDisplayLimit] = useState('');
 
     const handleSaveCard = async (e: any) => {
@@ -348,7 +422,7 @@ export default function FinanceApp() {
 
         setIsAdding(false);
         setEditingId(null);
-        setCardForm({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+        setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
         setDisplayLimit('');
       } catch (err) { console.error(err); }
     };
@@ -365,7 +439,7 @@ export default function FinanceApp() {
        setEditingId(c.id);
        setCardForm({
           name: c.name || '',
-          brand: c.brand || 'Mastercard',
+          brand: c.brand || 'Conta/Pix',
           closingDay: c.closingDay || '',
           dueDay: c.dueDay || '',
           limit: c.limit || 0,
@@ -382,7 +456,7 @@ export default function FinanceApp() {
     const cancelEdit = () => {
        setIsAdding(false);
        setEditingId(null);
-       setCardForm({ name: '', brand: 'Mastercard', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+       setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
        setDisplayLimit('');
     };
 
@@ -390,7 +464,7 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800">Contas e Cartões</h2>
-          <button onClick={() => isAdding ? cancelEdit() : setIsAdding(true)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isAdding ? 'bg-gray-100 text-gray-600' : 'bg-blue-50 text-blue-600'}`}>
+          <button onClick={() => isAdding ? cancelEdit() : setIsAdding(true)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isAdding ? 'bg-gray-100 text-gray-600' : 'bg-blue-50 text-blue-600'}`}>
             {isAdding ? 'Cancelar' : '+ Adicionar'}
           </button>
         </div>
@@ -408,7 +482,7 @@ export default function FinanceApp() {
                 <input type="text" inputMode="numeric" value={displayLimit} onChange={e => setDisplayLimit(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Bandeira</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Bandeira / Tipo</label>
                 <select value={cardForm.brand} onChange={e => setCardForm({...cardForm, brand: e.target.value})} className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="Conta/Pix">Somente Conta</option>
                   <option value="Mastercard">Mastercard</option>
@@ -442,7 +516,7 @@ export default function FinanceApp() {
                 <textarea rows={2} value={cardForm.obs} onChange={e => setCardForm({...cardForm, obs: e.target.value})} placeholder="Detalhes sobre a conta..." className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
               </div>
             </div>
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-4 transition-colors">Salvar Conta / Cartão</button>
+            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-4 transition-colors">Salvar</button>
           </form>
         )}
 
@@ -473,7 +547,6 @@ export default function FinanceApp() {
                       ) : (
                         <p className="text-xs text-gray-500 mt-0.5">Conta Bancária / Corretora</p>
                       )}
-                      
                       {c.cashbackPct > 0 && <p className="text-xs text-green-600 font-medium">{c.cashbackPct}% de Cashback</p>}
                     </div>
                   </div>
@@ -868,6 +941,8 @@ export default function FinanceApp() {
   };
 
   const CollectionsTab = () => {
+    const [qrCodeModal, setQrCodeModal] = useState<any>(null);
+
     const availableMonths = [...new Set(transactions.map(tx => {
         const d = new Date(tx.date);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -876,7 +951,6 @@ export default function FinanceApp() {
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     
-    // Fallback para filtro de mês
     if (filtersColl.month === '' && availableMonths.length > 0) {
        setFiltersColl(prev => ({ ...prev, month: availableMonths.includes(currentMonthStr) ? currentMonthStr : availableMonths[availableMonths.length - 1] }));
     } else if (filtersColl.month === '' && availableMonths.length === 0) {
@@ -936,7 +1010,6 @@ export default function FinanceApp() {
       });
       text += `\n*Total a pagar: R$ ${formatBRL(total)}*`;
 
-      // Encontrar chave PIX padrão
       const defaultPix = cards.find(c => c.isDefaultPix && c.pixKey);
       if (defaultPix) {
          text += `\n\n*Minha chave Pix:* ${defaultPix.pixKey}`;
@@ -944,6 +1017,17 @@ export default function FinanceApp() {
       }
 
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
+    const openQrCode = (name: string, items: any[]) => {
+      const unpaidItems = items.filter(i => !i.paid);
+      const total = unpaidItems.reduce((acc, curr) => acc + curr.amount, 0);
+      const defaultPix = cards.find(c => c.isDefaultPix && c.pixKey);
+      
+      if (defaultPix && total > 0) {
+        const payloadStr = generatePixPayload(defaultPix.pixKey, total, user?.displayName || 'Recebedor');
+        setQrCodeModal({ name, total, payload: payloadStr, pixKey: defaultPix.pixKey });
+      }
     };
 
     return (
@@ -1002,6 +1086,7 @@ export default function FinanceApp() {
               const unpaidItems = filteredItems.filter((i: any) => !i.paid);
               const totalOwed = unpaidItems.reduce((acc: number, curr: any) => acc + curr.amount, 0);
               const isAllPaid = filteredItems.length > 0 && unpaidItems.length === 0;
+              const hasDefaultPix = cards.some(c => c.isDefaultPix && c.pixKey);
 
               return (
                 <div key={name} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
@@ -1034,13 +1119,53 @@ export default function FinanceApp() {
                     ))}
                   </div>
                   {!isAllPaid && (
-                    <button onClick={() => handleWhatsApp(name, filteredItems)} className="w-full bg-[#25D366] hover:bg-[#20b858] text-white py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors">
-                      <Icons.Message /> Cobrar Pendentes no WhatsApp
-                    </button>
+                    <div className="flex gap-2">
+                       <button onClick={() => handleWhatsApp(name, filteredItems)} className="flex-1 bg-[#25D366] hover:bg-[#20b858] text-white py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors">
+                         <Icons.Message /> Cobrar
+                       </button>
+                       {hasDefaultPix && (
+                         <button onClick={() => openQrCode(name, filteredItems)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors">
+                            <Icons.QrCode />
+                         </button>
+                       )}
+                    </div>
                   )}
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {qrCodeModal && (
+          <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+               <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl text-center">
+                  <div className="flex justify-between items-center mb-4">
+                     <h3 className="font-bold text-gray-800">Cobrar {qrCodeModal.name}</h3>
+                     <button onClick={() => setQrCodeModal(null)} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600 mb-4">R$ {formatBRL(qrCodeModal.total)}</p>
+                  
+                  <div className="bg-gray-50 p-4 rounded-xl flex justify-center mb-4 border border-gray-100">
+                     <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeModal.payload)}`} 
+                        alt="QR Code Pix" 
+                        className="w-48 h-48"
+                     />
+                  </div>
+                  <p className="text-xs text-gray-500 mb-4">Chave: <b>{qrCodeModal.pixKey}</b></p>
+                  
+                  <button 
+                     onClick={() => {
+                        navigator.clipboard.writeText(qrCodeModal.payload);
+                        alert("Pix Copia e Cola copiado para a área de transferência!");
+                     }} 
+                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors shadow-md"
+                  >
+                     Copiar Pix Copia e Cola
+                  </button>
+               </div>
+            </div>
           </div>
         )}
       </div>
@@ -1097,10 +1222,8 @@ export default function FinanceApp() {
       }
     });
 
-    // Ordenação Cronológica das Faturas (Ascendente - Antigas/Atuais primeiro)
     const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => a.monthYear.localeCompare(b.monthYear));
     
-    // Ordenação dos lançamentos individuais dentro de cada fatura (Por Data da Compra, ascendente)
     invoicesArray.forEach((inv: any) => {
         inv.transactions.sort((a: any, b: any) => {
            const dateA = new Date(a.purchaseDate || a.date).getTime();
@@ -1135,6 +1258,16 @@ export default function FinanceApp() {
       setEditForm({ desc: tx.desc, totalAmount: tx.totalAmount, date: tx.date });
       setUpdateScope('single');
     };
+
+    useEffect(() => {
+      if (editingTx) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = 'auto';
+      }
+      return () => { document.body.style.overflow = 'auto'; };
+    }, [editingTx]);
 
     const handleSaveEdit = async (e: any) => {
       e.preventDefault();
@@ -1341,508 +1474,6 @@ export default function FinanceApp() {
                       {isUpdating ? 'Salvando...' : 'Salvar'}
                     </button>
                   </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const InvestmentsTab = () => {
-    const [prices, setPrices] = useState<any>({});
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [lastSync, setLastSync] = useState('');
-    const [filterBroker, setFilterBroker] = useState('Geral');
-    
-    // --- Controle de Modais ---
-    const [isAddOpen, setIsAddOpen] = useState(false);
-    const [sellingAsset, setSellingAsset] = useState<any>(null);
-    const [editingAsset, setEditingAsset] = useState<any>(null);
-    const [expandedTickers, setExpandedTickers] = useState<string[]>([]);
-
-    const [isSavingAsset, setIsSavingAsset] = useState(false);
-    const [assetError, setAssetError] = useState('');
-
-    // --- Inputs Add/Edit Ativo ---
-    const [tickerInput, setTickerInput] = useState('');
-    const [suggestions, setSuggestions] = useState<any[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const [quantityInput, setQuantityInput] = useState('');
-    const [displayUnitPrice, setDisplayUnitPrice] = useState('');
-    const [brokerInput, setBrokerInput] = useState('');
-    const [buyDateInput, setBuyDateInput] = useState(new Date().toISOString().substring(0, 10));
-
-    // --- Inputs Venda ---
-    const [sellQuantity, setSellQuantity] = useState('');
-    const [displaySellUnitPrice, setDisplaySellUnitPrice] = useState('');
-    const [displaySellFees, setDisplaySellFees] = useState('');
-    const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
-
-    // Desativa rolagem do fundo quando abrir modais
-    useEffect(() => {
-      if (isAddOpen || editingAsset || sellingAsset) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = 'auto';
-      }
-      return () => { document.body.style.overflow = 'auto'; };
-    }, [isAddOpen, editingAsset, sellingAsset]);
-
-    // Agrupamento e Filtragem por Corretora
-    const investmentsToRender = filterBroker === 'Geral' ? investments : investments.filter(inv => inv.broker === filterBroker);
-
-    const groupedInvestments = Object.values(investmentsToRender.reduce((acc: any, inv: any) => {
-      if (!acc[inv.ticker]) {
-        acc[inv.ticker] = {
-          ticker: inv.ticker, type: inv.type, companyName: inv.companyName || inv.ticker,
-          totalQuantity: 0, totalInvested: 0, lots: []
-        };
-      }
-      acc[inv.ticker].totalQuantity += inv.quantity;
-      acc[inv.ticker].totalInvested += (inv.quantity * inv.unitPrice);
-      acc[inv.ticker].lots.push(inv);
-      return acc;
-    }, {})).map((g: any) => {
-      g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
-      g.lots.sort((a: any, b: any) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime());
-      return g;
-    });
-
-    const CACHE_KEY = 'brapi_quotes';
-    const CACHE_TTL = 15 * 60 * 1000; // 15 minutos
-
-    const refreshQuotes = async (force = false) => {
-      if (investments.length === 0) return;
-      
-      const tickers = Array.from(new Set(investments.map((i: any) => i.ticker.toUpperCase()))).join(',');
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-      const now = Date.now();
-
-      if (!force && cached.timestamp && (now - cached.timestamp < CACHE_TTL)) {
-         setPrices(cached.prices || {});
-         setLastSync(cached.lastSync + ' (Cache)');
-         return;
-      }
-
-      setIsRefreshing(true);
-      setLastSync('Atualizando...');
-      try {
-        const res = await fetch(`https://brapi.dev/api/quote/${tickers}`);
-        if (!res.ok) throw new Error(res.status === 429 ? 'rate_limit' : 'api_error');
-        const data = await res.json();
-        
-        if (data && data.results) {
-          const map: any = {};
-          data.results.forEach((r: any) => { map[r.symbol] = r.regularMarketPrice; });
-          setPrices(map);
-          const syncTime = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-          setLastSync(syncTime);
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, prices: map, lastSync: syncTime }));
-        } else {
-           throw new Error('invalid_data');
-        }
-      } catch (err: any) { 
-        console.error("Brapi fetch error:", err);
-        if (cached.prices) {
-           setPrices(cached.prices);
-           setLastSync(cached.lastSync + (err.message === 'rate_limit' ? ' (Limite da API)' : ' (Offline)'));
-        } else {
-           setLastSync(err.message === 'rate_limit' ? "Erro (Limite de consultas da API)" : "Erro de conexão com B3");
-        }
-      } finally { setIsRefreshing(false); }
-    };
-
-    useEffect(() => {
-      if (groupedInvestments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
-        refreshQuotes();
-      }
-    }, [investments.length]); 
-
-    const handleSaveAsset = async (e: any) => {
-      e.preventDefault();
-      if (!user) return;
-      setAssetError('');
-      setIsSavingAsset(true);
-
-      const tickerClean = tickerInput.trim().toUpperCase();
-      const qty = parseFloat(quantityInput);
-      const price = parseCurrencyToNumber(displayUnitPrice);
-
-      if (!tickerClean || qty <= 0 || price <= 0) {
-         setAssetError('Preencha todos os campos corretamente.');
-         setIsSavingAsset(false); return;
-      }
-
-      const tickerRegex = /^[A-Z0-9]{4}[0-9]{1,2}F?$/i;
-      if (!tickerRegex.test(tickerClean)) {
-          setAssetError('Código inválido. Digite um ticker oficial (ex: VALE3, MXRF11).');
-          setIsSavingAsset(false); return;
-      }
-
-      try {
-        const newAsset = {
-          ticker: tickerClean,
-          type: tickerClean.endsWith('11') ? 'FII' : 'Ação',
-          quantity: qty,
-          unitPrice: price,
-          broker: brokerInput.trim() || 'Principal',
-          buyDate: buyDateInput,
-          createdAt: new Date().toISOString()
-        };
-
-        await addDoc(collection(db, 'users', user.uid, 'investments'), newAsset);
-        setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false); setAssetError('');
-        refreshQuotes(true);
-      } catch (err) { 
-        console.error(err); setAssetError('Erro ao salvar o ativo.');
-      } finally { setIsSavingAsset(false); }
-    };
-
-    const handleDeleteAsset = async (id: string) => {
-      if (window.confirm("Deseja excluir esta compra específica?")) {
-        try { await deleteDoc(doc(db, 'users', user.uid, 'investments', id)); } 
-        catch (err) { console.error(err); }
-      }
-    };
-
-    const openEditAsset = (lot: any) => {
-      setEditingAsset(lot);
-      setTickerInput(lot.ticker);
-      setQuantityInput(lot.quantity.toString());
-      setDisplayUnitPrice(formatCurrencyInput(Math.round(lot.unitPrice * 100)));
-      setBrokerInput(lot.broker || '');
-      setBuyDateInput(lot.buyDate || '');
-    };
-
-    const handleSaveEditAsset = async (e: any) => {
-      e.preventDefault();
-      if (!user || !editingAsset) return;
-      setIsSavingAsset(true);
-      try {
-        const price = parseCurrencyToNumber(displayUnitPrice);
-        await updateDoc(doc(db, 'users', user.uid, 'investments', editingAsset.id), {
-          ticker: tickerInput.toUpperCase(),
-          quantity: parseFloat(quantityInput),
-          unitPrice: price,
-          broker: brokerInput,
-          buyDate: buyDateInput
-        });
-        setEditingAsset(null); setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput('');
-      } catch (err) { console.error(err); } 
-      finally { setIsSavingAsset(false); }
-    };
-
-    const handleConfirmSale = async (e: any) => {
-      e.preventDefault();
-      if (!user || !sellingAsset) return;
-
-      const qtyToSell = parseFloat(sellQuantity);
-      const price = parseCurrencyToNumber(displaySellUnitPrice);
-      const fees = parseCurrencyToNumber(displaySellFees);
-
-      if (qtyToSell <= 0 || qtyToSell > sellingAsset.totalQuantity || price <= 0) return;
-
-      const totalSaleGross = qtyToSell * price;
-      const totalCostBasis = qtyToSell * sellingAsset.averagePM;
-      const netProfit = (totalSaleGross - totalCostBasis) - fees;
-      
-      const isDayTrade = sellingAsset.lots.some((lot: any) => lot.buyDate === sellDate);
-      
-      let taxPayable = 0;
-      let taxRule = '';
-
-      if (netProfit > 0) {
-        if (isDayTrade) {
-          taxPayable = netProfit * 0.20;
-          taxRule = 'Day Trade (20% s/ lucro, sem isenção)';
-        } else if (sellingAsset.type === 'FII') {
-          taxPayable = netProfit * 0.20;
-          taxRule = 'FII Swing Trade (20% s/ lucro)';
-        } else {
-          if (totalSaleGross <= 20000) {
-            taxPayable = 0;
-            taxRule = 'Ações Swing Trade (Isento: vendas ≤ R$ 20k/mês)';
-          } else {
-            taxPayable = netProfit * 0.15;
-            taxRule = 'Ações Swing Trade (15% s/ lucro)';
-          }
-        }
-      }
-
-      const saleRecord = {
-        ticker: sellingAsset.ticker, type: sellingAsset.type, broker: 'Múltiplas/Calculado',
-        buyDate: 'Preço Médio Global', saleDate, quantitySold: qtyToSell, unitSalePrice: price,
-        unitCostBasis: sellingAsset.averagePM, totalSaleAmount: totalSaleGross, fees,
-        netProfit, isDayTrade, taxPayable, taxRule, createdAt: new Date().toISOString()
-      };
-
-      try {
-        let remainingToSell = qtyToSell;
-        const promises = [];
-
-        for (const lot of sellingAsset.lots) {
-            if (remainingToSell <= 0) break;
-            
-            if (remainingToSell >= lot.quantity) {
-                promises.push(deleteDoc(doc(db, 'users', user.uid, 'investments', lot.id)));
-                remainingToSell -= lot.quantity;
-            } else {
-                promises.push(updateDoc(doc(db, 'users', user.uid, 'investments', lot.id), {
-                    quantity: lot.quantity - remainingToSell
-                }));
-                remainingToSell = 0;
-            }
-        }
-        promises.push(addDoc(collection(db, 'users', user.uid, 'salesHistory'), saleRecord));
-        
-        await Promise.all(promises);
-
-        setSellingAsset(null); setSellQuantity(''); setDisplaySellUnitPrice(''); setDisplaySellFees('');
-      } catch (err) { console.error(err); }
-    };
-
-    const toggleExpandTicker = (ticker: string) => {
-      setExpandedTickers(prev => prev.includes(ticker) ? prev.filter(t => t !== ticker) : [...prev, ticker]);
-    };
-
-    const brokerCards = ['Geral', ...Array.from(new Set(investments.map((i: any) => i.broker))).filter(Boolean).sort()].map(brokerName => {
-      const invs = brokerName === 'Geral' ? investments : investments.filter((i:any) => i.broker === brokerName);
-      let totalInv = 0;
-      let totalMkt = 0;
-      invs.forEach((inv: any) => {
-          totalInv += inv.quantity * inv.unitPrice;
-          const cp = prices[inv.ticker] || inv.unitPrice;
-          totalMkt += inv.quantity * cp;
-      });
-      return {
-         name: brokerName as string,
-         invested: totalInv,
-         market: totalMkt,
-         profit: totalMkt - totalInv
-      };
-    });
-
-    return (
-      <div className="p-4 space-y-4 pb-28 animate-fadeIn">
-        
-        {/* Painel Horizontal Deslizante de Corretoras */}
-        <div>
-          <div className="flex gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-            {brokerCards.map(c => (
-              <div 
-                key={c.name} 
-                onClick={() => setFilterBroker(c.name)} 
-                className={`min-w-[260px] flex-shrink-0 p-5 rounded-3xl snap-start cursor-pointer transition-all duration-300 ease-in-out ${filterBroker === c.name ? 'bg-gradient-to-br from-blue-900 to-indigo-900 text-white shadow-xl scale-100' : 'bg-white border border-gray-200 text-gray-800 scale-95 opacity-70 hover:opacity-100'}`}
-              >
-                <span className={`text-xs font-bold uppercase tracking-wider ${filterBroker === c.name ? 'text-blue-200' : 'text-gray-400'}`}>
-                  {c.name === 'Geral' ? 'Patrimônio B3' : `Corretora: ${c.name}`}
-                </span>
-                <p className="text-3xl font-extrabold mt-1">R$ {formatBRL(c.market)}</p>
-                <div className="flex justify-between items-end mt-4 pt-3 border-t border-current/10">
-                  <div>
-                    <span className={`text-[10px] ${filterBroker === c.name ? 'text-blue-300' : 'text-gray-400'}`}>Total Investido</span>
-                    <p className="font-semibold text-xs">R$ {formatBRL(c.invested)}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-[10px] ${filterBroker === c.name ? 'text-blue-300' : 'text-gray-400'}`}>Lucro / Prejuízo</span>
-                    <p className={`font-bold text-xs ${c.profit >= 0 ? (filterBroker === c.name ? 'text-emerald-400' : 'text-emerald-600') : (filterBroker === c.name ? 'text-red-400' : 'text-red-600')}`}>
-                      {c.profit >= 0 ? '+' : ''}R$ {formatBRL(c.profit)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-gray-400 text-right flex items-center justify-end gap-1 mt-1">
-            Última atualização: {lastSync} 
-            <button onClick={() => refreshQuotes(true)} className={`p-1 bg-gray-100 rounded-md hover:bg-gray-200 text-gray-600 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}><Icons.Refresh /></button>
-          </p>
-        </div>
-
-        <div className="flex justify-between items-center">
-          <h3 className="font-bold text-gray-800 text-base">Ativos em Carteira</h3>
-          <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(filterBroker !== 'Geral' ? filterBroker : ''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
-            <Icons.Plus /> Novo Ativo
-          </button>
-        </div>
-
-        {groupedInvestments.length === 0 ? (
-          <div className="bg-white p-8 rounded-2xl border text-center text-gray-400 text-sm">Nenhum ativo cadastrado.</div>
-        ) : (
-          <div className="space-y-3">
-            {groupedInvestments.map((group: any) => {
-              const currentPrice = prices[group.ticker] || group.averagePM;
-              const currentVal = group.totalQuantity * currentPrice;
-              const profitVal = currentVal - group.totalInvested;
-              const profitPct = group.averagePM > 0 ? ((currentPrice - group.averagePM) / group.averagePM) * 100 : 0;
-              const isExpanded = expandedTickers.includes(group.ticker);
-
-              return (
-                <div key={group.ticker} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2 relative transition-all">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900 text-base">{group.ticker}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{group.type}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-0.5">Total: <b className="text-gray-800">{group.totalQuantity} cotas</b></p>
-                      <p className="text-xs text-gray-500">PM Global: <b className="text-gray-800">R$ {formatBRL(group.averagePM)}</b></p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">R$ {formatBRL(currentVal)}</p>
-                      <p className={`text-xs font-bold ${profitVal >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {profitVal >= 0 ? '+' : ''}{formatBRL(profitPct)}% (R$ {formatBRL(profitVal)})
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center border-t border-gray-50 pt-3 mt-2 text-xs">
-                    <span className="text-gray-500">Atual: <b className="text-gray-800 text-sm">R$ {formatBRL(currentPrice)}</b></span>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => toggleExpandTicker(group.ticker)} className="text-gray-500 font-medium px-2 py-1.5 hover:bg-gray-100 rounded-lg flex items-center gap-1 transition-colors">
-                        Compras {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
-                      </button>
-                      <button onClick={() => setSellingAsset(group)} className="text-blue-600 font-bold px-4 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">Vender</button>
-                    </div>
-                  </div>
-
-                  {/* Detalhes Expandidos dos Lotes (Compras) */}
-                  {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-gray-100 bg-gray-50/50 -mx-4 px-4 pb-2 rounded-b-2xl space-y-2">
-                      <h4 className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wide">Histórico de Compras ({group.lots.length})</h4>
-                      {group.lots.map((lot: any) => (
-                        <div key={lot.id} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-100 text-xs shadow-sm">
-                          <div>
-                            <p className="font-bold text-gray-700">{lot.quantity} cotas <span className="text-gray-400 font-normal ml-1">({lot.broker})</span></p>
-                            <p className="text-gray-500">{new Date(lot.buyDate).toLocaleDateString('pt-BR')} • PM: R$ {formatBRL(lot.unitPrice)}</p>
-                          </div>
-                          <div className="flex gap-1">
-                             <button onClick={() => openEditAsset(lot)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"><Icons.Edit /></button>
-                             <button onClick={() => handleDeleteAsset(lot.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Icons.Trash /></button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {salesHistory.length > 0 && (
-          <div className="mt-6 space-y-2">
-            <h4 className="font-bold text-gray-800 text-sm">Histórico de Vendas & IR</h4>
-            {salesHistory.map((s: any) => (
-              <div key={s.id} className="bg-white p-3.5 rounded-2xl border shadow-sm text-xs space-y-1">
-                <div className="flex justify-between items-center font-bold">
-                  <span>{s.ticker} ({s.quantitySold} cotas)</span>
-                  <span className={s.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}>Resultado: R$ {formatBRL(s.netProfit)}</span>
-                </div>
-                <div className="flex justify-between text-gray-400">
-                  <span>Venda em {new Date(s.saleDate).toLocaleDateString('pt-BR')}</span>
-                  <span className="font-semibold text-gray-700">
-                    {s.taxPayable > 0 ? `DARF a Pagar: R$ ${formatBRL(s.taxPayable)}` : 'Isento de IR'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-gray-400 italic">{s.taxRule}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {(isAddOpen || editingAsset) && (
-          <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 overflow-visible">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-gray-800">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
-                  <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
-                </div>
-                
-                {assetError && <div className="p-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg">{assetError}</div>}
-                
-                <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
-                  
-                  <div>
-                    <input type="text" placeholder="Ticker (Ex: PETR4, MXRF11)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500" required disabled={!!editingAsset} list="ticker-suggestions" />
-                    <datalist id="ticker-suggestions">
-                      {mergedTickersForSearch.map(t => <option key={t} value={t} />)}
-                    </datalist>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                       <label className="block text-xs font-medium text-gray-500 mb-1">Quantidade</label>
-                       <input type="number" step="any" placeholder="Qtd" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
-                    </div>
-                    <div>
-                       <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
-                       <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                       <label className="block text-xs font-medium text-gray-500 mb-1">Corretora</label>
-                       <input type="text" placeholder="Ex: NuInvest" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" list="broker-suggestions" />
-                       <datalist id="broker-suggestions">
-                         {allBrokers.map(b => <option key={b} value={b} />)}
-                       </datalist>
-                    </div>
-                    <div>
-                       <label className="block text-xs font-medium text-gray-500 mb-1">Data da Compra</label>
-                       <input type="date" value={buyDateInput} onChange={(e) => setBuyDateInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
-                    </div>
-                  </div>
-                  <button type="submit" disabled={isSavingAsset} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-2 disabled:opacity-50 transition-colors shadow-md">
-                     {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Compra' : 'Salvar na Carteira')}
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {sellingAsset && (
-          <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
-                <div className="flex justify-between items-center">
-                   <h3 className="font-bold text-gray-800">Registrar Venda: {sellingAsset.ticker}</h3>
-                   <button onClick={() => setSellingAsset(null)} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
-                </div>
-                
-                <div className="bg-gray-50 p-3 rounded-xl text-xs text-gray-500 border border-gray-100">
-                  Disponível em carteira: <b className="text-gray-800">{sellingAsset.totalQuantity} cotas</b><br/>
-                  PM Global: <b className="text-gray-800">R$ {formatBRL(sellingAsset.averagePM)}</b>
-                </div>
-
-                <form onSubmit={handleConfirmSale} className="space-y-3 text-sm">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Qtd. a Vender</label>
-                      <input type="number" step="any" max={sellingAsset.totalQuantity} placeholder={`Max: ${sellingAsset.totalQuantity}`} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
-                      <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" required />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Taxas B3 / Custos</label>
-                      <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Data da Venda</label>
-                      <input type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
-                    </div>
-                  </div>
-                  <button type="submit" className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl mt-2 transition-colors shadow-md">
-                    Confirmar Venda & Apurar IR
-                  </button>
                 </form>
               </div>
             </div>
