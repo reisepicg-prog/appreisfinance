@@ -49,7 +49,7 @@ const Icons = {
   QrCode: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
 };
 
-// --- Gerador de PIX BR Code Oficial (Copia e Cola) ---
+// --- Gerador de PIX BR Code Oficial ---
 const generatePixPayload = (pixKey: string, amount: number, merchantName: string = 'Recebedor') => {
   const formatLen = (id: string, value: string) => {
       const valStr = String(value);
@@ -136,39 +136,37 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
   const btnClass = "h-11 rounded-xl font-semibold text-lg flex items-center justify-center active:scale-95 transition-all select-none";
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto">
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl border border-gray-100">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1"><span>🧮</span> Calculadora</h3>
-            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold px-2 py-1">✕</button>
-          </div>
-          <div className="bg-gray-100 rounded-xl p-3 mb-4 text-right">
-            <div className="text-xs text-gray-400 h-4 font-mono">{history}</div>
-            <div className="text-2xl font-bold text-gray-800 font-mono overflow-x-auto">{display}</div>
-          </div>
-          <div className="grid grid-cols-4 gap-2 mb-4">
-            <button type="button" onClick={handleClear} className={`${btnClass} bg-red-100 text-red-600 hover:bg-red-200`}>C</button>
-            <button type="button" onClick={handleBackspace} className={`${btnClass} bg-gray-200 text-gray-700 hover:bg-gray-300`}>⌫</button>
-            <button type="button" onClick={() => handleOp('÷')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>÷</button>
-            <button type="button" onClick={() => handleOp('×')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>×</button>
-            <button type="button" onClick={() => handleNum('7')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>7</button>
-            <button type="button" onClick={() => handleNum('8')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>8</button>
-            <button type="button" onClick={() => handleNum('9')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>9</button>
-            <button type="button" onClick={() => handleOp('-')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>-</button>
-            <button type="button" onClick={() => handleNum('4')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>4</button>
-            <button type="button" onClick={() => handleNum('5')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>5</button>
-            <button type="button" onClick={() => handleNum('6')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>6</button>
-            <button type="button" onClick={() => handleOp('+')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>+</button>
-            <button type="button" onClick={() => handleNum('1')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>1</button>
-            <button type="button" onClick={() => handleNum('2')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>2</button>
-            <button type="button" onClick={() => handleNum('3')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>3</button>
-            <button type="button" onClick={handleCalculate} className={`${btnClass} row-span-2 bg-blue-600 text-white hover:bg-blue-700 h-[96px]`}>=</button>
-            <button type="button" onClick={() => handleNum('0')} className={`${btnClass} col-span-2 bg-gray-100 hover:bg-gray-200`}>0</button>
-            <button type="button" onClick={() => handleNum(',')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>,</button>
-          </div>
-          <button type="button" onClick={handleApply} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold shadow-md text-sm">Aplicar Valor</button>
+    <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl border border-gray-100 my-auto">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1"><span>🧮</span> Calculadora</h3>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold px-2 py-1">✕</button>
         </div>
+        <div className="bg-gray-100 rounded-xl p-3 mb-4 text-right">
+          <div className="text-xs text-gray-400 h-4 font-mono">{history}</div>
+          <div className="text-2xl font-bold text-gray-800 font-mono overflow-x-auto">{display}</div>
+        </div>
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          <button type="button" onClick={handleClear} className={`${btnClass} bg-red-100 text-red-600 hover:bg-red-200`}>C</button>
+          <button type="button" onClick={handleBackspace} className={`${btnClass} bg-gray-200 text-gray-700 hover:bg-gray-300`}>⌫</button>
+          <button type="button" onClick={() => handleOp('÷')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>÷</button>
+          <button type="button" onClick={() => handleOp('×')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>×</button>
+          <button type="button" onClick={() => handleNum('7')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>7</button>
+          <button type="button" onClick={() => handleNum('8')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>8</button>
+          <button type="button" onClick={() => handleNum('9')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>9</button>
+          <button type="button" onClick={() => handleOp('-')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>-</button>
+          <button type="button" onClick={() => handleNum('4')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>4</button>
+          <button type="button" onClick={() => handleNum('5')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>5</button>
+          <button type="button" onClick={() => handleNum('6')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>6</button>
+          <button type="button" onClick={() => handleOp('+')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>+</button>
+          <button type="button" onClick={() => handleNum('1')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>1</button>
+          <button type="button" onClick={() => handleNum('2')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>2</button>
+          <button type="button" onClick={() => handleNum('3')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>3</button>
+          <button type="button" onClick={handleCalculate} className={`${btnClass} row-span-2 bg-blue-600 text-white hover:bg-blue-700 h-[96px]`}>=</button>
+          <button type="button" onClick={() => handleNum('0')} className={`${btnClass} col-span-2 bg-gray-100 hover:bg-gray-200`}>0</button>
+          <button type="button" onClick={() => handleNum(',')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>,</button>
+        </div>
+        <button type="button" onClick={handleApply} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold shadow-md text-sm">Aplicar Valor</button>
       </div>
     </div>
   );
@@ -191,16 +189,16 @@ export default function FinanceApp() {
   const [filtersHist, setFiltersHist] = useState({ month: '', type: 'all', person: 'all' });
 
   // --- Listas Inteligentes de Memória (Autocomplete) ---
-  const allDescriptions = [...new Set((transactions || []).map(t => {
-      let d = t?.desc || '';
+  const allDescriptions = [...new Set(transactions.map(t => {
+      let d = t.desc || '';
       d = d.replace(/\s\(\d+\/\d+\)$/, ''); // Limpa " (1/10)"
       d = d.replace(/\s\(Mês\s\d+\)$/, ''); // Limpa " (Mês 1)"
       return d.trim();
   }))].filter(Boolean).sort();
   
-  const allSplitNames = [...new Set((transactions || []).flatMap(t => t?.splits?.map((s: any) => s?.name) || []))].filter(Boolean).sort();
-  const allBrokers = [...new Set((investments || []).map((i: any) => i?.broker))].filter(Boolean).sort();
-  const allOwnedTickers = [...new Set((investments || []).map((i: any) => i?.ticker?.toUpperCase() || ''))].filter(Boolean);
+  const allSplitNames = [...new Set(transactions.flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
+  const allBrokers = [...new Set(investments.map((i: any) => i.broker))].filter(Boolean).sort();
+  const allOwnedTickers = [...new Set(investments.map((i: any) => i.ticker.toUpperCase()))];
   const mergedTickersForSearch = Array.from(new Set([...allOwnedTickers, ...POPULAR_TICKERS])).sort();
 
   useEffect(() => {
@@ -226,7 +224,7 @@ export default function FinanceApp() {
     const txQuery = query(collection(db, 'users', user.uid, 'transactions'));
     const unsubscribeTxs = onSnapshot(txQuery, (snapshot) => {
       const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      txs.sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime());
+      txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setTransactions(txs);
       setIsLoading(false);
     }, console.error);
@@ -244,7 +242,7 @@ export default function FinanceApp() {
     const salesQuery = query(collection(db, 'users', user.uid, 'salesHistory'));
     const unsubscribeSales = onSnapshot(salesQuery, (snapshot) => {
       const sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      sales.sort((a, b) => new Date(b?.saleDate || 0).getTime() - new Date(a?.saleDate || 0).getTime());
+      sales.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
       setSalesHistory(sales);
     }, console.error);
 
@@ -262,40 +260,39 @@ export default function FinanceApp() {
   // ==========================================
 
   const Dashboard = () => {
-    const availableMonths = [...new Set((transactions || []).map(tx => {
-        const d = new Date(tx?.date || '');
-        if (isNaN(d.getTime())) return null;
+    const availableMonths = [...new Set(transactions.map(tx => {
+        const d = new Date(tx.date);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }))].filter(Boolean).sort().reverse();
+    }))].sort().reverse();
 
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     
     const [viewMode, setViewMode] = useState('month'); 
     const [selectedMonth, setSelectedMonth] = useState(
-        availableMonths.includes(currentMonthStr) ? currentMonthStr : (availableMonths[0] as string || currentMonthStr)
+        availableMonths.includes(currentMonthStr) ? currentMonthStr : (availableMonths[0] || currentMonthStr)
     );
 
     const filteredTxs = viewMode === 'all' 
         ? transactions 
-        : (transactions || []).filter(tx => String(tx?.date || '').startsWith(selectedMonth));
+        : transactions.filter(tx => tx.date.startsWith(selectedMonth));
 
-    const incomes = filteredTxs.filter(tx => String(tx?.type) === 'income');
-    const expenses = filteredTxs.filter(tx => String(tx?.type) !== 'income');
+    const incomes = filteredTxs.filter(tx => tx.type === 'income');
+    const expenses = filteredTxs.filter(tx => tx.type !== 'income');
 
-    const plannedIncomes = incomes.reduce((acc, curr) => acc + (parseFloat(curr?.totalAmount) || 0), 0);
-    const paidIncomes = incomes.filter(tx => tx?.status === 'paid').reduce((acc, curr) => acc + (parseFloat(curr?.totalAmount) || 0), 0);
+    const plannedIncomes = incomes.reduce((acc, curr) => acc + (parseFloat(curr.totalAmount) || 0), 0);
+    const paidIncomes = incomes.filter(tx => tx.status === 'paid').reduce((acc, curr) => acc + (parseFloat(curr.totalAmount) || 0), 0);
     const incomeProgress = plannedIncomes > 0 ? (paidIncomes / plannedIncomes) * 100 : 0;
 
-    const plannedExpenses = expenses.reduce((acc, curr) => acc + (parseFloat(curr?.myAmount) || 0), 0);
-    const paidExpenses = expenses.filter(tx => tx?.status === 'paid').reduce((acc, curr) => acc + (parseFloat(curr?.myAmount) || 0), 0);
+    const plannedExpenses = expenses.reduce((acc, curr) => acc + (parseFloat(curr.myAmount) || 0), 0);
+    const paidExpenses = expenses.filter(tx => tx.status === 'paid').reduce((acc, curr) => acc + (parseFloat(curr.myAmount) || 0), 0);
     const expenseProgress = plannedExpenses > 0 ? (paidExpenses / plannedExpenses) * 100 : 0;
 
     const saldoAtual = paidIncomes - paidExpenses;
     const saldoProjetado = plannedIncomes - plannedExpenses;
 
     const totalReceivables = expenses.reduce((acc, curr) => {
-      const splitTotal = (curr?.splits || []).reduce((sAcc: number, sCurr: any) => sAcc + (sCurr?.paid ? 0 : (parseFloat(sCurr?.amount) || 0)), 0);
+      const splitTotal = (curr.splits || []).reduce((sAcc: number, sCurr: any) => sAcc + (sCurr.paid ? 0 : (parseFloat(sCurr.amount) || 0)), 0);
       return acc + splitTotal;
     }, 0);
 
@@ -319,8 +316,8 @@ export default function FinanceApp() {
             >
               {availableMonths.length === 0 && <option value={selectedMonth}>{selectedMonth}</option>}
               {availableMonths.map(month => {
-                  const [y, m] = (month as string).split('-');
-                  return <option key={month as string} value={month as string}>{`${m}/${y}`}</option>
+                  const [y, m] = month.split('-');
+                  return <option key={month} value={month}>{`${m}/${y}`}</option>
               })}
             </select>
           </div>
@@ -350,7 +347,7 @@ export default function FinanceApp() {
              <span className="text-sm font-bold text-emerald-600">{incomeProgress.toFixed(0)}%</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2">
-             <div className="bg-emerald-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, incomeProgress || 0)}%` }}></div>
+             <div className="bg-emerald-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, incomeProgress)}%` }}></div>
           </div>
         </div>
 
@@ -363,7 +360,7 @@ export default function FinanceApp() {
              <span className="text-sm font-bold text-red-600">{expenseProgress.toFixed(0)}%</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2">
-             <div className="bg-red-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, expenseProgress || 0)}%` }}></div>
+             <div className="bg-red-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, expenseProgress)}%` }}></div>
           </div>
         </div>
 
@@ -516,9 +513,9 @@ export default function FinanceApp() {
 
         <div className="grid grid-cols-1 gap-4">
           {cards.map(c => {
-            const usedLimit = (transactions || [])
-              .filter(tx => tx?.methodId === c.id && tx?.status !== 'paid')
-              .reduce((acc, tx) => acc + (parseFloat(tx?.totalAmount) || 0), 0);
+            const usedLimit = transactions
+              .filter(tx => tx.methodId === c.id && tx.status !== 'paid')
+              .reduce((acc, tx) => acc + tx.totalAmount, 0);
             const cardLimit = parseFloat(c.limit) || 0;
             const availableLimit = cardLimit - usedLimit;
             const availablePct = cardLimit > 0 ? (availableLimit / cardLimit) * 100 : 0;
@@ -542,7 +539,7 @@ export default function FinanceApp() {
                         <p className="text-xs text-gray-500 mt-0.5">Conta Bancária / Corretora</p>
                       )}
                       
-                      {(parseFloat(c.cashbackPct) || 0) > 0 && <p className="text-xs text-green-600 font-medium">{c.cashbackPct}% de Cashback</p>}
+                      {c.cashbackPct > 0 && <p className="text-xs text-green-600 font-medium">{c.cashbackPct}% de Cashback</p>}
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -615,7 +612,7 @@ export default function FinanceApp() {
         return;
       }
       const card = cards.find(c => c.id === methodId);
-      if (card && (card.limit || 0) > 0) {
+      if (card && card.limit > 0) {
         const pDate = new Date(purchaseDate + 'T12:00:00'); 
         let targetMonth = pDate.getMonth();
         let targetYear = pDate.getFullYear();
@@ -695,7 +692,7 @@ export default function FinanceApp() {
 
         for (let i = 0; i < numPeriods; i++) {
             let formattedDate;
-            if (txType === 'income' || methodId === 'pix' || (selectedCard && !(selectedCard.limit > 0))) {
+            if (txType === 'income' || methodId === 'pix' || (selectedCard && !selectedCard.limit)) {
                 const d = new Date(purchaseDate + 'T12:00:00'); d.setMonth(d.getMonth() + i); formattedDate = d.toISOString().split('T')[0];
             } else {
                 const d = new Date(firstInstallmentDate + 'T12:00:00'); d.setMonth(d.getMonth() + i); formattedDate = d.toISOString().split('T')[0];
@@ -707,7 +704,7 @@ export default function FinanceApp() {
             
             const instSplits = isSplit 
               ? splits.filter(s => s.name).map(s => ({
-                  name: String(s.name || ''),
+                  name: s.name,
                   amount: isRecurring ? (parseFloat(s.amount) || 0) : ((parseFloat(s.amount) || 0) / numPeriods),
                   paid: s.paid || false
                 }))
@@ -816,7 +813,7 @@ export default function FinanceApp() {
               </div>
             )}
 
-            {txType === 'expense' && methodId !== 'pix' && (cards.find(c => c.id === methodId)?.limit || 0) > 0 && (
+            {txType === 'expense' && methodId !== 'pix' && cards.find(c => c.id === methodId)?.limit > 0 && (
               <div className={installments > 1 ? "md:col-span-2" : ""}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento (1ª Parcela)</label>
                 <input type="date" value={firstInstallmentDate} onChange={e => setFirstInstallmentDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white" />
@@ -947,11 +944,13 @@ export default function FinanceApp() {
        localStorage.setItem('myPixKey', val);
     };
 
-    const availableMonths = [...new Set((transactions || []).map(tx => {
-        const d = new Date(tx?.date || '');
-        if (isNaN(d.getTime())) return null;
+    const availableMonths = [...new Set(transactions.map(tx => {
+        const d = new Date(tx.date);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }))].filter(Boolean).sort() as string[];
+    }))].sort();
+
+    const today = new Date();
+    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     
     // Fallback para filtro de mês
     if (filtersColl.month === '' && availableMonths.length > 0) {
@@ -962,9 +961,8 @@ export default function FinanceApp() {
     
     const debtsByPerson: any = {};
     
-    const filteredTransactions = (transactions || []).filter(tx => {
-        const d = new Date(tx?.date || '');
-        if (isNaN(d.getTime())) return false;
+    const filteredTransactions = transactions.filter(tx => {
+        const d = new Date(tx.date);
         const txMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         if (filtersColl.month !== 'all' && txMonthStr !== filtersColl.month) return false;
         return true;
@@ -973,14 +971,13 @@ export default function FinanceApp() {
     filteredTransactions.forEach(tx => {
       if(tx.splits) {
         tx.splits.forEach((split: any, splitIndex: number) => {
-          if (!split?.name) return;
           if (!debtsByPerson[split.name]) debtsByPerson[split.name] = [];
           debtsByPerson[split.name].push({ 
             txId: tx.id,
             splitIndex: splitIndex,
-            desc: tx.desc || '', 
-            amount: split.amount || 0, 
-            date: tx.date || '',
+            desc: tx.desc, 
+            amount: split.amount, 
+            date: tx.date,
             paid: split.paid || false
           });
         });
@@ -1007,7 +1004,7 @@ export default function FinanceApp() {
       const unpaidItems = items.filter(i => !i.paid);
       if (unpaidItems.length === 0) return;
 
-      const total = unpaidItems.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+      const total = unpaidItems.reduce((acc, curr) => acc + curr.amount, 0);
       let text = `Olá, aqui é o resumo das suas contas comigo:\n\n`;
       unpaidItems.forEach(item => {
         const dateFormatted = new Date(item.date).toLocaleDateString('pt-BR');
@@ -1056,8 +1053,8 @@ export default function FinanceApp() {
             <select value={filtersColl.month} onChange={(e) => setFiltersColl({...filtersColl, month: e.target.value})} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos os Meses</option>
               {availableMonths.map(month => {
-                  const [y, m] = (month as string).split('-');
-                  return <option key={month as string} value={month as string}>{`${m}/${y}`}</option>
+                  const [y, m] = month.split('-');
+                  return <option key={month} value={month}>{`${m}/${y}`}</option>
               })}
             </select>
           </div>
@@ -1095,7 +1092,7 @@ export default function FinanceApp() {
               if (filteredItems.length === 0) return null;
 
               const unpaidItems = filteredItems.filter((i: any) => !i.paid);
-              const totalOwed = unpaidItems.reduce((acc: number, curr: any) => acc + (parseFloat(curr.amount) || 0), 0);
+              const totalOwed = unpaidItems.reduce((acc: number, curr: any) => acc + curr.amount, 0);
               const isAllPaid = filteredItems.length > 0 && unpaidItems.length === 0;
 
               return (
@@ -1145,7 +1142,7 @@ export default function FinanceApp() {
         )}
 
         {qrCodeModal && (
-          <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
+          <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 animate-fadeIn overflow-y-auto">
             <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl text-center border border-gray-100">
                <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-gray-800">Cobrar {qrCodeModal.name}</h3>
@@ -1184,23 +1181,16 @@ export default function FinanceApp() {
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
 
-    const availableMonths = [...new Set((transactions || []).map(t => {
-      if (!t?.date) return null;
-      const d = new Date(t.date);
-      if (isNaN(d.getTime())) return null;
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }))].filter(Boolean).sort().reverse() as string[];
-    
-    const availablePersons = [...new Set((transactions || []).flatMap(t => t.splits?.map((s: any) => String(s?.name || '')) || []))].filter(Boolean).sort() as string[];
+    const availableMonths = [...new Set(transactions.map(t => t.date.substring(0,7)))].sort().reverse();
+    const availablePersons = [...new Set(transactions.flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
 
     const groupedInvoices: any = {};
     
-    const filteredTxsForHistory = (transactions || []).filter(tx => {
-      if (!tx?.date) return false;
-      if (filtersHist.month !== 'all' && filtersHist.month !== '' && !String(tx.date).startsWith(filtersHist.month)) return false;
-      if (filtersHist.type !== 'all' && String(tx.type) !== filtersHist.type) return false;
+    const filteredTxsForHistory = transactions.filter(tx => {
+      if (filtersHist.month !== 'all' && filtersHist.month !== '' && !tx.date.startsWith(filtersHist.month)) return false;
+      if (filtersHist.type !== 'all' && tx.type !== filtersHist.type) return false;
       if (filtersHist.person !== 'all') {
-        const hasPerson = tx.splits?.some((s: any) => String(s?.name) === filtersHist.person);
+        const hasPerson = tx.splits?.some((s: any) => s.name === filtersHist.person);
         if (!hasPerson) return false;
       }
       return true;
@@ -1227,23 +1217,15 @@ export default function FinanceApp() {
       }
       
       groupedInvoices[key].transactions.push(tx);
-      groupedInvoices[key].totalAmount += (parseFloat(tx.totalAmount) || 0);
-      groupedInvoices[key].myAmount += (parseFloat(tx.myAmount) || 0);
+      groupedInvoices[key].totalAmount += tx.totalAmount;
+      groupedInvoices[key].myAmount += tx.myAmount;
       
       if (tx.status !== 'paid') {
         groupedInvoices[key].isFullyPaid = false;
       }
     });
 
-    const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => String(a.monthYear).localeCompare(String(b.monthYear)));
-    
-    invoicesArray.forEach((inv: any) => {
-        inv.transactions.sort((a: any, b: any) => {
-           const dateA = new Date(a.purchaseDate || a.date).getTime();
-           const dateB = new Date(b.purchaseDate || b.date).getTime();
-           return (dateA || 0) - (dateB || 0);
-        });
-    });
+    const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => a.monthYear.localeCompare(b.monthYear));
 
     const handlePayInvoice = async (invoice: any) => {
       if (!user) return;
@@ -1268,18 +1250,14 @@ export default function FinanceApp() {
 
     const openEditModal = (tx: any) => {
       setEditingTx(tx);
-      setEditForm({ desc: tx.desc || '', totalAmount: tx.totalAmount || '', date: tx.date || '' });
+      setEditForm({ desc: tx.desc, totalAmount: tx.totalAmount, date: tx.date });
       setUpdateScope('single');
     };
 
     useEffect(() => {
       if (editingTx) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = 'auto';
-      }
-      return () => { document.body.style.overflow = 'auto'; };
+      } 
     }, [editingTx]);
 
     const handleSaveEdit = async (e: any) => {
@@ -1319,7 +1297,7 @@ export default function FinanceApp() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">Faturas e Lançamentos</h2>
           {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all') && (
-            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all' })} className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+            <button onClick={() => {setFilterMonth('all'); setFilterType('all'); setFilterPerson('all');}} className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
@@ -1329,9 +1307,8 @@ export default function FinanceApp() {
             <select value={filtersHist.month} onChange={(e) => setFiltersHist({...filtersHist, month: e.target.value})} className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos os Meses</option>
               {availableMonths.map(month => {
-                  if (!month) return null;
-                  const [y, m] = (month as string).split('-');
-                  return <option key={month as string} value={month as string}>{`${m}/${y}`}</option>
+                  const [y, m] = month.split('-');
+                  return <option key={month} value={month}>{`${m}/${y}`}</option>
               })}
             </select>
           </div>
@@ -1452,16 +1429,16 @@ export default function FinanceApp() {
               <form onSubmit={handleSaveEdit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Descrição</label>
-                  <input type="text" value={editForm.desc} onChange={e => setEditForm({...editForm, desc: e.target.value})} className="w-full p-2 bg-white border border-gray-300 text-gray-800 rounded-lg" required />
+                  <input type="text" value={editForm.desc} onChange={e => setEditForm({...editForm, desc: e.target.value})} className="w-full p-2 border border-gray-300 text-gray-800 rounded-lg" required />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Valor Total (R$)</label>
-                  <input type="number" step="0.01" value={editForm.totalAmount} onChange={e => setEditForm({...editForm, totalAmount: e.target.value})} className="w-full p-2 bg-white border border-gray-300 text-gray-800 rounded-lg" required />
+                  <input type="number" step="0.01" value={editForm.totalAmount} onChange={e => setEditForm({...editForm, totalAmount: e.target.value})} className="w-full p-2 border border-gray-300 text-gray-800 rounded-lg" required />
                 </div>
                 {updateScope === 'single' && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Data</label>
-                    <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full p-2 bg-white border border-gray-300 text-gray-800 rounded-lg" required />
+                    <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full p-2 border border-gray-300 text-gray-800 rounded-lg" required />
                   </div>
                 )}
                 
@@ -1487,6 +1464,505 @@ export default function FinanceApp() {
                     {isUpdating ? 'Salvando...' : 'Salvar'}
                   </button>
                 </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const InvestmentsTab = () => {
+    const [prices, setPrices] = useState<any>({});
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [lastSync, setLastSync] = useState('');
+    const [filterBroker, setFilterBroker] = useState('Geral');
+    
+    // --- Controle de Modais ---
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [sellingAsset, setSellingAsset] = useState<any>(null);
+    const [editingAsset, setEditingAsset] = useState<any>(null);
+    const [expandedTickers, setExpandedTickers] = useState<string[]>([]);
+
+    const [isSavingAsset, setIsSavingAsset] = useState(false);
+    const [assetError, setAssetError] = useState('');
+
+    // --- Inputs Add/Edit Ativo ---
+    const [tickerInput, setTickerInput] = useState('');
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [quantityInput, setQuantityInput] = useState('');
+    const [displayUnitPrice, setDisplayUnitPrice] = useState('');
+    const [brokerInput, setBrokerInput] = useState('');
+    const [buyDateInput, setBuyDateInput] = useState(new Date().toISOString().substring(0, 10));
+
+    // --- Inputs Venda ---
+    const [sellQuantity, setSellQuantity] = useState('');
+    const [displaySellUnitPrice, setDisplaySellUnitPrice] = useState('');
+    const [displaySellFees, setDisplaySellFees] = useState('');
+    const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
+
+    // Desativa rolagem do fundo quando abrir modais
+    useEffect(() => {
+      if (isAddOpen || editingAsset || sellingAsset) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = 'auto';
+      }
+      return () => { document.body.style.overflow = 'auto'; };
+    }, [isAddOpen, editingAsset, sellingAsset]);
+
+    // Agrupamento e Filtragem por Corretora
+    const investmentsToRender = filterBroker === 'Geral' ? investments : investments.filter(inv => inv.broker === filterBroker);
+
+    const groupedInvestments = Object.values(investmentsToRender.reduce((acc: any, inv: any) => {
+      if (!acc[inv.ticker]) {
+        acc[inv.ticker] = {
+          ticker: inv.ticker, type: inv.type, companyName: inv.companyName || inv.ticker,
+          totalQuantity: 0, totalInvested: 0, lots: []
+        };
+      }
+      acc[inv.ticker].totalQuantity += inv.quantity;
+      acc[inv.ticker].totalInvested += (inv.quantity * inv.unitPrice);
+      acc[inv.ticker].lots.push(inv);
+      return acc;
+    }, {})).map((g: any) => {
+      g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
+      g.lots.sort((a: any, b: any) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime());
+      return g;
+    });
+
+    const CACHE_KEY = 'brapi_quotes';
+    const CACHE_TTL = 15 * 60 * 1000; // 15 minutos
+
+    const refreshQuotes = async (force = false) => {
+      if (investments.length === 0) return;
+      
+      const tickers = Array.from(new Set(investments.map((i: any) => i.ticker.toUpperCase()))).join(',');
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+      const now = Date.now();
+
+      if (!force && cached.timestamp && (now - cached.timestamp < CACHE_TTL)) {
+         setPrices(cached.prices || {});
+         setLastSync(cached.lastSync + ' (Cache)');
+         return;
+      }
+
+      setIsRefreshing(true);
+      setLastSync('Atualizando...');
+      try {
+        const res = await fetch(`https://brapi.dev/api/quote/${tickers}`);
+        if (!res.ok) throw new Error(res.status === 429 ? 'rate_limit' : 'api_error');
+        const data = await res.json();
+        
+        if (data && data.results) {
+          const map: any = {};
+          data.results.forEach((r: any) => { map[r.symbol] = r.regularMarketPrice; });
+          setPrices(map);
+          const syncTime = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+          setLastSync(syncTime);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, prices: map, lastSync: syncTime }));
+        } else {
+           throw new Error('invalid_data');
+        }
+      } catch (err: any) { 
+        console.error("Brapi fetch error:", err);
+        if (cached.prices) {
+           setPrices(cached.prices);
+           setLastSync(cached.lastSync + (err.message === 'rate_limit' ? ' (Limite da API)' : ' (Offline)'));
+        } else {
+           setLastSync(err.message === 'rate_limit' ? "Erro (Limite de consultas da API)" : "Erro de conexão com B3");
+        }
+      } finally { setIsRefreshing(false); }
+    };
+
+    useEffect(() => {
+      if (groupedInvestments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
+        refreshQuotes();
+      }
+    }, [investments.length]); 
+
+    const handleSaveAsset = async (e: any) => {
+      e.preventDefault();
+      if (!user) return;
+      setAssetError('');
+      setIsSavingAsset(true);
+
+      const tickerClean = tickerInput.trim().toUpperCase();
+      const qty = parseFloat(quantityInput);
+      const price = parseCurrencyToNumber(displayUnitPrice);
+
+      if (!tickerClean || qty <= 0 || price <= 0) {
+         setAssetError('Preencha todos os campos corretamente.');
+         setIsSavingAsset(false); return;
+      }
+
+      const tickerRegex = /^[A-Z0-9]{4}[0-9]{1,2}F?$/i;
+      if (!tickerRegex.test(tickerClean)) {
+          setAssetError('Código inválido. Digite um ticker oficial (ex: VALE3, MXRF11).');
+          setIsSavingAsset(false); return;
+      }
+
+      try {
+        const newAsset = {
+          ticker: tickerClean,
+          type: tickerClean.endsWith('11') ? 'FII' : 'Ação',
+          quantity: qty,
+          unitPrice: price,
+          broker: brokerInput.trim() || 'Principal',
+          buyDate: buyDateInput,
+          createdAt: new Date().toISOString()
+        };
+
+        await addDoc(collection(db, 'users', user.uid, 'investments'), newAsset);
+        setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false); setAssetError('');
+        refreshQuotes(true);
+      } catch (err) { 
+        console.error(err); setAssetError('Erro ao salvar o ativo.');
+      } finally { setIsSavingAsset(false); }
+    };
+
+    const handleDeleteAsset = async (id: string) => {
+      if (window.confirm("Deseja excluir esta compra específica?")) {
+        try { await deleteDoc(doc(db, 'users', user.uid, 'investments', id)); } 
+        catch (err) { console.error(err); }
+      }
+    };
+
+    const openEditAsset = (lot: any) => {
+      setEditingAsset(lot);
+      setTickerInput(lot.ticker);
+      setQuantityInput(lot.quantity.toString());
+      setDisplayUnitPrice(formatCurrencyInput(Math.round(lot.unitPrice * 100)));
+      setBrokerInput(lot.broker || '');
+      setBuyDateInput(lot.buyDate || '');
+    };
+
+    const handleSaveEditAsset = async (e: any) => {
+      e.preventDefault();
+      if (!user || !editingAsset) return;
+      setIsSavingAsset(true);
+      try {
+        const price = parseCurrencyToNumber(displayUnitPrice);
+        await updateDoc(doc(db, 'users', user.uid, 'investments', editingAsset.id), {
+          ticker: tickerInput.toUpperCase(),
+          quantity: parseFloat(quantityInput),
+          unitPrice: price,
+          broker: brokerInput,
+          buyDate: buyDateInput
+        });
+        setEditingAsset(null); setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput('');
+      } catch (err) { console.error(err); } 
+      finally { setIsSavingAsset(false); }
+    };
+
+    const handleConfirmSale = async (e: any) => {
+      e.preventDefault();
+      if (!user || !sellingAsset) return;
+
+      const qtyToSell = parseFloat(sellQuantity);
+      const price = parseCurrencyToNumber(displaySellUnitPrice);
+      const fees = parseCurrencyToNumber(displaySellFees);
+
+      if (qtyToSell <= 0 || qtyToSell > sellingAsset.totalQuantity || price <= 0) return;
+
+      const totalSaleGross = qtyToSell * price;
+      const totalCostBasis = qtyToSell * sellingAsset.averagePM;
+      const netProfit = (totalSaleGross - totalCostBasis) - fees;
+      
+      const isDayTrade = sellingAsset.lots.some((lot: any) => lot.buyDate === sellDate);
+      
+      let taxPayable = 0;
+      let taxRule = '';
+
+      if (netProfit > 0) {
+        if (isDayTrade) {
+          taxPayable = netProfit * 0.20;
+          taxRule = 'Day Trade (20% s/ lucro, sem isenção)';
+        } else if (sellingAsset.type === 'FII') {
+          taxPayable = netProfit * 0.20;
+          taxRule = 'FII Swing Trade (20% s/ lucro)';
+        } else {
+          if (totalSaleGross <= 20000) {
+            taxPayable = 0;
+            taxRule = 'Ações Swing Trade (Isento: vendas ≤ R$ 20k/mês)';
+          } else {
+            taxPayable = netProfit * 0.15;
+            taxRule = 'Ações Swing Trade (15% s/ lucro)';
+          }
+        }
+      }
+
+      const saleRecord = {
+        ticker: sellingAsset.ticker, type: sellingAsset.type, broker: 'Múltiplas/Calculado',
+        buyDate: 'Preço Médio Global', saleDate, quantitySold: qtyToSell, unitSalePrice: price,
+        unitCostBasis: sellingAsset.averagePM, totalSaleAmount: totalSaleGross, fees,
+        netProfit, isDayTrade, taxPayable, taxRule, createdAt: new Date().toISOString()
+      };
+
+      try {
+        let remainingToSell = qtyToSell;
+        const promises = [];
+
+        for (const lot of sellingAsset.lots) {
+            if (remainingToSell <= 0) break;
+            
+            if (remainingToSell >= lot.quantity) {
+                promises.push(deleteDoc(doc(db, 'users', user.uid, 'investments', lot.id)));
+                remainingToSell -= lot.quantity;
+            } else {
+                promises.push(updateDoc(doc(db, 'users', user.uid, 'investments', lot.id), {
+                    quantity: lot.quantity - remainingToSell
+                }));
+                remainingToSell = 0;
+            }
+        }
+        promises.push(addDoc(collection(db, 'users', user.uid, 'salesHistory'), saleRecord));
+        
+        await Promise.all(promises);
+
+        setSellingAsset(null); setSellQuantity(''); setDisplaySellUnitPrice(''); setDisplaySellFees('');
+      } catch (err) { console.error(err); }
+    };
+
+    const toggleExpandTicker = (ticker: string) => {
+      setExpandedTickers(prev => prev.includes(ticker) ? prev.filter(t => t !== ticker) : [...prev, ticker]);
+    };
+
+    const brokerCards = ['Geral', ...Array.from(new Set(investments.map((i: any) => i.broker))).filter(Boolean).sort()].map(brokerName => {
+      const invs = brokerName === 'Geral' ? investments : investments.filter((i:any) => i.broker === brokerName);
+      let totalInv = 0;
+      let totalMkt = 0;
+      invs.forEach((inv: any) => {
+          totalInv += inv.quantity * inv.unitPrice;
+          const cp = prices[inv.ticker] || inv.unitPrice;
+          totalMkt += inv.quantity * cp;
+      });
+      return {
+         name: brokerName as string,
+         invested: totalInv,
+         market: totalMkt,
+         profit: totalMkt - totalInv
+      };
+    });
+
+    return (
+      <div className="p-4 space-y-4 pb-28 animate-fadeIn">
+        
+        {/* Painel Horizontal Deslizante de Corretoras */}
+        <div>
+          <div className="flex gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+            {brokerCards.map(c => (
+              <div 
+                key={c.name} 
+                onClick={() => setFilterBroker(c.name)} 
+                className={`min-w-[260px] flex-shrink-0 p-5 rounded-3xl snap-start cursor-pointer transition-all duration-300 ease-in-out ${filterBroker === c.name ? 'bg-gradient-to-br from-blue-900 to-indigo-900 text-white shadow-xl scale-100' : 'bg-white border border-gray-200 text-gray-800 scale-95 opacity-70 hover:opacity-100'}`}
+              >
+                <span className={`text-xs font-bold uppercase tracking-wider ${filterBroker === c.name ? 'text-blue-200' : 'text-gray-400'}`}>
+                  {c.name === 'Geral' ? 'Patrimônio B3' : `Corretora: ${c.name}`}
+                </span>
+                <p className="text-3xl font-extrabold mt-1">R$ {formatBRL(c.market)}</p>
+                <div className="flex justify-between items-end mt-4 pt-3 border-t border-current/10">
+                  <div>
+                    <span className={`text-[10px] ${filterBroker === c.name ? 'text-blue-300' : 'text-gray-400'}`}>Total Investido</span>
+                    <p className="font-semibold text-xs">R$ {formatBRL(c.invested)}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-[10px] ${filterBroker === c.name ? 'text-blue-300' : 'text-gray-400'}`}>Lucro / Prejuízo</span>
+                    <p className={`font-bold text-xs ${c.profit >= 0 ? (filterBroker === c.name ? 'text-emerald-400' : 'text-emerald-600') : (filterBroker === c.name ? 'text-red-400' : 'text-red-600')}`}>
+                      {c.profit >= 0 ? '+' : ''}R$ {formatBRL(c.profit)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-400 text-right flex items-center justify-end gap-1 mt-1">
+            Última atualização: {lastSync} 
+            <button onClick={() => refreshQuotes(true)} className={`p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 text-gray-600 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}><Icons.Refresh /></button>
+          </p>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <h3 className="font-bold text-gray-800 text-base">Ativos em Carteira</h3>
+          <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(filterBroker !== 'Geral' ? filterBroker : ''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
+            <Icons.Plus /> Novo Ativo
+          </button>
+        </div>
+
+        {groupedInvestments.length === 0 ? (
+          <div className="bg-white p-8 rounded-2xl border text-center text-gray-400 text-sm">Nenhum ativo cadastrado.</div>
+        ) : (
+          <div className="space-y-3">
+            {groupedInvestments.map((group: any) => {
+              const currentPrice = prices[group.ticker] || group.averagePM;
+              const currentVal = group.totalQuantity * currentPrice;
+              const profitVal = currentVal - group.totalInvested;
+              const profitPct = group.averagePM > 0 ? ((currentPrice - group.averagePM) / group.averagePM) * 100 : 0;
+              const isExpanded = expandedTickers.includes(group.ticker);
+
+              return (
+                <div key={group.ticker} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2 relative transition-all">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900 text-base">{group.ticker}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{group.type}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">Total: <b className="text-gray-800">{group.totalQuantity} cotas</b></p>
+                      <p className="text-xs text-gray-500">PM Global: <b className="text-gray-800">R$ {formatBRL(group.averagePM)}</b></p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">R$ {formatBRL(currentVal)}</p>
+                      <p className={`text-xs font-bold ${profitVal >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {profitVal >= 0 ? '+' : ''}{formatBRL(profitPct)}% (R$ {formatBRL(profitVal)})
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center border-t border-gray-50 pt-3 mt-2 text-xs">
+                    <span className="text-gray-500">Atual: <b className="text-gray-800 text-sm">R$ {formatBRL(currentPrice)}</b></span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => toggleExpandTicker(group.ticker)} className="text-gray-500 font-medium px-2 py-1.5 hover:bg-gray-100 rounded-lg flex items-center gap-1 transition-colors">
+                        Compras {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
+                      </button>
+                      <button onClick={() => setSellingAsset(group)} className="text-blue-600 font-bold px-4 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">Vender</button>
+                    </div>
+                  </div>
+
+                  {/* Detalhes Expandidos dos Lotes (Compras) */}
+                  {isExpanded && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 bg-gray-50/50 -mx-4 px-4 pb-2 rounded-b-2xl space-y-2">
+                      <h4 className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wide">Histórico de Compras ({group.lots.length})</h4>
+                      {group.lots.map((lot: any) => (
+                        <div key={lot.id} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-100 text-xs shadow-sm">
+                          <div>
+                            <p className="font-bold text-gray-700">{lot.quantity} cotas <span className="text-gray-400 font-normal ml-1">({lot.broker})</span></p>
+                            <p className="text-gray-500">{new Date(lot.buyDate).toLocaleDateString('pt-BR')} • PM: R$ {formatBRL(lot.unitPrice)}</p>
+                          </div>
+                          <div className="flex gap-1">
+                             <button onClick={() => openEditAsset(lot)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"><Icons.Edit /></button>
+                             <button onClick={() => handleDeleteAsset(lot.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Icons.Trash /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {salesHistory.length > 0 && (
+          <div className="mt-6 space-y-2">
+            <h4 className="font-bold text-gray-800 text-sm">Histórico de Vendas & IR</h4>
+            {salesHistory.map((s: any) => (
+              <div key={s.id} className="bg-white p-3.5 rounded-2xl border shadow-sm text-xs space-y-1">
+                <div className="flex justify-between items-center font-bold">
+                  <span>{s.ticker} ({s.quantitySold} cotas)</span>
+                  <span className={s.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}>Resultado: R$ {formatBRL(s.netProfit)}</span>
+                </div>
+                <div className="flex justify-between text-gray-400">
+                  <span>Venda em {new Date(s.saleDate).toLocaleDateString('pt-BR')}</span>
+                  <span className="font-semibold text-gray-700">
+                    {s.taxPayable > 0 ? `DARF a Pagar: R$ ${formatBRL(s.taxPayable)}` : 'Isento de IR'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-400 italic">{s.taxRule}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {(isAddOpen || editingAsset) && (
+          <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 border border-gray-100">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-gray-800">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
+                <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
+              </div>
+              
+              {assetError && <div className="p-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg">{assetError}</div>}
+              
+              <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
+                
+                <div className="relative">
+                  <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500" required disabled={!!editingAsset} list="ticker-suggestions" />
+                  <datalist id="ticker-suggestions">
+                    {mergedTickersForSearch.map(t => <option key={t} value={t} />)}
+                  </datalist>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 mb-1">Quantidade</label>
+                     <input type="number" step="any" placeholder="Qtd" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                  </div>
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
+                     <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 mb-1">Corretora</label>
+                     <input type="text" placeholder="Ex: NuInvest" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" list="broker-suggestions" />
+                     <datalist id="broker-suggestions">
+                       {allBrokers.map(b => <option key={b} value={b} />)}
+                     </datalist>
+                  </div>
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 mb-1">Data da Compra</label>
+                     <input type="date" value={buyDateInput} onChange={(e) => setBuyDateInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
+                  </div>
+                </div>
+                <button type="submit" disabled={isSavingAsset} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-2 disabled:opacity-50 transition-colors shadow-md">
+                   {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Compra' : 'Salvar na Carteira')}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {sellingAsset && (
+          <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 border border-gray-100">
+              <div className="flex justify-between items-center">
+                 <h3 className="font-bold text-gray-800">Registrar Venda: {sellingAsset.ticker}</h3>
+                 <button onClick={() => setSellingAsset(null)} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
+              </div>
+              
+              <div className="bg-gray-50 p-3 rounded-xl text-xs text-gray-500 border border-gray-100">
+                Disponível em carteira: <b className="text-gray-800">{sellingAsset.totalQuantity} cotas</b><br/>
+                PM Global: <b className="text-gray-800">R$ {formatBRL(sellingAsset.averagePM)}</b>
+              </div>
+
+              <form onSubmit={handleConfirmSale} className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Qtd. a Vender</label>
+                    <input type="number" step="any" max={sellingAsset.totalQuantity} placeholder={`Max: ${sellingAsset.totalQuantity}`} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
+                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" required />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Taxas B3 / Custos</label>
+                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Data da Venda</label>
+                    <input type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
+                  </div>
+                </div>
+                <button type="submit" className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl mt-2 transition-colors shadow-md">
+                  Confirmar Venda & Apurar IR
+                </button>
               </form>
             </div>
           </div>
@@ -1533,7 +2009,7 @@ export default function FinanceApp() {
     const handleExportCSV = () => {
       let csvContent = "ID;Tipo;Descricao;Data;ValorTotal;MetodoID;Status\n";
       transactions.forEach(tx => {
-        const row = [tx.id, tx.type, (tx.desc || '').replace(/;/g, ''), tx.date, (parseFloat(tx.totalAmount)||0).toFixed(2), tx.methodId, tx.status];
+        const row = [tx.id, tx.type, (tx.desc || '').replace(/;/g, ''), tx.date, tx.totalAmount, tx.methodId, tx.status];
         csvContent += row.join(";") + "\n";
       });
       const dataStr = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csvContent);
@@ -1599,8 +2075,8 @@ export default function FinanceApp() {
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <h3 className="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2"><Icons.Calendar /> Editar via Planilha (CSV)</h3>
             <div className="flex flex-col md:flex-row gap-3 mt-4">
-              <button onClick={handleExportCSV} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors"><Icons.Download /> Baixar Planilha</button>
-              <label className={`flex-1 ${isProcessing ? 'bg-gray-400' : 'bg-white border border-green-600 text-green-700 hover:bg-green-50 cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium inline-flex transition-colors`}>
+              <button onClick={handleExportCSV} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium"><Icons.Download /> Baixar Planilha</button>
+              <label className={`flex-1 ${isProcessing ? 'bg-gray-400' : 'bg-white border border-green-600 text-green-700 hover:bg-green-50 cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium inline-flex`}>
                 <Icons.Upload /> {isProcessing ? 'Enviando...' : 'Importar Planilha'}
                 <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" disabled={isProcessing} />
               </label>
@@ -1610,8 +2086,8 @@ export default function FinanceApp() {
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <h3 className="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2"><Icons.Cloud /> Backup do Sistema (JSON)</h3>
             <div className="flex flex-col md:flex-row gap-3 mt-4">
-              <button onClick={handleExportJSON} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors"><Icons.Download /> Baixar Backup</button>
-              <label className={`flex-1 ${isProcessing ? 'bg-gray-400' : 'bg-gray-800 hover:bg-gray-900 text-white cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium inline-flex transition-colors`}>
+              <button onClick={handleExportJSON} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium"><Icons.Download /> Baixar Backup</button>
+              <label className={`flex-1 ${isProcessing ? 'bg-gray-400' : 'bg-gray-800 hover:bg-gray-900 text-white cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium inline-flex`}>
                 <Icons.Upload /> {isProcessing ? 'Enviando...' : 'Restaurar Backup'}
                 <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" disabled={isProcessing} />
               </label>
@@ -1652,9 +2128,14 @@ export default function FinanceApp() {
               <Icons.Cloud /> Sincronizado
             </p>
           </div>
-          <button onClick={() => setActiveTab('settings')} title="Configurações e Backup" className={`p-2.5 rounded-full transition-colors ${activeTab === 'settings' ? 'bg-blue-800 text-white' : 'bg-blue-600 text-blue-100 hover:bg-blue-500 hover:text-white'}`}>
-            <Icons.Settings />
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setIsDarkMode(!isDarkMode)} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 text-blue-100 hover:bg-blue-500 hover:text-white transition-colors">
+              {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+            </button>
+            <button onClick={() => setActiveTab('settings')} title="Configurações e Backup" className={`p-2.5 rounded-full transition-colors ${activeTab === 'settings' ? 'bg-blue-800 text-white' : 'bg-blue-600 text-blue-100 hover:bg-blue-500 hover:text-white'}`}>
+              <Icons.Settings />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1669,27 +2150,31 @@ export default function FinanceApp() {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 transition-colors duration-300">
-        <div className="max-w-md mx-auto flex justify-between items-center px-4 py-1">
+        <div className="max-w-md mx-auto flex justify-between items-center px-1 py-1">
           
-          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center p-2 w-14 transition-colors ${activeTab === 'dashboard' ? 'text-blue-700' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'dashboard' ? 'text-blue-700' : 'text-gray-400'}`}>
             <Icons.Home /> <span className="text-[9px] font-medium mt-1">Início</span>
           </button>
-          
-          <button onClick={() => setActiveTab('cards')} className={`flex flex-col items-center p-2 w-14 transition-colors ${activeTab === 'cards' ? 'text-blue-700' : 'text-gray-400 hover:text-gray-600'}`}>
+
+          <button onClick={() => setActiveTab('cards')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'cards' ? 'text-blue-700' : 'text-gray-400'}`}>
             <Icons.Wallet /> <span className="text-[9px] font-medium mt-1">Cartões</span>
           </button>
           
           <div className="relative -top-6">
-            <button onClick={() => setActiveTab('add')} className={`flex items-center justify-center w-14 h-14 rounded-full shadow-lg text-white transition-transform ${activeTab === 'add' ? 'bg-blue-800 scale-110' : 'bg-blue-600 hover:bg-blue-700'}`}>
+            <button onClick={() => setActiveTab('add')} className={`flex items-center justify-center w-14 h-14 rounded-full shadow-lg text-white ${activeTab === 'add' ? 'bg-blue-800 scale-110' : 'bg-blue-600'}`}>
               <Icons.Plus />
             </button>
           </div>
 
-          <button onClick={() => setActiveTab('collections')} className={`flex flex-col items-center p-2 w-14 transition-colors ${activeTab === 'collections' ? 'text-blue-700' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('collections')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'collections' ? 'text-blue-700' : 'text-gray-400'}`}>
             <Icons.Message /> <span className="text-[9px] font-medium mt-1">Cobrar</span>
           </button>
 
-          <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center p-2 w-14 transition-colors ${activeTab === 'history' ? 'text-blue-700' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('investments')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'investments' ? 'text-blue-700' : 'text-gray-400'}`}>
+            <Icons.TrendingUp /> <span className="text-[9px] font-medium mt-1">Ativos</span>
+          </button>
+
+          <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center p-2 w-12 sm:w-14 ${activeTab === 'history' ? 'text-blue-700' : 'text-gray-400'}`}>
             <Icons.Calendar /> <span className="text-[9px] font-medium mt-1">Faturas</span>
           </button>
 
@@ -1701,6 +2186,17 @@ export default function FinanceApp() {
         .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
         .pb-safe { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .dark { background-color: #111827; color: #f3f4f6; }
+        .dark .bg-white { background-color: #1f2937; border-color: #374151; }
+        .dark .bg-gray-50 { background-color: #111827; border-color: #374151; }
+        .dark .bg-gray-100 { background-color: #374151; }
+        .dark .bg-gray-200 { background-color: #4b5563; }
+        .dark .text-gray-800 { color: #f3f4f6; }
+        .dark .text-gray-700 { color: #d1d5db; }
+        .dark .text-gray-600 { color: #9ca3af; }
+        .dark .text-gray-500 { color: #6b7280; }
+        .dark .border-gray-100, .dark .border-gray-200, .dark .border-gray-300 { border-color: #374151; }
+        .dark input, .dark select, .dark textarea { background-color: #374151; color: #f3f4f6; border-color: #4b5563; }
       `}} />
     </div>
   );
