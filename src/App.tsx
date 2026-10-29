@@ -89,14 +89,14 @@ const generatePixPayload = (pixKey: string, amount: number, merchantName: string
 };
 
 const formatCurrencyInput = (value: number | string): string => {
-  const digits = String(value).replace(/\D/g, '');
+  const digits = String(value || '').replace(/\D/g, '');
   if (!digits) return '';
   const numberValue = Number(digits) / 100;
   return numberValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
 };
 
 const parseCurrencyToNumber = (formattedValue: string): number => {
-  const digits = String(formattedValue).replace(/\D/g, '');
+  const digits = String(formattedValue || '').replace(/\D/g, '');
   if (!digits) return 0;
   return Number(digits) / 100;
 };
@@ -109,16 +109,6 @@ const formatBRL = (value: number | string): string => {
 const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClose: () => void; onApply: (val: number) => void }) => {
   const [display, setDisplay] = useState('0');
   const [history, setHistory] = useState('');
-
-  useEffect(() => {
-    if (isOpen) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
-    return () => { document.body.style.overflow = 'auto'; };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -199,7 +189,10 @@ export default function FinanceApp() {
   const [loginError, setLoginError] = useState('');
 
   // --- MODO ESCURO ---
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+     if (typeof window !== 'undefined') return localStorage.getItem('theme') === 'dark';
+     return false;
+  });
   
   useEffect(() => {
     if (isDarkMode) {
@@ -217,16 +210,16 @@ export default function FinanceApp() {
   const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all' });
 
   // --- Listas Inteligentes de Memória (Autocomplete) ---
-  const allDescriptions = [...new Set(transactions.map(t => {
-      let d = t.desc || '';
+  const allDescriptions = [...new Set((transactions || []).map(t => {
+      let d = t?.desc || '';
       d = d.replace(/\s\(\d+\/\d+\)$/, ''); 
       d = d.replace(/\s\(Mês\s\d+\)$/, ''); 
       return d.trim();
   }))].filter(Boolean).sort();
   
-  const allSplitNames = [...new Set(transactions.flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
-  const allBrokers = [...new Set(investments.map((i: any) => i.broker))].filter(Boolean).sort();
-  const allOwnedTickers = [...new Set(investments.map((i: any) => i.ticker.toUpperCase()))];
+  const allSplitNames = [...new Set((transactions || []).flatMap(t => t?.splits?.map((s: any) => s?.name) || []))].filter(Boolean).sort();
+  const allBrokers = [...new Set((investments || []).map((i: any) => i?.broker))].filter(Boolean).sort();
+  const allOwnedTickers = [...new Set((investments || []).map((i: any) => (i?.ticker || '').toUpperCase()))].filter(Boolean);
   const mergedTickersForSearch = Array.from(new Set([...allOwnedTickers, ...POPULAR_TICKERS])).sort();
 
   useEffect(() => {
@@ -290,8 +283,9 @@ export default function FinanceApp() {
   const Dashboard = () => {
     const availableMonths = [...new Set(transactions.map(tx => {
         const d = new Date(tx.date);
+        if (isNaN(d.getTime())) return null;
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }))].sort().reverse();
+    }))].filter(Boolean).sort().reverse();
 
     const [viewMode, setViewMode] = useState('month'); 
     const [selectedMonth, setSelectedMonth] = useState(
@@ -300,7 +294,7 @@ export default function FinanceApp() {
 
     const filteredTxs = viewMode === 'all' 
         ? transactions 
-        : transactions.filter(tx => tx.date.startsWith(selectedMonth));
+        : transactions.filter(tx => (tx.date || '').startsWith(selectedMonth));
 
     const incomes = filteredTxs.filter(tx => tx.type === 'income');
     const expenses = filteredTxs.filter(tx => tx.type !== 'income');
@@ -341,6 +335,7 @@ export default function FinanceApp() {
             >
               {availableMonths.length === 0 && <option value={selectedMonth}>{selectedMonth}</option>}
               {availableMonths.map(month => {
+                  if (!month) return null;
                   const [y, m] = month.split('-');
                   return <option key={month} value={month}>{`${m}/${y}`}</option>
               })}
@@ -370,7 +365,7 @@ export default function FinanceApp() {
              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{incomeProgress.toFixed(0)}%</span>
           </div>
           <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
-             <div className="bg-emerald-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, incomeProgress)}%` }}></div>
+             <div className="bg-emerald-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, incomeProgress || 0)}%` }}></div>
           </div>
         </div>
 
@@ -383,7 +378,7 @@ export default function FinanceApp() {
              <span className="text-sm font-bold text-red-600 dark:text-red-400">{expenseProgress.toFixed(0)}%</span>
           </div>
           <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
-             <div className="bg-red-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, expenseProgress)}%` }}></div>
+             <div className="bg-red-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, expenseProgress || 0)}%` }}></div>
           </div>
         </div>
 
@@ -518,7 +513,7 @@ export default function FinanceApp() {
 
         <div className="grid grid-cols-1 gap-4">
           {cards.map(c => {
-            const usedLimit = transactions.filter(tx => tx.methodId === c.id && tx.status !== 'paid').reduce((acc, tx) => acc + tx.totalAmount, 0);
+            const usedLimit = transactions.filter(tx => tx.methodId === c.id && tx.status !== 'paid').reduce((acc, tx) => acc + (parseFloat(tx.totalAmount) || 0), 0);
             const cardLimit = parseFloat(c.limit) || 0;
             const availableLimit = cardLimit - usedLimit;
             const availablePct = cardLimit > 0 ? (availableLimit / cardLimit) * 100 : 0;
@@ -541,7 +536,7 @@ export default function FinanceApp() {
                       ) : (
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Conta Bancária / Corretora</p>
                       )}
-                      {c.cashbackPct > 0 && <p className="text-xs text-green-600 dark:text-green-400 font-medium">{c.cashbackPct}% de Cashback</p>}
+                      {parseFloat(c.cashbackPct) > 0 && <p className="text-xs text-green-600 dark:text-green-400 font-medium">{c.cashbackPct}% de Cashback</p>}
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -590,6 +585,7 @@ export default function FinanceApp() {
   const TransactionForm = () => {
     const [txType, setTxType] = useState('expense');
     const [desc, setDesc] = useState('');
+    
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
     const [calcTarget, setCalcTarget] = useState<any>(null);
@@ -613,7 +609,7 @@ export default function FinanceApp() {
         return;
       }
       const card = cards.find(c => c.id === methodId);
-      if (card && card.limit > 0) {
+      if (card && (card.limit || 0) > 0) {
         const pDate = new Date(purchaseDate + 'T12:00:00'); 
         let targetMonth = pDate.getMonth();
         let targetYear = pDate.getFullYear();
@@ -635,7 +631,11 @@ export default function FinanceApp() {
         const numPeople = splits.length + (includeMe ? 1 : 0);
         if (numPeople > 0) {
             const equalShare = total / numPeople;
-            setSplits(prev => prev.map(s => ({ ...s, amount: equalShare, displayAmount: formatCurrencyInput(Math.round(equalShare * 100)) })));
+            setSplits(prev => prev.map(s => ({ 
+              ...s, 
+              amount: equalShare, 
+              displayAmount: formatCurrencyInput(Math.round(equalShare * 100)) 
+            })));
         }
       }
     }, [amount, splits.length, isSplit, autoSplit, includeMe]);
@@ -689,7 +689,7 @@ export default function FinanceApp() {
 
         for (let i = 0; i < numPeriods; i++) {
             let formattedDate;
-            if (txType === 'income' || methodId === 'pix' || (selectedCard && !selectedCard.limit)) {
+            if (txType === 'income' || methodId === 'pix' || (selectedCard && !(selectedCard.limit > 0))) {
                 const d = new Date(purchaseDate + 'T12:00:00'); d.setMonth(d.getMonth() + i); formattedDate = d.toISOString().split('T')[0];
             } else {
                 const d = new Date(firstInstallmentDate + 'T12:00:00'); d.setMonth(d.getMonth() + i); formattedDate = d.toISOString().split('T')[0];
@@ -810,7 +810,7 @@ export default function FinanceApp() {
               </div>
             )}
 
-            {txType === 'expense' && methodId !== 'pix' && cards.find(c => c.id === methodId)?.limit > 0 && (
+            {txType === 'expense' && methodId !== 'pix' && (cards.find(c => c.id === methodId)?.limit || 0) > 0 && (
               <div className={installments > 1 ? "md:col-span-2" : ""}>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vencimento (1ª Parcela)</label>
                 <input type="date" value={firstInstallmentDate} onChange={e => setFirstInstallmentDate(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm" />
@@ -932,15 +932,19 @@ export default function FinanceApp() {
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
 
-    const availableMonths = [...new Set(transactions.map(tx => {
+    const availableMonths = [...new Set((transactions || []).map(tx => {
+        if (!tx?.date) return null;
         const d = new Date(tx.date);
+        if (isNaN(d.getTime())) return null;
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }))].sort();
+    }))].filter(Boolean).sort();
 
     const debtsByPerson: any = {};
     
-    const filteredTransactions = transactions.filter(tx => {
+    const filteredTransactions = (transactions || []).filter(tx => {
+        if (!tx?.date) return false;
         const d = new Date(tx.date);
+        if (isNaN(d.getTime())) return false;
         const txMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         if (filtersColl.month !== 'all' && txMonthStr !== filtersColl.month) return false;
         return true;
@@ -949,13 +953,14 @@ export default function FinanceApp() {
     filteredTransactions.forEach(tx => {
       if(tx.splits) {
         tx.splits.forEach((split: any, splitIndex: number) => {
+          if (!split?.name) return;
           if (!debtsByPerson[split.name]) debtsByPerson[split.name] = [];
           debtsByPerson[split.name].push({ 
             txId: tx.id,
             splitIndex: splitIndex,
-            desc: tx.desc, 
-            amount: split.amount, 
-            date: tx.date,
+            desc: tx.desc || '', 
+            amount: split.amount || 0, 
+            date: tx.date || '',
             paid: split.paid || false
           });
         });
@@ -1025,6 +1030,7 @@ export default function FinanceApp() {
             <select value={filtersColl.month} onChange={(e) => setFiltersColl({...filtersColl, month: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos os Meses</option>
               {availableMonths.map(month => {
+                  if (!month) return null;
                   const [y, m] = month.split('-');
                   return <option key={month} value={month}>{`${m}/${y}`}</option>
               })}
@@ -1158,12 +1164,19 @@ export default function FinanceApp() {
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
 
-    const availableMonths = [...new Set(transactions.map(t => t.date.substring(0,7)))].sort().reverse();
-    const availablePersons = [...new Set(transactions.flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
+    const availableMonths = [...new Set((transactions || []).map(t => {
+      if (!t?.date) return null;
+      const d = new Date(t.date);
+      if (isNaN(d.getTime())) return null;
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }))].filter(Boolean).sort().reverse();
+    
+    const availablePersons = [...new Set((transactions || []).flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
 
     const groupedInvoices: any = {};
     
-    const filteredTxsForHistory = transactions.filter(tx => {
+    const filteredTxsForHistory = (transactions || []).filter(tx => {
+      if (!tx?.date) return false;
       if (filtersHist.month !== 'all' && filtersHist.month !== '' && !tx.date.startsWith(filtersHist.month)) return false;
       if (filtersHist.type !== 'all' && tx.type !== filtersHist.type) return false;
       if (filtersHist.person !== 'all') {
@@ -1194,21 +1207,21 @@ export default function FinanceApp() {
       }
       
       groupedInvoices[key].transactions.push(tx);
-      groupedInvoices[key].totalAmount += tx.totalAmount;
-      groupedInvoices[key].myAmount += tx.myAmount;
+      groupedInvoices[key].totalAmount += (parseFloat(tx.totalAmount) || 0);
+      groupedInvoices[key].myAmount += (parseFloat(tx.myAmount) || 0);
       
       if (tx.status !== 'paid') {
         groupedInvoices[key].isFullyPaid = false;
       }
     });
 
-    const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => a.monthYear.localeCompare(b.monthYear));
+    const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => String(a.monthYear).localeCompare(String(b.monthYear)));
     
     invoicesArray.forEach((inv: any) => {
         inv.transactions.sort((a: any, b: any) => {
            const dateA = new Date(a.purchaseDate || a.date).getTime();
            const dateB = new Date(b.purchaseDate || b.date).getTime();
-           return dateA - dateB;
+           return (dateA || 0) - (dateB || 0);
         });
     });
 
@@ -1235,7 +1248,7 @@ export default function FinanceApp() {
 
     const openEditModal = (tx: any) => {
       setEditingTx(tx);
-      setEditForm({ desc: tx.desc, totalAmount: tx.totalAmount, date: tx.date });
+      setEditForm({ desc: tx.desc || '', totalAmount: tx.totalAmount || '', date: tx.date || '' });
       setUpdateScope('single');
     };
 
@@ -1296,6 +1309,7 @@ export default function FinanceApp() {
             <select value={filtersHist.month} onChange={(e) => setFiltersHist({...filtersHist, month: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Todos os Meses</option>
               {availableMonths.map(month => {
+                  if (!month) return null;
                   const [y, m] = month.split('-');
                   return <option key={month} value={month}>{`${m}/${y}`}</option>
               })}
@@ -1397,7 +1411,7 @@ export default function FinanceApp() {
                       ))}
                     </ul>
 
-                    {!invoice.isFullyPaid && invoice.card && invoice.card.limit > 0 && (
+                    {!invoice.isFullyPaid && invoice.card && (invoice.card.limit || 0) > 0 && (
                       <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700">
                         <button onClick={() => handlePayInvoice(invoice)} className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
                           Marcar Fatura como Paga (Liberar Limite)
@@ -1463,516 +1477,6 @@ export default function FinanceApp() {
     );
   };
 
-  const InvestmentsTab = () => {
-    const [prices, setPrices] = useState<any>({});
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [lastSync, setLastSync] = useState('');
-    const [filterBroker, setFilterBroker] = useState('Geral');
-    
-    // --- Controle de Modais ---
-    const [isAddOpen, setIsAddOpen] = useState(false);
-    const [sellingAsset, setSellingAsset] = useState<any>(null);
-    const [editingAsset, setEditingAsset] = useState<any>(null);
-    const [expandedTickers, setExpandedTickers] = useState<string[]>([]);
-
-    const [isSavingAsset, setIsSavingAsset] = useState(false);
-    const [assetError, setAssetError] = useState('');
-
-    // --- Inputs Add/Edit Ativo ---
-    const [tickerInput, setTickerInput] = useState('');
-    const [suggestions, setSuggestions] = useState<any[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const [quantityInput, setQuantityInput] = useState('');
-    const [displayUnitPrice, setDisplayUnitPrice] = useState('');
-    const [brokerInput, setBrokerInput] = useState('');
-    const [buyDateInput, setBuyDateInput] = useState(new Date().toISOString().substring(0, 10));
-
-    // --- Inputs Venda ---
-    const [sellQuantity, setSellQuantity] = useState('');
-    const [displaySellUnitPrice, setDisplaySellUnitPrice] = useState('');
-    const [displaySellFees, setDisplaySellFees] = useState('');
-    const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
-
-    // Desativa rolagem do fundo quando abrir modais
-    useEffect(() => {
-      if (isAddOpen || editingAsset || sellingAsset) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = 'auto';
-      }
-      return () => { document.body.style.overflow = 'auto'; };
-    }, [isAddOpen, editingAsset, sellingAsset]);
-
-    // Agrupamento e Filtragem por Corretora
-    const investmentsToRender = filterBroker === 'Geral' ? investments : investments.filter(inv => inv.broker === filterBroker);
-
-    const groupedInvestments = Object.values(investmentsToRender.reduce((acc: any, inv: any) => {
-      if (!acc[inv.ticker]) {
-        acc[inv.ticker] = {
-          ticker: inv.ticker, type: inv.type, companyName: inv.companyName || inv.ticker,
-          totalQuantity: 0, totalInvested: 0, lots: []
-        };
-      }
-      acc[inv.ticker].totalQuantity += inv.quantity;
-      acc[inv.ticker].totalInvested += (inv.quantity * inv.unitPrice);
-      acc[inv.ticker].lots.push(inv);
-      return acc;
-    }, {})).map((g: any) => {
-      g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
-      g.lots.sort((a: any, b: any) => new Date(a.buyDate).getTime() - new Date(b.buyDate).getTime());
-      return g;
-    });
-
-    const CACHE_KEY = 'brapi_quotes';
-    const CACHE_TTL = 15 * 60 * 1000; // 15 minutos
-
-    const refreshQuotes = async (force = false) => {
-      if (investments.length === 0) return;
-      
-      const tickers = Array.from(new Set(investments.map((i: any) => i.ticker.toUpperCase()))).join(',');
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-      const now = Date.now();
-
-      if (!force && cached.timestamp && (now - cached.timestamp < CACHE_TTL)) {
-         setPrices(cached.prices || {});
-         setLastSync(cached.lastSync + ' (Cache)');
-         return;
-      }
-
-      setIsRefreshing(true);
-      setLastSync('Atualizando...');
-      try {
-        const res = await fetch(`https://brapi.dev/api/quote/${tickers}`);
-        if (!res.ok) throw new Error(res.status === 429 ? 'rate_limit' : 'api_error');
-        const data = await res.json();
-        
-        if (data && data.results) {
-          const map: any = {};
-          data.results.forEach((r: any) => { map[r.symbol] = r.regularMarketPrice; });
-          setPrices(map);
-          const syncTime = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-          setLastSync(syncTime);
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, prices: map, lastSync: syncTime }));
-        } else {
-           throw new Error('invalid_data');
-        }
-      } catch (err: any) { 
-        console.error("Brapi fetch error:", err);
-        if (cached.prices) {
-           setPrices(cached.prices);
-           setLastSync(cached.lastSync + (err.message === 'rate_limit' ? ' (Limite da API)' : ' (Offline)'));
-        } else {
-           setLastSync(err.message === 'rate_limit' ? "Erro (Limite de consultas da API)" : "Erro de conexão com B3");
-        }
-      } finally { setIsRefreshing(false); }
-    };
-
-    useEffect(() => {
-      if (groupedInvestments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
-        refreshQuotes();
-      }
-    }, [investments.length]); 
-
-    const handleSaveAsset = async (e: any) => {
-      e.preventDefault();
-      if (!user) return;
-      setAssetError('');
-      setIsSavingAsset(true);
-
-      const tickerClean = tickerInput.trim().toUpperCase();
-      const qty = parseFloat(quantityInput);
-      const price = parseCurrencyToNumber(displayUnitPrice);
-
-      if (!tickerClean || qty <= 0 || price <= 0) {
-         setAssetError('Preencha todos os campos corretamente.');
-         setIsSavingAsset(false); return;
-      }
-
-      const tickerRegex = /^[A-Z0-9]{4}[0-9]{1,2}F?$/i;
-      if (!tickerRegex.test(tickerClean)) {
-          setAssetError('Código inválido. Digite um ticker oficial (ex: VALE3, MXRF11).');
-          setIsSavingAsset(false); return;
-      }
-
-      try {
-        const newAsset = {
-          ticker: tickerClean,
-          type: tickerClean.endsWith('11') ? 'FII' : 'Ação',
-          quantity: qty,
-          unitPrice: price,
-          broker: brokerInput.trim() || 'Principal',
-          buyDate: buyDateInput,
-          createdAt: new Date().toISOString()
-        };
-
-        await addDoc(collection(db, 'users', user.uid, 'investments'), newAsset);
-        setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false); setAssetError('');
-        refreshQuotes(true);
-      } catch (err) { 
-        console.error(err); setAssetError('Erro ao salvar o ativo.');
-      } finally { setIsSavingAsset(false); }
-    };
-
-    const handleDeleteAsset = async (id: string) => {
-      if (window.confirm("Deseja excluir esta compra específica?")) {
-        try { await deleteDoc(doc(db, 'users', user.uid, 'investments', id)); } 
-        catch (err) { console.error(err); }
-      }
-    };
-
-    const openEditAsset = (lot: any) => {
-      setEditingAsset(lot);
-      setTickerInput(lot.ticker);
-      setQuantityInput(lot.quantity.toString());
-      setDisplayUnitPrice(formatCurrencyInput(Math.round(lot.unitPrice * 100)));
-      setBrokerInput(lot.broker || '');
-      setBuyDateInput(lot.buyDate || '');
-    };
-
-    const handleSaveEditAsset = async (e: any) => {
-      e.preventDefault();
-      if (!user || !editingAsset) return;
-      setIsSavingAsset(true);
-      try {
-        const price = parseCurrencyToNumber(displayUnitPrice);
-        await updateDoc(doc(db, 'users', user.uid, 'investments', editingAsset.id), {
-          ticker: tickerInput.toUpperCase(),
-          quantity: parseFloat(quantityInput),
-          unitPrice: price,
-          broker: brokerInput,
-          buyDate: buyDateInput
-        });
-        setEditingAsset(null); setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput('');
-      } catch (err) { console.error(err); } 
-      finally { setIsSavingAsset(false); }
-    };
-
-    const handleConfirmSale = async (e: any) => {
-      e.preventDefault();
-      if (!user || !sellingAsset) return;
-
-      const qtyToSell = parseFloat(sellQuantity);
-      const price = parseCurrencyToNumber(displaySellUnitPrice);
-      const fees = parseCurrencyToNumber(displaySellFees);
-
-      if (qtyToSell <= 0 || qtyToSell > sellingAsset.totalQuantity || price <= 0) return;
-
-      const totalSaleGross = qtyToSell * price;
-      const totalCostBasis = qtyToSell * sellingAsset.averagePM;
-      const netProfit = (totalSaleGross - totalCostBasis) - fees;
-      
-      const isDayTrade = sellingAsset.lots.some((lot: any) => lot.buyDate === sellDate);
-      
-      let taxPayable = 0;
-      let taxRule = '';
-
-      if (netProfit > 0) {
-        if (isDayTrade) {
-          taxPayable = netProfit * 0.20;
-          taxRule = 'Day Trade (20% s/ lucro, sem isenção)';
-        } else if (sellingAsset.type === 'FII') {
-          taxPayable = netProfit * 0.20;
-          taxRule = 'FII Swing Trade (20% s/ lucro)';
-        } else {
-          if (totalSaleGross <= 20000) {
-            taxPayable = 0;
-            taxRule = 'Ações Swing Trade (Isento: vendas ≤ R$ 20k/mês)';
-          } else {
-            taxPayable = netProfit * 0.15;
-            taxRule = 'Ações Swing Trade (15% s/ lucro)';
-          }
-        }
-      }
-
-      const saleRecord = {
-        ticker: sellingAsset.ticker, type: sellingAsset.type, broker: 'Múltiplas/Calculado',
-        buyDate: 'Preço Médio Global', saleDate, quantitySold: qtyToSell, unitSalePrice: price,
-        unitCostBasis: sellingAsset.averagePM, totalSaleAmount: totalSaleGross, fees,
-        netProfit, isDayTrade, taxPayable, taxRule, createdAt: new Date().toISOString()
-      };
-
-      try {
-        let remainingToSell = qtyToSell;
-        const promises = [];
-
-        for (const lot of sellingAsset.lots) {
-            if (remainingToSell <= 0) break;
-            
-            if (remainingToSell >= lot.quantity) {
-                promises.push(deleteDoc(doc(db, 'users', user.uid, 'investments', lot.id)));
-                remainingToSell -= lot.quantity;
-            } else {
-                promises.push(updateDoc(doc(db, 'users', user.uid, 'investments', lot.id), {
-                    quantity: lot.quantity - remainingToSell
-                }));
-                remainingToSell = 0;
-            }
-        }
-        promises.push(addDoc(collection(db, 'users', user.uid, 'salesHistory'), saleRecord));
-        
-        await Promise.all(promises);
-
-        setSellingAsset(null); setSellQuantity(''); setDisplaySellUnitPrice(''); setDisplaySellFees('');
-      } catch (err) { console.error(err); }
-    };
-
-    const toggleExpandTicker = (ticker: string) => {
-      setExpandedTickers(prev => prev.includes(ticker) ? prev.filter(t => t !== ticker) : [...prev, ticker]);
-    };
-
-    const brokerCards = ['Geral', ...Array.from(new Set(investments.map((i: any) => i.broker))).filter(Boolean).sort()].map(brokerName => {
-      const invs = brokerName === 'Geral' ? investments : investments.filter((i:any) => i.broker === brokerName);
-      let totalInv = 0;
-      let totalMkt = 0;
-      invs.forEach((inv: any) => {
-          totalInv += inv.quantity * inv.unitPrice;
-          const cp = prices[inv.ticker] || inv.unitPrice;
-          totalMkt += inv.quantity * cp;
-      });
-      return {
-         name: brokerName as string,
-         invested: totalInv,
-         market: totalMkt,
-         profit: totalMkt - totalInv
-      };
-    });
-
-    return (
-      <div className="p-4 space-y-4 pb-28 animate-fadeIn">
-        
-        {/* Painel Horizontal Deslizante de Corretoras */}
-        <div>
-          <div className="flex gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-            {brokerCards.map(c => (
-              <div 
-                key={c.name} 
-                onClick={() => setFilterBroker(c.name)} 
-                className={`min-w-[260px] flex-shrink-0 p-5 rounded-3xl snap-start cursor-pointer transition-all duration-300 ease-in-out ${filterBroker === c.name ? 'bg-gradient-to-br from-blue-900 to-indigo-900 dark:from-blue-800 dark:to-indigo-900 text-white shadow-xl scale-100' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 scale-95 opacity-70 hover:opacity-100'}`}
-              >
-                <span className={`text-xs font-bold uppercase tracking-wider ${filterBroker === c.name ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'}`}>
-                  {c.name === 'Geral' ? 'Patrimônio B3' : `Corretora: ${c.name}`}
-                </span>
-                <p className="text-3xl font-extrabold mt-1">R$ {formatBRL(c.market)}</p>
-                <div className="flex justify-between items-end mt-4 pt-3 border-t border-current/10">
-                  <div>
-                    <span className={`text-[10px] ${filterBroker === c.name ? 'text-blue-300' : 'text-gray-400 dark:text-gray-500'}`}>Total Investido</span>
-                    <p className="font-semibold text-xs">R$ {formatBRL(c.invested)}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-[10px] ${filterBroker === c.name ? 'text-blue-300' : 'text-gray-400 dark:text-gray-500'}`}>Lucro / Prejuízo</span>
-                    <p className={`font-bold text-xs ${c.profit >= 0 ? (filterBroker === c.name ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400') : (filterBroker === c.name ? 'text-red-400' : 'text-red-600 dark:text-red-400')}`}>
-                      {c.profit >= 0 ? '+' : ''}R$ {formatBRL(c.profit)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 text-right flex items-center justify-end gap-1 mt-1">
-            Última atualização: {lastSync} 
-            <button onClick={() => refreshQuotes(true)} className={`p-1.5 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 ${isRefreshing ? 'animate-spin text-blue-600 dark:text-blue-400' : ''}`}><Icons.Refresh /></button>
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">Meus Ativos</h3>
-            <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(filterBroker !== 'Geral' ? filterBroker : ''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
-              <Icons.Plus /> Novo Ativo
-            </button>
-          </div>
-          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 shadow-sm text-gray-700 dark:text-gray-300">
-            <Icons.Filter />
-            <select value={filterBroker} onChange={(e) => setFilterBroker(e.target.value)} className="w-full bg-transparent text-gray-700 dark:text-gray-300 text-sm focus:outline-none font-medium">
-              <option value="all">Todas as Corretoras</option>
-              {allBrokers.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {groupedInvestments.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl border border-gray-200 dark:border-gray-700 text-center text-gray-400 dark:text-gray-500 text-sm">Nenhum ativo cadastrado.</div>
-        ) : (
-          <div className="space-y-3">
-            {groupedInvestments.map((group: any) => {
-              const currentPrice = prices[group.ticker] || group.averagePM;
-              const currentVal = group.totalQuantity * currentPrice;
-              const profitVal = currentVal - group.totalInvested;
-              const profitPct = group.averagePM > 0 ? ((currentPrice - group.averagePM) / group.averagePM) * 100 : 0;
-              const isExpanded = expandedTickers.includes(group.ticker);
-
-              return (
-                <div key={group.ticker} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-2 relative transition-all">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900 dark:text-gray-100 text-base">{group.ticker}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{group.type}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total: <b className="text-gray-800 dark:text-gray-200">{group.totalQuantity} cotas</b></p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">PM Global: <b className="text-gray-800 dark:text-gray-200">R$ {formatBRL(group.averagePM)}</b></p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900 dark:text-gray-100">R$ {formatBRL(currentVal)}</p>
-                      <p className={`text-xs font-bold ${profitVal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {profitVal >= 0 ? '+' : ''}{formatBRL(profitPct)}% (R$ {formatBRL(profitVal)})
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center border-t border-gray-50 dark:border-gray-700 pt-3 mt-2 text-xs">
-                    <span className="text-gray-500 dark:text-gray-400">Atual: <b className="text-gray-800 dark:text-gray-200 text-sm">R$ {formatBRL(currentPrice)}</b></span>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => toggleExpandTicker(group.ticker)} className="text-gray-500 dark:text-gray-400 font-medium px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-1 transition-colors">
-                        Compras {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
-                      </button>
-                      <button onClick={() => setSellingAsset(group)} className="text-blue-600 dark:text-blue-400 font-bold px-4 py-1.5 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors">Vender</button>
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 -mx-4 px-4 pb-2 rounded-b-2xl space-y-2">
-                      <h4 className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-wide">Histórico de Compras ({group.lots.length})</h4>
-                      {group.lots.map((lot: any) => (
-                        <div key={lot.id} className="flex justify-between items-center bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 text-xs shadow-sm">
-                          <div>
-                            <p className="font-bold text-gray-700 dark:text-gray-200">{lot.quantity} cotas <span className="text-gray-400 dark:text-gray-500 font-normal ml-1">({lot.broker})</span></p>
-                            <p className="text-gray-500 dark:text-gray-400">{new Date(lot.buyDate).toLocaleDateString('pt-BR')} • PM: R$ {formatBRL(lot.unitPrice)}</p>
-                          </div>
-                          <div className="flex gap-1">
-                             <button onClick={() => openEditAsset(lot)} className="p-1.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"><Icons.Edit /></button>
-                             <button onClick={() => handleDeleteAsset(lot.id)} className="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"><Icons.Trash /></button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {salesHistory.length > 0 && (
-          <div className="mt-6 space-y-2">
-            <h4 className="font-bold text-gray-800 dark:text-gray-100 text-sm">Histórico de Vendas & IR</h4>
-            {salesHistory.map((s: any) => (
-              <div key={s.id} className="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm text-xs space-y-1">
-                <div className="flex justify-between items-center font-bold">
-                  <span className="text-gray-800 dark:text-gray-200">{s.ticker} ({s.quantitySold} cotas)</span>
-                  <span className={s.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>Resultado: R$ {formatBRL(s.netProfit)}</span>
-                </div>
-                <div className="flex justify-between text-gray-400 dark:text-gray-500">
-                  <span>Venda em {new Date(s.saleDate).toLocaleDateString('pt-BR')}</span>
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">
-                    {s.taxPayable > 0 ? `DARF a Pagar: R$ ${formatBRL(s.taxPayable)}` : 'Isento de IR'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 italic">{s.taxRule}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {(isAddOpen || editingAsset) && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 overflow-visible border border-gray-100 dark:border-gray-700">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-gray-800 dark:text-gray-100">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
-                  <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
-                </div>
-                
-                {assetError && <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded-lg">{assetError}</div>}
-                
-                <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
-                  
-                  <div>
-                    <input type="text" placeholder="Ticker (Ex: PETR4, MXRF11)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required disabled={!!editingAsset} list="ticker-suggestions" />
-                    <datalist id="ticker-suggestions">
-                      {mergedTickersForSearch.map(t => <option key={t} value={t} />)}
-                    </datalist>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                       <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Quantidade</label>
-                       <input type="number" step="any" placeholder="Qtd" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required />
-                    </div>
-                    <div>
-                       <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Preço Unitário</label>
-                       <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                       <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Corretora</label>
-                       <input type="text" placeholder="Ex: NuInvest" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" list="broker-suggestions" />
-                       <datalist id="broker-suggestions">
-                         {allBrokers.map(b => <option key={b} value={b} />)}
-                       </datalist>
-                    </div>
-                    <div>
-                       <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Data da Compra</label>
-                       <input type="date" value={buyDateInput} onChange={(e) => setBuyDateInput(e.target.value)} className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required />
-                    </div>
-                  </div>
-                  <button type="submit" disabled={isSavingAsset} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-2 disabled:opacity-50 transition-colors shadow-md">
-                     {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Compra' : 'Salvar na Carteira')}
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {sellingAsset && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 border border-gray-100 dark:border-gray-700">
-                <div className="flex justify-between items-center">
-                   <h3 className="font-bold text-gray-800 dark:text-gray-100">Registrar Venda: {sellingAsset.ticker}</h3>
-                   <button onClick={() => setSellingAsset(null)} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
-                </div>
-                
-                <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl text-xs text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
-                  Disponível em carteira: <b className="text-gray-800 dark:text-gray-200">{sellingAsset.totalQuantity} cotas</b><br/>
-                  PM Global: <b className="text-gray-800 dark:text-gray-200">R$ {formatBRL(sellingAsset.averagePM)}</b>
-                </div>
-
-                <form onSubmit={handleConfirmSale} className="space-y-3 text-sm">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Qtd. a Vender</label>
-                      <input type="number" step="any" max={sellingAsset.totalQuantity} placeholder={`Max: ${sellingAsset.totalQuantity}`} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Preço Unitário</label>
-                      <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-800 dark:text-gray-100" required />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Taxas B3 / Custos</label>
-                      <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Data da Venda</label>
-                      <input type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required />
-                    </div>
-                  </div>
-                  <button type="submit" className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl mt-2 transition-colors shadow-md">
-                    Confirmar Venda & Apurar IR
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const SettingsTab = () => {
     const [importMsg, setImportMsg] = useState({ text: '', type: '' });
     const [isProcessing, setIsProcessing] = useState(false);
@@ -2011,7 +1515,7 @@ export default function FinanceApp() {
     const handleExportCSV = () => {
       let csvContent = "ID;Tipo;Descricao;Data;ValorTotal;MetodoID;Status\n";
       transactions.forEach(tx => {
-        const row = [tx.id, tx.type, (tx.desc || '').replace(/;/g, ''), tx.date, tx.totalAmount, tx.methodId, tx.status];
+        const row = [tx.id, tx.type, (tx.desc || '').replace(/;/g, ''), tx.date, (parseFloat(tx.totalAmount)||0).toFixed(2), tx.methodId, tx.status];
         csvContent += row.join(";") + "\n";
       });
       const dataStr = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csvContent);
