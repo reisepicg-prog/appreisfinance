@@ -43,11 +43,10 @@ const Icons = {
   TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
   Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>,
   ChevronDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
-  ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
-  Filter: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+  ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
 };
 
-// --- Funções de Formatação (Máscaras e Exibição) ---
+// --- Funções de Formatação ---
 const formatCurrencyInput = (value: number | string): string => {
   const digits = String(value).replace(/\D/g, '');
   if (!digits) return '';
@@ -65,10 +64,23 @@ const formatBRL = (value: number | string): string => {
   return (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+// --- Lista Estática Inteligente para Autocomplete (B3) ---
+const POPULAR_TICKERS = ["AAPL34", "ABEV3", "ALOS3", "ARZZ3", "ASAI3", "AZUL4", "B3SA3", "BBAS3", "BBDC3", "BBDC4", "BBSE3", "BPAC11", "BRAP4", "BRFS3", "BRKM5", "CCRO3", "CIEL3", "CMIG4", "COGN3", "CPFE3", "CPLE6", "CRFB3", "CSAN3", "CSNA3", "CVCB3", "CYRE3", "ELET3", "ELET6", "EMBR3", "ENEV3", "ENGI11", "EQTL3", "EZTC3", "FLRY3", "GGBR4", "GOAU4", "GOLL4", "HAPV3", "HGLG11", "HYPE3", "IGTI11", "IRBR3", "ITSA4", "ITUB4", "JBSS3", "KLBN11", "KNRI11", "LREN3", "LWSA3", "MGLU3", "MRFG3", "MRVE3", "MULT3", "MXRF11", "NTCO3", "PCAR3", "PETR3", "PETR4", "PETZ3", "PRIO3", "RADL3", "RAIL3", "RDOR3", "RENT3", "RRRP3", "SANB11", "SBSP3", "SIMH3", "SLCE3", "SOMA3", "SUZB3", "TAEE11", "TIMS3", "TOTS3", "UGPA3", "USIM5", "VALE3", "VAMO3", "VBBR3", "VILG11", "VISC11", "VIVT3", "WEGE3", "XPLG11", "XPML11", "YDUQ3"];
+
 // --- Modal da Calculadora Rápida ---
 const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClose: () => void; onApply: (val: number) => void }) => {
   const [display, setDisplay] = useState('0');
   const [history, setHistory] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => { document.body.style.overflow = 'auto'; };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -98,7 +110,7 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
   const btnClass = "h-11 rounded-xl font-semibold text-lg flex items-center justify-center active:scale-95 transition-all select-none";
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl border border-gray-100">
         <div className="flex justify-between items-center mb-3">
           <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1"><span>🧮</span> Calculadora</h3>
@@ -146,7 +158,7 @@ export default function FinanceApp() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [loginError, setLoginError] = useState('');
 
-  // Memórias para Autocomplete
+  // --- Listas Inteligentes de Memória ---
   const allDescriptions = [...new Set(transactions.map(t => {
       let d = t.desc || '';
       d = d.replace(/\s\(\d+\/\d+\)$/, ''); // Limpa " (1/10)"
@@ -156,6 +168,8 @@ export default function FinanceApp() {
   
   const allSplitNames = [...new Set(transactions.flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
   const allBrokers = [...new Set(investments.map((i: any) => i.broker))].filter(Boolean).sort();
+  const allOwnedTickers = [...new Set(investments.map((i: any) => i.ticker.toUpperCase()))];
+  const mergedTickersForSearch = Array.from(new Set([...allOwnedTickers, ...POPULAR_TICKERS])).sort();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -210,6 +224,10 @@ export default function FinanceApp() {
     try { await deleteDoc(doc(db, 'users', user.uid, 'transactions', id)); } 
     catch(e) { console.error(e) }
   };
+
+  // ==========================================
+  // COMPONENTES DAS ABAS
+  // ==========================================
 
   const Dashboard = () => {
     const availableMonths = [...new Set(transactions.map(tx => {
@@ -1000,6 +1018,16 @@ export default function FinanceApp() {
       setUpdateScope('single');
     };
 
+    useEffect(() => {
+      if (editingTx) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = 'auto';
+      }
+      return () => { document.body.style.overflow = 'auto'; };
+    }, [editingTx]);
+
     const handleSaveEdit = async (e: any) => {
       e.preventDefault();
       if (!user || !editingTx) return;
@@ -1158,7 +1186,7 @@ export default function FinanceApp() {
         )}
 
         {editingTx && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 animate-fadeIn">
             <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
               <h3 className="text-lg font-bold text-gray-800 mb-4">Editar Lançamento</h3>
               <form onSubmit={handleSaveEdit} className="space-y-4">
@@ -1211,7 +1239,7 @@ export default function FinanceApp() {
     const [prices, setPrices] = useState<any>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastSync, setLastSync] = useState('');
-    const [filterBroker, setFilterBroker] = useState('all');
+    const [filterBroker, setFilterBroker] = useState('Geral');
     
     // --- Controle de Modais ---
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -1224,8 +1252,6 @@ export default function FinanceApp() {
 
     // --- Inputs Add/Edit Ativo ---
     const [tickerInput, setTickerInput] = useState('');
-    const [suggestions, setSuggestions] = useState<any[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
     const [quantityInput, setQuantityInput] = useState('');
     const [displayUnitPrice, setDisplayUnitPrice] = useState('');
     const [brokerInput, setBrokerInput] = useState('');
@@ -1237,35 +1263,25 @@ export default function FinanceApp() {
     const [displaySellFees, setDisplaySellFees] = useState('');
     const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
 
-    // Efeito para busca dinâmica de Tickers
+    // Desativa rolagem do fundo quando abrir modais
     useEffect(() => {
-      const timeout = setTimeout(async () => {
-        if (tickerInput.length >= 2) {
-          setIsSearching(true);
-          try {
-            const res = await fetch(`https://brapi.dev/api/quote/list?search=${tickerInput}&limit=5`);
-            const data = await res.json();
-            if (data.stocks) setSuggestions(data.stocks);
-            else setSuggestions([]);
-          } catch (err) { setSuggestions([]); } 
-          finally { setIsSearching(false); }
-        } else { setSuggestions([]); }
-      }, 500);
-      return () => clearTimeout(timeout);
-    }, [tickerInput]);
+      if (isAddOpen || editingAsset || sellingAsset) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = 'auto';
+      }
+      return () => { document.body.style.overflow = 'auto'; };
+    }, [isAddOpen, editingAsset, sellingAsset]);
 
     // Agrupamento e Filtragem por Corretora
-    const investmentsToRender = filterBroker === 'all' ? investments : investments.filter(inv => inv.broker === filterBroker);
+    const investmentsToRender = filterBroker === 'Geral' ? investments : investments.filter(inv => inv.broker === filterBroker);
 
     const groupedInvestments = Object.values(investmentsToRender.reduce((acc: any, inv: any) => {
       if (!acc[inv.ticker]) {
         acc[inv.ticker] = {
-          ticker: inv.ticker,
-          type: inv.type,
-          companyName: inv.companyName || inv.ticker,
-          totalQuantity: 0,
-          totalInvested: 0,
-          lots: []
+          ticker: inv.ticker, type: inv.type, companyName: inv.companyName || inv.ticker,
+          totalQuantity: 0, totalInvested: 0, lots: []
         };
       }
       acc[inv.ticker].totalQuantity += inv.quantity;
@@ -1274,35 +1290,53 @@ export default function FinanceApp() {
       return acc;
     }, {})).map((g: any) => {
       g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
-      g.lots.sort((a: any, b: any) => new Date(a.buyDate).getTime() - new Date(b.buyDate).getTime());
+      g.lots.sort((a: any, b: any) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime());
       return g;
     });
 
-    const refreshQuotes = async () => {
-      if (groupedInvestments.length === 0) return;
+    const CACHE_KEY = 'brapi_quotes';
+    const CACHE_TTL = 15 * 60 * 1000; // 15 minutos
+
+    const refreshQuotes = async (force = false) => {
+      if (investments.length === 0) return;
+      
+      const tickers = Array.from(new Set(investments.map((i: any) => i.ticker.toUpperCase()))).join(',');
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+      const now = Date.now();
+
+      if (!force && cached.timestamp && (now - cached.timestamp < CACHE_TTL)) {
+         setPrices(cached.prices);
+         setLastSync(cached.lastSync + ' (Cache)');
+         return;
+      }
+
       setIsRefreshing(true);
       setLastSync('Atualizando...');
-      const tickers = Array.from(new Set(groupedInvestments.map((i: any) => i.ticker.toUpperCase()))).join(',');
       try {
         const res = await fetch(`https://brapi.dev/api/quote/${tickers}`);
+        if (res.status === 429) throw new Error('rate_limit');
         const data = await res.json();
+        
         if (data && data.results) {
           const map: any = {};
           data.results.forEach((r: any) => { map[r.symbol] = r.regularMarketPrice; });
           setPrices(map);
-          const now = new Date();
-          setLastSync(`${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
-        } else if (data.error) {
-          setLastSync("Erro (Limite da API)");
+          const syncTime = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+          setLastSync(syncTime);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, prices: map, lastSync: syncTime }));
         }
-      } catch (err) { 
-        setLastSync("Erro de conexão");
-        console.error(err); 
+      } catch (err: any) { 
+        if (cached.prices) {
+           setPrices(cached.prices);
+           setLastSync(cached.lastSync + (err.message === 'rate_limit' ? ' (Limite da API)' : ' (Offline)'));
+        } else {
+           setLastSync(err.message === 'rate_limit' ? "Erro (Limite de consultas da API)" : "Erro de conexão");
+        }
       } finally { setIsRefreshing(false); }
     };
 
     useEffect(() => {
-      if (groupedInvestments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
+      if (investments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
         refreshQuotes();
       }
     }, [investments.length]);
@@ -1322,7 +1356,7 @@ export default function FinanceApp() {
          setIsSavingAsset(false); return;
       }
 
-      // Validação rápida de formato (4 a 5 letras/números seguidas de numeração)
+      // Validação rápida de formato B3 (Sem consultar API para evitar bloqueio)
       const tickerRegex = /^[A-Z0-9]{4}[0-9]{1,2}F?$/i;
       if (!tickerRegex.test(tickerClean)) {
           setAssetError('Código inválido. Digite um ticker oficial (ex: VALE3, MXRF11).');
@@ -1342,6 +1376,7 @@ export default function FinanceApp() {
 
         await addDoc(collection(db, 'users', user.uid, 'investments'), newAsset);
         setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false); setAssetError('');
+        refreshQuotes(true);
       } catch (err) { 
         console.error(err); setAssetError('Erro ao salvar o ativo.');
       } finally { setIsSavingAsset(false); }
@@ -1391,7 +1426,6 @@ export default function FinanceApp() {
 
       if (qtyToSell <= 0 || qtyToSell > sellingAsset.totalQuantity || price <= 0) return;
 
-      // Usar Preço Médio Global do grupo
       const totalSaleGross = qtyToSell * price;
       const totalCostBasis = qtyToSell * sellingAsset.averagePM;
       const netProfit = (totalSaleGross - totalCostBasis) - fees;
@@ -1455,55 +1489,66 @@ export default function FinanceApp() {
       setExpandedTickers(prev => prev.includes(ticker) ? prev.filter(t => t !== ticker) : [...prev, ticker]);
     };
 
-    let totalGlobalInvested = 0;
-    let totalGlobalMarketValue = 0;
-    groupedInvestments.forEach((group: any) => {
-      const currentPrice = prices[group.ticker] || group.averagePM;
-      totalGlobalInvested += group.totalInvested;
-      totalGlobalMarketValue += (group.totalQuantity * currentPrice);
+    // Construção dos Cartões por Corretora
+    const brokerCards = ['Geral', ...Array.from(new Set(investments.map((i: any) => i.broker))).filter(Boolean).sort()].map(brokerName => {
+      const invs = brokerName === 'Geral' ? investments : investments.filter((i:any) => i.broker === brokerName);
+      let totalInv = 0;
+      let totalMkt = 0;
+      invs.forEach((inv: any) => {
+          totalInv += inv.quantity * inv.unitPrice;
+          const cp = prices[inv.ticker] || inv.unitPrice;
+          totalMkt += inv.quantity * cp;
+      });
+      return {
+         name: brokerName as string,
+         invested: totalInv,
+         market: totalMkt,
+         profit: totalMkt - totalInv
+      };
     });
-    const totalGlobalProfit = totalGlobalMarketValue - totalGlobalInvested;
-    const totalGlobalProfitPct = totalGlobalInvested > 0 ? (totalGlobalProfit / totalGlobalInvested) * 100 : 0;
 
     return (
       <div className="p-4 space-y-4 pb-28 animate-fadeIn">
-        <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <span className="text-xs text-blue-200">Patrimônio B3</span>
-              <p className="text-3xl font-extrabold mt-0.5">R$ {formatBRL(totalGlobalMarketValue)}</p>
-              <p className="text-[10px] text-blue-300 mt-1">Última atualização: {lastSync || 'Pendente...'}</p>
-            </div>
-            <button onClick={refreshQuotes} className={`p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all ${isRefreshing ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
+        
+        {/* Painel Horizontal Deslizante de Corretoras */}
+        <div>
+          <div className="flex gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+            {brokerCards.map(c => (
+              <div 
+                key={c.name} 
+                onClick={() => setFilterBroker(c.name)} 
+                className={`min-w-[260px] p-5 rounded-3xl snap-start cursor-pointer transition-all duration-300 ease-in-out ${filterBroker === c.name ? 'bg-gradient-to-br from-blue-900 to-indigo-900 text-white shadow-xl scale-100' : 'bg-white border border-gray-200 text-gray-800 scale-95 opacity-70 hover:opacity-100'}`}
+              >
+                <span className={`text-xs font-bold uppercase tracking-wider ${filterBroker === c.name ? 'text-blue-200' : 'text-gray-400'}`}>
+                  {c.name === 'Geral' ? 'Patrimônio B3' : `Corretora: ${c.name}`}
+                </span>
+                <p className="text-3xl font-extrabold mt-1">R$ {formatBRL(c.market)}</p>
+                <div className="flex justify-between items-end mt-4 pt-3 border-t border-current/10">
+                  <div>
+                    <span className={`text-[10px] ${filterBroker === c.name ? 'text-blue-300' : 'text-gray-400'}`}>Total Investido</span>
+                    <p className="font-semibold text-xs">R$ {formatBRL(c.invested)}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-[10px] ${filterBroker === c.name ? 'text-blue-300' : 'text-gray-400'}`}>Lucro / Prejuízo</span>
+                    <p className={`font-bold text-xs ${c.profit >= 0 ? (filterBroker === c.name ? 'text-emerald-400' : 'text-emerald-600') : (filterBroker === c.name ? 'text-red-400' : 'text-red-600')}`}>
+                      {c.profit >= 0 ? '+' : ''}R$ {formatBRL(c.profit)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="flex justify-between items-end text-xs border-t border-white/10 pt-3 mt-3">
-            <div>
-              <span className="text-blue-300">Total Investido</span>
-              <p className="font-semibold text-sm">R$ {formatBRL(totalGlobalInvested)}</p>
-            </div>
-            <div className="text-right">
-              <span className="text-blue-300">Lucro / Prejuízo</span>
-              <p className={`font-bold text-sm ${totalGlobalProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {totalGlobalProfit >= 0 ? '+' : ''}R$ {formatBRL(totalGlobalProfit)} ({formatBRL(totalGlobalProfitPct)}%)
-              </p>
-            </div>
-          </div>
+          <p className="text-[10px] text-gray-400 text-right flex items-center justify-end gap-1 mt-1">
+            Última atualização: {lastSync} 
+            <button onClick={() => refreshQuotes(true)} className={`p-1 bg-gray-100 rounded-md hover:bg-gray-200 text-gray-600 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}><Icons.Refresh /></button>
+          </p>
         </div>
 
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-gray-800 text-base">Meus Ativos</h3>
-            <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
-              <Icons.Plus /> Novo Ativo
-            </button>
-          </div>
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
-            <Icons.Filter />
-            <select value={filterBroker} onChange={(e) => setFilterBroker(e.target.value)} className="w-full bg-transparent text-gray-700 text-sm focus:outline-none font-medium">
-              <option value="all">Todas as Corretoras</option>
-              {allBrokers.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
+        <div className="flex justify-between items-center">
+          <h3 className="font-bold text-gray-800 text-base">Ativos em Carteira</h3>
+          <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(filterBroker !== 'Geral' ? filterBroker : ''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
+            <Icons.Plus /> Novo Ativo
+          </button>
         </div>
 
         {groupedInvestments.length === 0 ? (
@@ -1518,7 +1563,7 @@ export default function FinanceApp() {
               const isExpanded = expandedTickers.includes(group.ticker);
 
               return (
-                <div key={group.ticker} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2 relative">
+                <div key={group.ticker} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2 relative transition-all">
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="flex items-center gap-2">
@@ -1592,7 +1637,7 @@ export default function FinanceApp() {
         )}
 
         {(isAddOpen || editingAsset) && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 overflow-visible">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
@@ -1603,19 +1648,11 @@ export default function FinanceApp() {
               
               <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
                 
-                <div className="relative">
-                  <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500" required disabled={!!editingAsset} />
-                  {isSearching && !editingAsset && <span className="absolute right-3 top-3 text-xs text-gray-400">Buscando...</span>}
-                  {suggestions.length > 0 && !editingAsset && (
-                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
-                      {suggestions.map(s => (
-                        <li key={s.stock} onClick={() => { setTickerInput(s.stock); setSuggestions([]); }} className="p-2 border-b border-gray-50 text-xs cursor-pointer hover:bg-blue-50 flex flex-col">
-                          <span className="font-bold text-gray-800">{s.stock}</span>
-                          <span className="text-gray-500 truncate">{s.name}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                <div>
+                  <input type="text" placeholder="Ticker (Ex: PETR4, MXRF11)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500" required disabled={!!editingAsset} list="ticker-suggestions" />
+                  <datalist id="ticker-suggestions">
+                    {mergedTickersForSearch.map(t => <option key={t} value={t} />)}
+                  </datalist>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -1650,7 +1687,7 @@ export default function FinanceApp() {
         )}
 
         {sellingAsset && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
               <div className="flex justify-between items-center">
                  <h3 className="font-bold text-gray-800">Registrar Venda: {sellingAsset.ticker}</h3>
@@ -1903,6 +1940,7 @@ export default function FinanceApp() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
         .pb-safe { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
       `}} />
     </div>
   );
