@@ -43,7 +43,8 @@ const Icons = {
   TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
   Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>,
   ChevronDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
-  ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+  ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
+  Filter: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
 };
 
 // --- Funções de Formatação (Máscaras e Exibição) ---
@@ -144,6 +145,17 @@ export default function FinanceApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [loginError, setLoginError] = useState('');
+
+  // Memórias para Autocomplete
+  const allDescriptions = [...new Set(transactions.map(t => {
+      let d = t.desc || '';
+      d = d.replace(/\s\(\d+\/\d+\)$/, ''); // Limpa " (1/10)"
+      d = d.replace(/\s\(Mês\s\d+\)$/, ''); // Limpa " (Mês 1)"
+      return d;
+  }))].filter(Boolean).sort();
+  
+  const allSplitNames = [...new Set(transactions.flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
+  const allBrokers = [...new Set(investments.map((i: any) => i.broker))].filter(Boolean).sort();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -548,7 +560,17 @@ export default function FinanceApp() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-              <input type="text" value={desc} onChange={e => setDesc(e.target.value)} placeholder={txType === 'income' ? "Ex: Salário, Venda" : "Ex: Mercado"} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" />
+              <input 
+                 type="text" 
+                 value={desc} 
+                 onChange={e => setDesc(e.target.value)} 
+                 placeholder={txType === 'income' ? "Ex: Salário, Venda" : "Ex: Mercado"} 
+                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" 
+                 list="desc-suggestions"
+              />
+              <datalist id="desc-suggestions">
+                {allDescriptions.map(d => <option key={d} value={d} />)}
+              </datalist>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Valor Total</label>
@@ -635,11 +657,21 @@ export default function FinanceApp() {
 
                 {isSplit && (
                   <div className="p-5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-4">
+                    <datalist id="split-names-suggestions">
+                      {allSplitNames.map(n => <option key={n} value={n} />)}
+                    </datalist>
                     {splits.map((split, index) => (
                       <div key={index} className="flex flex-col gap-2">
                         <div className="flex gap-3 items-start">
                           <div className="flex-1">
-                            <input type="text" placeholder="Nome (Ex: Mãe)" value={split.name} onChange={e => handleSplitChange(index, 'name', e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none" />
+                            <input 
+                               type="text" 
+                               placeholder="Nome (Ex: Mãe)" 
+                               value={split.name} 
+                               onChange={e => handleSplitChange(index, 'name', e.target.value)} 
+                               className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none" 
+                               list="split-names-suggestions"
+                            />
                           </div>
                           <div className="flex-1 flex gap-1 relative">
                             <input 
@@ -1179,6 +1211,7 @@ export default function FinanceApp() {
     const [prices, setPrices] = useState<any>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastSync, setLastSync] = useState('');
+    const [filterBroker, setFilterBroker] = useState('all');
     
     // --- Controle de Modais ---
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -1221,8 +1254,10 @@ export default function FinanceApp() {
       return () => clearTimeout(timeout);
     }, [tickerInput]);
 
-    // Agrupamento Inteligente dos Ativos (Soma de Lotes)
-    const groupedInvestments = Object.values(investments.reduce((acc: any, inv: any) => {
+    // Agrupamento e Filtragem por Corretora
+    const investmentsToRender = filterBroker === 'all' ? investments : investments.filter(inv => inv.broker === filterBroker);
+
+    const groupedInvestments = Object.values(investmentsToRender.reduce((acc: any, inv: any) => {
       if (!acc[inv.ticker]) {
         acc[inv.ticker] = {
           ticker: inv.ticker,
@@ -1287,7 +1322,7 @@ export default function FinanceApp() {
          setIsSavingAsset(false); return;
       }
 
-      // Validação de formato da B3 (4 a 5 Caracteres Alfanuméricos + 1 ou 2 números + opcional F)
+      // Validação rápida de formato (4 a 5 letras/números seguidas de numeração)
       const tickerRegex = /^[A-Z0-9]{4}[0-9]{1,2}F?$/i;
       if (!tickerRegex.test(tickerClean)) {
           setAssetError('Código inválido. Digite um ticker oficial (ex: VALE3, MXRF11).');
@@ -1361,7 +1396,6 @@ export default function FinanceApp() {
       const totalCostBasis = qtyToSell * sellingAsset.averagePM;
       const netProfit = (totalSaleGross - totalCostBasis) - fees;
       
-      // Checagem de Day Trade (Se a data de venda for igual a ALGUMA data de compra do grupo)
       const isDayTrade = sellingAsset.lots.some((lot: any) => lot.buyDate === sellDate);
       
       let taxPayable = 0;
@@ -1393,7 +1427,6 @@ export default function FinanceApp() {
       };
 
       try {
-        // Baixa automática método FIFO (Primeiro que Entra, Primeiro que Sai)
         let remainingToSell = qtyToSell;
         const promises = [];
 
@@ -1457,11 +1490,20 @@ export default function FinanceApp() {
           </div>
         </div>
 
-        <div className="flex justify-between items-center">
-          <h3 className="font-bold text-gray-800 text-base">Meus Ativos</h3>
-          <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
-            <Icons.Plus /> Novo Ativo
-          </button>
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold text-gray-800 text-base">Meus Ativos</h3>
+            <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
+              <Icons.Plus /> Novo Ativo
+            </button>
+          </div>
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
+            <Icons.Filter />
+            <select value={filterBroker} onChange={(e) => setFilterBroker(e.target.value)} className="w-full bg-transparent text-gray-700 text-sm focus:outline-none font-medium">
+              <option value="all">Todas as Corretoras</option>
+              {allBrokers.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          </div>
         </div>
 
         {groupedInvestments.length === 0 ? (
@@ -1589,7 +1631,10 @@ export default function FinanceApp() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                      <label className="block text-xs font-medium text-gray-500 mb-1">Corretora</label>
-                     <input type="text" placeholder="Ex: NuInvest" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                     <input type="text" placeholder="Ex: NuInvest" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" list="broker-suggestions" />
+                     <datalist id="broker-suggestions">
+                       {allBrokers.map(b => <option key={b} value={b} />)}
+                     </datalist>
                   </div>
                   <div>
                      <label className="block text-xs font-medium text-gray-500 mb-1">Data da Compra</label>
