@@ -41,7 +41,9 @@ const Icons = {
   Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
   Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
   TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
-  Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+  Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>,
+  ChevronDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
+  ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
 };
 
 // --- Funções de Formatação (Máscaras e Exibição) ---
@@ -1182,6 +1184,7 @@ export default function FinanceApp() {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [sellingAsset, setSellingAsset] = useState<any>(null);
     const [editingAsset, setEditingAsset] = useState<any>(null);
+    const [expandedTickers, setExpandedTickers] = useState<string[]>([]);
 
     const [isSavingAsset, setIsSavingAsset] = useState(false);
     const [assetError, setAssetError] = useState('');
@@ -1201,7 +1204,7 @@ export default function FinanceApp() {
     const [displaySellFees, setDisplaySellFees] = useState('');
     const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
 
-    // Efeito para busca dinâmica de Tickers (Autocomplete)
+    // Efeito para busca dinâmica de Tickers
     useEffect(() => {
       const timeout = setTimeout(async () => {
         if (tickerInput.length >= 2) {
@@ -1218,10 +1221,33 @@ export default function FinanceApp() {
       return () => clearTimeout(timeout);
     }, [tickerInput]);
 
+    // Agrupamento Inteligente dos Ativos (Soma de Lotes)
+    const groupedInvestments = Object.values(investments.reduce((acc: any, inv: any) => {
+      if (!acc[inv.ticker]) {
+        acc[inv.ticker] = {
+          ticker: inv.ticker,
+          type: inv.type,
+          companyName: inv.companyName || inv.ticker,
+          totalQuantity: 0,
+          totalInvested: 0,
+          lots: []
+        };
+      }
+      acc[inv.ticker].totalQuantity += inv.quantity;
+      acc[inv.ticker].totalInvested += (inv.quantity * inv.unitPrice);
+      acc[inv.ticker].lots.push(inv);
+      return acc;
+    }, {})).map((g: any) => {
+      g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
+      g.lots.sort((a: any, b: any) => new Date(a.buyDate).getTime() - new Date(b.buyDate).getTime());
+      return g;
+    });
+
     const refreshQuotes = async () => {
-      if (investments.length === 0) return;
+      if (groupedInvestments.length === 0) return;
       setIsRefreshing(true);
-      const tickers = Array.from(new Set(investments.map((i: any) => i.ticker.toUpperCase()))).join(',');
+      setLastSync('Atualizando...');
+      const tickers = Array.from(new Set(groupedInvestments.map((i: any) => i.ticker.toUpperCase()))).join(',');
       try {
         const res = await fetch(`https://brapi.dev/api/quote/${tickers}`);
         const data = await res.json();
@@ -1231,12 +1257,19 @@ export default function FinanceApp() {
           setPrices(map);
           const now = new Date();
           setLastSync(`${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
+        } else if (data.error) {
+          setLastSync("Erro (Limite da API)");
         }
-      } catch (err) { console.error(err); } finally { setIsRefreshing(false); }
+      } catch (err) { 
+        setLastSync("Erro de conexão");
+        console.error(err); 
+      } finally { setIsRefreshing(false); }
     };
 
     useEffect(() => {
-      if (investments.length > 0) refreshQuotes();
+      if (groupedInvestments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
+        refreshQuotes();
+      }
     }, [investments.length]);
 
     const handleSaveAsset = async (e: any) => {
@@ -1280,19 +1313,19 @@ export default function FinanceApp() {
     };
 
     const handleDeleteAsset = async (id: string) => {
-      if (window.confirm("Deseja realmente excluir este ativo da sua carteira? O histórico de vendas passadas não será afetado.")) {
+      if (window.confirm("Deseja excluir esta compra específica?")) {
         try { await deleteDoc(doc(db, 'users', user.uid, 'investments', id)); } 
         catch (err) { console.error(err); }
       }
     };
 
-    const openEditAsset = (inv: any) => {
-      setEditingAsset(inv);
-      setTickerInput(inv.ticker);
-      setQuantityInput(inv.quantity.toString());
-      setDisplayUnitPrice(formatCurrencyInput(Math.round(inv.unitPrice * 100)));
-      setBrokerInput(inv.broker || '');
-      setBuyDateInput(inv.buyDate || '');
+    const openEditAsset = (lot: any) => {
+      setEditingAsset(lot);
+      setTickerInput(lot.ticker);
+      setQuantityInput(lot.quantity.toString());
+      setDisplayUnitPrice(formatCurrencyInput(Math.round(lot.unitPrice * 100)));
+      setBrokerInput(lot.broker || '');
+      setBuyDateInput(lot.buyDate || '');
     };
 
     const handleSaveEditAsset = async (e: any) => {
@@ -1317,16 +1350,19 @@ export default function FinanceApp() {
       e.preventDefault();
       if (!user || !sellingAsset) return;
 
-      const qty = parseFloat(sellQuantity);
+      const qtyToSell = parseFloat(sellQuantity);
       const price = parseCurrencyToNumber(displaySellUnitPrice);
       const fees = parseCurrencyToNumber(displaySellFees);
 
-      if (qty <= 0 || qty > sellingAsset.quantity || price <= 0) return;
+      if (qtyToSell <= 0 || qtyToSell > sellingAsset.totalQuantity || price <= 0) return;
 
-      const totalSaleGross = qty * price;
-      const totalCostBasis = qty * sellingAsset.unitPrice;
+      // Usar Preço Médio Global do grupo
+      const totalSaleGross = qtyToSell * price;
+      const totalCostBasis = qtyToSell * sellingAsset.averagePM;
       const netProfit = (totalSaleGross - totalCostBasis) - fees;
-      const isDayTrade = sellDate === sellingAsset.buyDate;
+      
+      // Checagem de Day Trade (Se a data de venda for igual a ALGUMA data de compra do grupo)
+      const isDayTrade = sellingAsset.lots.some((lot: any) => lot.buyDate === sellDate);
       
       let taxPayable = 0;
       let taxRule = '';
@@ -1350,32 +1386,51 @@ export default function FinanceApp() {
       }
 
       const saleRecord = {
-        ticker: sellingAsset.ticker, type: sellingAsset.type, broker: sellingAsset.broker,
-        buyDate: sellingAsset.buyDate, saleDate, quantitySold: qty, unitSalePrice: price,
-        unitCostBasis: sellingAsset.unitPrice, totalSaleAmount: totalSaleGross, fees,
+        ticker: sellingAsset.ticker, type: sellingAsset.type, broker: 'Múltiplas/Calculado',
+        buyDate: 'Preço Médio Global', saleDate, quantitySold: qtyToSell, unitSalePrice: price,
+        unitCostBasis: sellingAsset.averagePM, totalSaleAmount: totalSaleGross, fees,
         netProfit, isDayTrade, taxPayable, taxRule, createdAt: new Date().toISOString()
       };
 
       try {
-        await addDoc(collection(db, 'users', user.uid, 'salesHistory'), saleRecord);
-        const remainingQty = sellingAsset.quantity - qty;
-        if (remainingQty <= 0) await deleteDoc(doc(db, 'users', user.uid, 'investments', sellingAsset.id));
-        else await updateDoc(doc(db, 'users', user.uid, 'investments', sellingAsset.id), { quantity: remainingQty });
+        // Baixa automática método FIFO (Primeiro que Entra, Primeiro que Sai)
+        let remainingToSell = qtyToSell;
+        const promises = [];
+
+        for (const lot of sellingAsset.lots) {
+            if (remainingToSell <= 0) break;
+            
+            if (remainingToSell >= lot.quantity) {
+                promises.push(deleteDoc(doc(db, 'users', user.uid, 'investments', lot.id)));
+                remainingToSell -= lot.quantity;
+            } else {
+                promises.push(updateDoc(doc(db, 'users', user.uid, 'investments', lot.id), {
+                    quantity: lot.quantity - remainingToSell
+                }));
+                remainingToSell = 0;
+            }
+        }
+        promises.push(addDoc(collection(db, 'users', user.uid, 'salesHistory'), saleRecord));
+        
+        await Promise.all(promises);
 
         setSellingAsset(null); setSellQuantity(''); setDisplaySellUnitPrice(''); setDisplaySellFees('');
       } catch (err) { console.error(err); }
     };
 
-    let totalInvested = 0;
-    let totalMarketValue = 0;
-    investments.forEach((inv: any) => {
-      const invested = inv.quantity * inv.unitPrice;
-      const currentPrice = prices[inv.ticker] || inv.unitPrice;
-      totalInvested += invested;
-      totalMarketValue += (inv.quantity * currentPrice);
+    const toggleExpandTicker = (ticker: string) => {
+      setExpandedTickers(prev => prev.includes(ticker) ? prev.filter(t => t !== ticker) : [...prev, ticker]);
+    };
+
+    let totalGlobalInvested = 0;
+    let totalGlobalMarketValue = 0;
+    groupedInvestments.forEach((group: any) => {
+      const currentPrice = prices[group.ticker] || group.averagePM;
+      totalGlobalInvested += group.totalInvested;
+      totalGlobalMarketValue += (group.totalQuantity * currentPrice);
     });
-    const totalProfit = totalMarketValue - totalInvested;
-    const totalProfitPct = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
+    const totalGlobalProfit = totalGlobalMarketValue - totalGlobalInvested;
+    const totalGlobalProfitPct = totalGlobalInvested > 0 ? (totalGlobalProfit / totalGlobalInvested) * 100 : 0;
 
     return (
       <div className="p-4 space-y-4 pb-28 animate-fadeIn">
@@ -1383,20 +1438,20 @@ export default function FinanceApp() {
           <div className="flex justify-between items-start mb-2">
             <div>
               <span className="text-xs text-blue-200">Patrimônio B3</span>
-              <p className="text-3xl font-extrabold mt-0.5">R$ {formatBRL(totalMarketValue)}</p>
+              <p className="text-3xl font-extrabold mt-0.5">R$ {formatBRL(totalGlobalMarketValue)}</p>
               <p className="text-[10px] text-blue-300 mt-1">Última atualização: {lastSync || 'Pendente...'}</p>
             </div>
-            <button onClick={refreshQuotes} className={`p-2 rounded-xl bg-white/10 ${isRefreshing ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
+            <button onClick={refreshQuotes} className={`p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all ${isRefreshing ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
           </div>
           <div className="flex justify-between items-end text-xs border-t border-white/10 pt-3 mt-3">
             <div>
               <span className="text-blue-300">Total Investido</span>
-              <p className="font-semibold text-sm">R$ {formatBRL(totalInvested)}</p>
+              <p className="font-semibold text-sm">R$ {formatBRL(totalGlobalInvested)}</p>
             </div>
             <div className="text-right">
               <span className="text-blue-300">Lucro / Prejuízo</span>
-              <p className={`font-bold text-sm ${totalProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {totalProfit >= 0 ? '+' : ''}R$ {formatBRL(totalProfit)} ({formatBRL(totalProfitPct)}%)
+              <p className={`font-bold text-sm ${totalGlobalProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {totalGlobalProfit >= 0 ? '+' : ''}R$ {formatBRL(totalGlobalProfit)} ({formatBRL(totalGlobalProfitPct)}%)
               </p>
             </div>
           </div>
@@ -1404,32 +1459,32 @@ export default function FinanceApp() {
 
         <div className="flex justify-between items-center">
           <h3 className="font-bold text-gray-800 text-base">Meus Ativos</h3>
-          <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(true); }} className="bg-blue-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1">
+          <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
             <Icons.Plus /> Novo Ativo
           </button>
         </div>
 
-        {investments.length === 0 ? (
+        {groupedInvestments.length === 0 ? (
           <div className="bg-white p-8 rounded-2xl border text-center text-gray-400 text-sm">Nenhum ativo cadastrado.</div>
         ) : (
           <div className="space-y-3">
-            {investments.map((inv: any) => {
-              const currentPrice = prices[inv.ticker] || inv.unitPrice;
-              const investedVal = inv.quantity * inv.unitPrice;
-              const currentVal = inv.quantity * currentPrice;
-              const profitVal = currentVal - investedVal;
-              const profitPct = inv.unitPrice > 0 ? ((currentPrice - inv.unitPrice) / inv.unitPrice) * 100 : 0;
+            {groupedInvestments.map((group: any) => {
+              const currentPrice = prices[group.ticker] || group.averagePM;
+              const currentVal = group.totalQuantity * currentPrice;
+              const profitVal = currentVal - group.totalInvested;
+              const profitPct = group.averagePM > 0 ? ((currentPrice - group.averagePM) / group.averagePM) * 100 : 0;
+              const isExpanded = expandedTickers.includes(group.ticker);
 
               return (
-                <div key={inv.id} className="bg-white p-4 rounded-2xl border shadow-sm space-y-2">
+                <div key={group.ticker} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2 relative">
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900 text-base">{inv.ticker}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{inv.type}</span>
-                        <span className="text-xs text-gray-400 font-medium">{inv.broker}</span>
+                        <span className="font-bold text-gray-900 text-base">{group.ticker}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{group.type}</span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">{inv.quantity} cotas • PM: R$ {formatBRL(inv.unitPrice)}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Total: <b className="text-gray-800">{group.totalQuantity} cotas</b></p>
+                      <p className="text-xs text-gray-500">PM Global: <b className="text-gray-800">R$ {formatBRL(group.averagePM)}</b></p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-gray-900">R$ {formatBRL(currentVal)}</p>
@@ -1441,12 +1496,32 @@ export default function FinanceApp() {
                   
                   <div className="flex justify-between items-center border-t border-gray-50 pt-3 mt-2 text-xs">
                     <span className="text-gray-500">Atual: <b className="text-gray-800 text-sm">R$ {formatBRL(currentPrice)}</b></span>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => openEditAsset(inv)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"><Icons.Edit /></button>
-                      <button onClick={() => handleDeleteAsset(inv.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Icons.Trash /></button>
-                      <button onClick={() => setSellingAsset(inv)} className="ml-1 text-blue-600 font-bold px-3 py-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">Vender</button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => toggleExpandTicker(group.ticker)} className="text-gray-500 font-medium px-2 py-1.5 hover:bg-gray-100 rounded-lg flex items-center gap-1 transition-colors">
+                        Compras {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
+                      </button>
+                      <button onClick={() => setSellingAsset(group)} className="text-blue-600 font-bold px-4 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">Vender</button>
                     </div>
                   </div>
+
+                  {/* Detalhes Expandidos dos Lotes (Compras) */}
+                  {isExpanded && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 bg-gray-50/50 -mx-4 px-4 pb-2 rounded-b-2xl space-y-2">
+                      <h4 className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wide">Histórico de Compras ({group.lots.length})</h4>
+                      {group.lots.map((lot: any) => (
+                        <div key={lot.id} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-100 text-xs shadow-sm">
+                          <div>
+                            <p className="font-bold text-gray-700">{lot.quantity} cotas <span className="text-gray-400 font-normal ml-1">({lot.broker})</span></p>
+                            <p className="text-gray-500">{new Date(lot.buyDate).toLocaleDateString('pt-BR')} • PM: R$ {formatBRL(lot.unitPrice)}</p>
+                          </div>
+                          <div className="flex gap-1">
+                             <button onClick={() => openEditAsset(lot)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"><Icons.Edit /></button>
+                             <button onClick={() => handleDeleteAsset(lot.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Icons.Trash /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1463,7 +1538,7 @@ export default function FinanceApp() {
                   <span className={s.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}>Resultado: R$ {formatBRL(s.netProfit)}</span>
                 </div>
                 <div className="flex justify-between text-gray-400">
-                  <span>Venda em {s.saleDate}</span>
+                  <span>Venda em {new Date(s.saleDate).toLocaleDateString('pt-BR')}</span>
                   <span className="font-semibold text-gray-700">
                     {s.taxPayable > 0 ? `DARF a Pagar: R$ ${formatBRL(s.taxPayable)}` : 'Isento de IR'}
                   </span>
@@ -1478,8 +1553,8 @@ export default function FinanceApp() {
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 overflow-visible">
               <div className="flex justify-between items-center">
-                <h3 className="font-bold text-gray-800">{editingAsset ? 'Editar Ativo' : 'Adicionar Ativo'}</h3>
-                <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }}>✕</button>
+                <h3 className="font-bold text-gray-800">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
+                <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
               </div>
               
               {assetError && <div className="p-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg">{assetError}</div>}
@@ -1487,7 +1562,7 @@ export default function FinanceApp() {
               <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
                 
                 <div className="relative">
-                  <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border rounded-xl font-bold uppercase" required disabled={!!editingAsset} />
+                  <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500" required disabled={!!editingAsset} />
                   {isSearching && !editingAsset && <span className="absolute right-3 top-3 text-xs text-gray-400">Buscando...</span>}
                   {suggestions.length > 0 && !editingAsset && (
                     <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
@@ -1502,15 +1577,27 @@ export default function FinanceApp() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="number" step="any" placeholder="Qtd" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
-                  <input type="text" inputMode="numeric" placeholder="Preço Médio" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 mb-1">Quantidade</label>
+                     <input type="number" step="any" placeholder="Qtd" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                  </div>
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
+                     <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="text" placeholder="Corretora" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl" />
-                  <input type="date" value={buyDateInput} onChange={(e) => setBuyDateInput(e.target.value)} className="w-full p-2 bg-gray-50 border rounded-xl text-xs" required />
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 mb-1">Corretora</label>
+                     <input type="text" placeholder="Ex: NuInvest" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 mb-1">Data da Compra</label>
+                     <input type="date" value={buyDateInput} onChange={(e) => setBuyDateInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
+                  </div>
                 </div>
-                <button type="submit" disabled={isSavingAsset} className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl mt-2 disabled:opacity-50">
-                   {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Ativo' : 'Salvar na Carteira')}
+                <button type="submit" disabled={isSavingAsset} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-2 disabled:opacity-50 transition-colors shadow-md">
+                   {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Compra' : 'Salvar na Carteira')}
                 </button>
               </form>
             </div>
@@ -1520,29 +1607,40 @@ export default function FinanceApp() {
         {sellingAsset && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
-              <div className="flex justify-between items-center"><h3 className="font-bold text-gray-800">Registrar Venda</h3><button onClick={() => setSellingAsset(null)}>✕</button></div>
+              <div className="flex justify-between items-center">
+                 <h3 className="font-bold text-gray-800">Registrar Venda: {sellingAsset.ticker}</h3>
+                 <button onClick={() => setSellingAsset(null)} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
+              </div>
+              
+              <div className="bg-gray-50 p-3 rounded-xl text-xs text-gray-500 border border-gray-100">
+                Disponível em carteira: <b className="text-gray-800">{sellingAsset.totalQuantity} cotas</b><br/>
+                PM Global: <b className="text-gray-800">R$ {formatBRL(sellingAsset.averagePM)}</b>
+              </div>
+
               <form onSubmit={handleConfirmSale} className="space-y-3 text-sm">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-gray-500">Qtd. Venda</label>
-                    <input type="number" step="any" max={sellingAsset.quantity} placeholder={`Max: ${sellingAsset.quantity}`} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Qtd. a Vender</label>
+                    <input type="number" step="any" max={sellingAsset.totalQuantity} placeholder={`Max: ${sellingAsset.totalQuantity}`} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">Preço Unitário</label>
-                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border rounded-xl" required />
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
+                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" required />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-gray-500">Taxas B3</label>
-                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border rounded-xl" />
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Taxas B3 / Custos</label>
+                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">Data da Venda</label>
-                    <input type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-xs" required />
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Data da Venda</label>
+                    <input type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
                   </div>
                 </div>
-                <button type="submit" className="w-full py-3 bg-red-600 text-white font-bold rounded-xl mt-2">Confirmar Venda & Apurar IR</button>
+                <button type="submit" className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl mt-2 transition-colors shadow-md">
+                  Confirmar Venda & Apurar IR
+                </button>
               </form>
             </div>
           </div>
