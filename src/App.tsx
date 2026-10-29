@@ -28,31 +28,31 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- Ícones (SVGs inline) ---
+// --- Ícones (SVGs inline) com propriedades de tamanho flexíveis ---
 const Icons = {
-  Home: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-  Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  CreditCard: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
-  Calendar: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  Users: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-  Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
-  Edit: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
-  CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
-  Message: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
-  Cloud: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>,
-  Wallet: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
-  Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
-  Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
-  Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
-  TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
-  Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>,
-  ChevronDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
-  ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
-  Filter: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
-  Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
-  QrCode: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
-  Sun: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
-  Moon: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  Home: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  Plus: ({ size = 24, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  CreditCard: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
+  Calendar: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  Users: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  Trash: ({ size = 16, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
+  Edit: ({ size = 16, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  CheckCircle: ({ size = 16, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+  Message: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
+  Cloud: ({ size = 16, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>,
+  Wallet: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
+  Settings: ({ size = 24, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+  Download: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
+  Upload: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
+  TrendingUp: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  Refresh: ({ size = 16, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>,
+  ChevronDown: ({ size = 16, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
+  ChevronUp: ({ size = 16, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
+  Filter: ({ size = 16, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+  Check: ({ size = 16, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  QrCode: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
+  Sun: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
+  Moon: ({ size = 20, className = "" }: any) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
 };
 
 // --- Gerador de PIX BR Code ---
@@ -109,6 +109,16 @@ const formatBRL = (value: number | string): string => {
 const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClose: () => void; onApply: (val: number) => void }) => {
   const [display, setDisplay] = useState('0');
   const [history, setHistory] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => { document.body.style.overflow = 'auto'; };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -209,17 +219,17 @@ export default function FinanceApp() {
   const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all' });
   const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all' });
 
-  // --- Listas Inteligentes de Memória (Autocomplete) ---
+  // --- Listas Inteligentes de Memória (Autocomplete Seguro) ---
   const allDescriptions = [...new Set((transactions || []).map(t => {
-      let d = t?.desc || '';
+      let d = String(t?.desc || '');
       d = d.replace(/\s\(\d+\/\d+\)$/, ''); 
       d = d.replace(/\s\(Mês\s\d+\)$/, ''); 
       return d.trim();
   }))].filter(Boolean).sort();
   
-  const allSplitNames = [...new Set((transactions || []).flatMap(t => t?.splits?.map((s: any) => s?.name) || []))].filter(Boolean).sort();
-  const allBrokers = [...new Set((investments || []).map((i: any) => i?.broker))].filter(Boolean).sort();
-  const allOwnedTickers = [...new Set((investments || []).map((i: any) => (i?.ticker || '').toUpperCase()))].filter(Boolean);
+  const allSplitNames = [...new Set((transactions || []).flatMap(t => t?.splits?.map((s: any) => String(s?.name || '')) || []))].filter(Boolean).sort();
+  const allBrokers = [...new Set((investments || []).map((i: any) => String(i?.broker || '')))].filter(Boolean).sort();
+  const allOwnedTickers = [...new Set((investments || []).map((i: any) => String(i?.ticker || '').toUpperCase()))].filter(Boolean);
   const mergedTickersForSearch = Array.from(new Set([...allOwnedTickers, ...POPULAR_TICKERS])).sort();
 
   useEffect(() => {
@@ -245,7 +255,7 @@ export default function FinanceApp() {
     const txQuery = query(collection(db, 'users', user.uid, 'transactions'));
     const unsubscribeTxs = onSnapshot(txQuery, (snapshot) => {
       const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      txs.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
       setTransactions(txs);
       setIsLoading(false);
     }, console.error);
@@ -263,7 +273,7 @@ export default function FinanceApp() {
     const salesQuery = query(collection(db, 'users', user.uid, 'salesHistory'));
     const unsubscribeSales = onSnapshot(salesQuery, (snapshot) => {
       const sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      sales.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+      sales.sort((a, b) => new Date(b.saleDate || 0).getTime() - new Date(a.saleDate || 0).getTime());
       setSalesHistory(sales);
     }, console.error);
 
@@ -281,8 +291,8 @@ export default function FinanceApp() {
   // ==========================================
 
   const Dashboard = () => {
-    const availableMonths = [...new Set(transactions.map(tx => {
-        const d = new Date(tx.date);
+    const availableMonths = [...new Set((transactions || []).map(tx => {
+        const d = new Date(tx?.date || '');
         if (isNaN(d.getTime())) return null;
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))].filter(Boolean).sort().reverse();
@@ -294,10 +304,10 @@ export default function FinanceApp() {
 
     const filteredTxs = viewMode === 'all' 
         ? transactions 
-        : transactions.filter(tx => (tx.date || '').startsWith(selectedMonth));
+        : transactions.filter(tx => String(tx?.date || '').startsWith(selectedMonth));
 
-    const incomes = filteredTxs.filter(tx => tx.type === 'income');
-    const expenses = filteredTxs.filter(tx => tx.type !== 'income');
+    const incomes = filteredTxs.filter(tx => String(tx?.type) === 'income');
+    const expenses = filteredTxs.filter(tx => String(tx?.type) !== 'income');
 
     const plannedIncomes = incomes.reduce((acc, curr) => acc + (parseFloat(curr.totalAmount) || 0), 0);
     const paidIncomes = incomes.filter(tx => tx.status === 'paid').reduce((acc, curr) => acc + (parseFloat(curr.totalAmount) || 0), 0);
@@ -701,7 +711,7 @@ export default function FinanceApp() {
             
             const instSplits = isSplit 
               ? splits.filter(s => s.name).map(s => ({
-                  name: s.name,
+                  name: String(s.name || ''),
                   amount: isRecurring ? (parseFloat(s.amount) || 0) : ((parseFloat(s.amount) || 0) / numPeriods),
                   paid: s.paid || false
                 }))
@@ -1171,16 +1181,16 @@ export default function FinanceApp() {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))].filter(Boolean).sort().reverse();
     
-    const availablePersons = [...new Set((transactions || []).flatMap(t => t.splits?.map((s: any) => s.name) || []))].filter(Boolean).sort();
+    const availablePersons = [...new Set((transactions || []).flatMap(t => t.splits?.map((s: any) => String(s?.name || '')) || []))].filter(Boolean).sort();
 
     const groupedInvoices: any = {};
     
     const filteredTxsForHistory = (transactions || []).filter(tx => {
       if (!tx?.date) return false;
-      if (filtersHist.month !== 'all' && filtersHist.month !== '' && !tx.date.startsWith(filtersHist.month)) return false;
-      if (filtersHist.type !== 'all' && tx.type !== filtersHist.type) return false;
+      if (filtersHist.month !== 'all' && filtersHist.month !== '' && !String(tx.date).startsWith(filtersHist.month)) return false;
+      if (filtersHist.type !== 'all' && String(tx.type) !== filtersHist.type) return false;
       if (filtersHist.person !== 'all') {
-        const hasPerson = tx.splits?.some((s: any) => s.name === filtersHist.person);
+        const hasPerson = tx.splits?.some((s: any) => String(s?.name) === filtersHist.person);
         if (!hasPerson) return false;
       }
       return true;
@@ -1477,133 +1487,6 @@ export default function FinanceApp() {
     );
   };
 
-  const SettingsTab = () => {
-    const [importMsg, setImportMsg] = useState({ text: '', type: '' });
-    const [isProcessing, setIsProcessing] = useState(false);
-
-    const handleExportJSON = () => {
-      const data = { transactions, cards, investments, salesHistory };
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", `financas_backup_${new Date().toISOString().split('T')[0]}.json`);
-      document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove();
-      setImportMsg({ text: 'Backup exportado com sucesso!', type: 'success' });
-    };
-
-    const handleImportJSON = async (event: any) => {
-      const file = event.target.files[0];
-      if (!file || !user) return;
-      setIsProcessing(true);
-      setImportMsg({ text: 'Restaurando backup...', type: 'info' });
-      
-      const reader = new FileReader();
-      reader.onload = async (e: any) => {
-        try {
-          const data = JSON.parse(e.target.result);
-          if (data.cards) for (const card of data.cards) await setDoc(doc(db, 'users', user.uid, 'cards', card.id), card);
-          if (data.transactions) for (const tx of data.transactions) await setDoc(doc(db, 'users', user.uid, 'transactions', tx.id), tx);
-          if (data.investments) for (const inv of data.investments) await setDoc(doc(db, 'users', user.uid, 'investments', inv.id), inv);
-          if (data.salesHistory) for (const sale of data.salesHistory) await setDoc(doc(db, 'users', user.uid, 'salesHistory', sale.id), sale);
-          setImportMsg({ text: 'Backup restaurado com sucesso!', type: 'success' });
-        } catch (err) { setImportMsg({ text: 'Erro ao importar.', type: 'error' }); } 
-        finally { setIsProcessing(false); event.target.value = ''; }
-      };
-      reader.readAsText(file);
-    };
-
-    const handleExportCSV = () => {
-      let csvContent = "ID;Tipo;Descricao;Data;ValorTotal;MetodoID;Status\n";
-      transactions.forEach(tx => {
-        const row = [tx.id, tx.type, (tx.desc || '').replace(/;/g, ''), tx.date, (parseFloat(tx.totalAmount)||0).toFixed(2), tx.methodId, tx.status];
-        csvContent += row.join(";") + "\n";
-      });
-      const dataStr = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csvContent);
-      const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", `planilha_lancamentos_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove();
-      setImportMsg({ text: 'Planilha CSV gerada!', type: 'success' });
-    };
-
-    const handleImportCSV = async (event: any) => {
-      const file = event.target.files[0];
-      if (!file || !user) return;
-      setIsProcessing(true);
-      setImportMsg({ text: 'Lendo planilha...', type: 'info' });
-
-      const reader = new FileReader();
-      reader.onload = async (e: any) => {
-        try {
-          const text = e.target.result;
-          const lines = text.split('\n');
-          let importCount = 0;
-          for(let i = 1; i < lines.length; i++) {
-            if(!lines[i].trim()) continue;
-            const cols = lines[i].split(';');
-            if(cols.length < 5) continue;
-            const id = cols[0].trim(), type = cols[1].trim(), desc = cols[2].trim(), date = cols[3].trim();
-            const val = parseFloat(cols[4].trim().replace(',', '.')) || 0;
-            const methodId = cols[5]?.trim() || 'pix';
-            const status = cols[6]?.trim() || 'pending';
-
-            if(id) await updateDoc(doc(db, 'users', user.uid, 'transactions', id), { type, desc, date, totalAmount: val, methodId, status });
-            else await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), { type, desc, date, totalAmount: val, myAmount: val, methodId, status, method: 'Via Planilha', createdAt: new Date().toISOString()});
-            importCount++;
-          }
-          setImportMsg({ text: `${importCount} lançamentos importados!`, type: 'success' });
-        } catch (err) { setImportMsg({ text: 'Erro ao ler a planilha.', type: 'error' }); } 
-        finally { setIsProcessing(false); event.target.value = ''; }
-      };
-      reader.readAsText(file);
-    };
-
-    return (
-      <div className="animate-fadeIn pb-8 max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Configurações e Dados</h2>
-        
-        {importMsg.text && (
-          <div className={`p-4 mb-6 rounded-lg text-sm font-medium ${importMsg.type === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : importMsg.type === 'error' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'}`}>
-            {importMsg.text}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-4">
-             <div className="flex items-center justify-between">
-                <div>
-                   <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">Minha Conta</h3>
-                   <p className="text-sm text-gray-600 dark:text-gray-400">{user?.email}</p>
-                </div>
-                <button onClick={handleLogout} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/50 px-4 py-2 rounded-lg font-medium transition-colors">Sair</button>
-             </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2"><Icons.Calendar /> Editar via Planilha (CSV)</h3>
-            <div className="flex flex-col md:flex-row gap-3 mt-4">
-              <button onClick={handleExportCSV} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors"><Icons.Download /> Baixar Planilha</button>
-              <label className={`flex-1 ${isProcessing ? 'bg-gray-400' : 'bg-white dark:bg-gray-700 border border-green-600 dark:border-green-500 text-green-700 dark:text-green-500 hover:bg-green-50 dark:hover:bg-gray-600 cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium inline-flex transition-colors`}>
-                <Icons.Upload /> {isProcessing ? 'Enviando...' : 'Importar Planilha'}
-                <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" disabled={isProcessing} />
-              </label>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2"><Icons.Cloud /> Backup do Sistema (JSON)</h3>
-            <div className="flex flex-col md:flex-row gap-3 mt-4">
-              <button onClick={handleExportJSON} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors"><Icons.Download /> Baixar Backup</button>
-              <label className={`flex-1 ${isProcessing ? 'bg-gray-400' : 'bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 dark:hover:bg-gray-600 text-white cursor-pointer'} px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium inline-flex transition-colors`}>
-                <Icons.Upload /> {isProcessing ? 'Enviando...' : 'Restaurar Backup'}
-                <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" disabled={isProcessing} />
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-gray-900 text-blue-600 font-bold">Carregando...</div>;
 
   if (!user) {
@@ -1631,15 +1514,15 @@ export default function FinanceApp() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Finanças Inteligentes</h1>
             <p className="text-blue-100 text-xs mt-1 flex items-center gap-1">
-              <Icons.Cloud /> Sincronizado
+              <Icons.Cloud size={16} /> Sincronizado
             </p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => setIsDarkMode(!isDarkMode)} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
-              {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+              {isDarkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
             </button>
             <button onClick={() => setActiveTab('settings')} title="Configurações e Backup" className={`p-2.5 rounded-full transition-colors ${activeTab === 'settings' ? 'bg-blue-800 dark:bg-gray-600 text-white' : 'bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white'}`}>
-              <Icons.Settings />
+              <Icons.Settings size={24} />
             </button>
           </div>
         </div>
@@ -1659,29 +1542,29 @@ export default function FinanceApp() {
         <div className="max-w-md mx-auto flex justify-between items-center px-1 py-1">
           
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center p-2 w-12 sm:w-14 transition-colors ${activeTab === 'dashboard' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
-            <Icons.Home /> <span className="text-[9px] font-medium mt-1">Início</span>
+            <Icons.Home size={20} /> <span className="text-[9px] font-medium mt-1">Início</span>
           </button>
 
           <button onClick={() => setActiveTab('cards')} className={`flex flex-col items-center p-2 w-12 sm:w-14 transition-colors ${activeTab === 'cards' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
-            <Icons.Wallet /> <span className="text-[9px] font-medium mt-1">Cartões</span>
+            <Icons.Wallet size={20} /> <span className="text-[9px] font-medium mt-1">Cartões</span>
           </button>
           
           <div className="relative -top-6">
             <button onClick={() => setActiveTab('add')} className={`flex items-center justify-center w-14 h-14 rounded-full shadow-lg text-white transition-transform ${activeTab === 'add' ? 'bg-blue-800 dark:bg-blue-500 scale-110' : 'bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500'}`}>
-              <Icons.Plus />
+              <Icons.Plus size={24} />
             </button>
           </div>
 
           <button onClick={() => setActiveTab('collections')} className={`flex flex-col items-center p-2 w-12 sm:w-14 transition-colors ${activeTab === 'collections' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
-            <Icons.Message /> <span className="text-[9px] font-medium mt-1">Cobrar</span>
+            <Icons.Message size={20} /> <span className="text-[9px] font-medium mt-1">Cobrar</span>
           </button>
 
           <button onClick={() => setActiveTab('investments')} className={`flex flex-col items-center p-2 w-12 sm:w-14 transition-colors ${activeTab === 'investments' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
-            <Icons.TrendingUp /> <span className="text-[9px] font-medium mt-1">Ativos</span>
+            <Icons.TrendingUp size={20} /> <span className="text-[9px] font-medium mt-1">Ativos</span>
           </button>
 
           <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center p-2 w-12 sm:w-14 transition-colors ${activeTab === 'history' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
-            <Icons.Calendar /> <span className="text-[9px] font-medium mt-1">Faturas</span>
+            <Icons.Calendar size={20} /> <span className="text-[9px] font-medium mt-1">Faturas</span>
           </button>
 
         </div>
