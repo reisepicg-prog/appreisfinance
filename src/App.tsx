@@ -43,10 +43,11 @@ const Icons = {
   TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
   Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>,
   ChevronDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
-  ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+  ChevronUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
+  Filter: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
 };
 
-// --- Funções de Formatação ---
+// --- Funções de Formatação (Máscaras e Exibição) ---
 const formatCurrencyInput = (value: number | string): string => {
   const digits = String(value).replace(/\D/g, '');
   if (!digits) return '';
@@ -71,16 +72,6 @@ const POPULAR_TICKERS = ["AAPL34", "ABEV3", "ALOS3", "ARZZ3", "ASAI3", "AZUL4", 
 const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClose: () => void; onApply: (val: number) => void }) => {
   const [display, setDisplay] = useState('0');
   const [history, setHistory] = useState('');
-
-  useEffect(() => {
-    if (isOpen) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
-    return () => { document.body.style.overflow = 'auto'; };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -110,37 +101,39 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
   const btnClass = "h-11 rounded-xl font-semibold text-lg flex items-center justify-center active:scale-95 transition-all select-none";
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl border border-gray-100">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1"><span>🧮</span> Calculadora</h3>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold px-2 py-1">✕</button>
+    <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto">
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl border border-gray-100">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1"><span>🧮</span> Calculadora</h3>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold px-2 py-1">✕</button>
+          </div>
+          <div className="bg-gray-100 rounded-xl p-3 mb-4 text-right">
+            <div className="text-xs text-gray-400 h-4 font-mono">{history}</div>
+            <div className="text-2xl font-bold text-gray-800 font-mono overflow-x-auto">{display}</div>
+          </div>
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            <button type="button" onClick={handleClear} className={`${btnClass} bg-red-100 text-red-600 hover:bg-red-200`}>C</button>
+            <button type="button" onClick={handleBackspace} className={`${btnClass} bg-gray-200 text-gray-700 hover:bg-gray-300`}>⌫</button>
+            <button type="button" onClick={() => handleOp('÷')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>÷</button>
+            <button type="button" onClick={() => handleOp('×')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>×</button>
+            <button type="button" onClick={() => handleNum('7')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>7</button>
+            <button type="button" onClick={() => handleNum('8')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>8</button>
+            <button type="button" onClick={() => handleNum('9')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>9</button>
+            <button type="button" onClick={() => handleOp('-')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>-</button>
+            <button type="button" onClick={() => handleNum('4')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>4</button>
+            <button type="button" onClick={() => handleNum('5')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>5</button>
+            <button type="button" onClick={() => handleNum('6')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>6</button>
+            <button type="button" onClick={() => handleOp('+')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>+</button>
+            <button type="button" onClick={() => handleNum('1')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>1</button>
+            <button type="button" onClick={() => handleNum('2')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>2</button>
+            <button type="button" onClick={() => handleNum('3')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>3</button>
+            <button type="button" onClick={handleCalculate} className={`${btnClass} row-span-2 bg-blue-600 text-white hover:bg-blue-700 h-[96px]`}>=</button>
+            <button type="button" onClick={() => handleNum('0')} className={`${btnClass} col-span-2 bg-gray-100 hover:bg-gray-200`}>0</button>
+            <button type="button" onClick={() => handleNum(',')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>,</button>
+          </div>
+          <button type="button" onClick={handleApply} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold shadow-md text-sm">Aplicar Valor</button>
         </div>
-        <div className="bg-gray-100 rounded-xl p-3 mb-4 text-right">
-          <div className="text-xs text-gray-400 h-4 font-mono">{history}</div>
-          <div className="text-2xl font-bold text-gray-800 font-mono overflow-x-auto">{display}</div>
-        </div>
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          <button type="button" onClick={handleClear} className={`${btnClass} bg-red-100 text-red-600 hover:bg-red-200`}>C</button>
-          <button type="button" onClick={handleBackspace} className={`${btnClass} bg-gray-200 text-gray-700 hover:bg-gray-300`}>⌫</button>
-          <button type="button" onClick={() => handleOp('÷')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>÷</button>
-          <button type="button" onClick={() => handleOp('×')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>×</button>
-          <button type="button" onClick={() => handleNum('7')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>7</button>
-          <button type="button" onClick={() => handleNum('8')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>8</button>
-          <button type="button" onClick={() => handleNum('9')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>9</button>
-          <button type="button" onClick={() => handleOp('-')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>-</button>
-          <button type="button" onClick={() => handleNum('4')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>4</button>
-          <button type="button" onClick={() => handleNum('5')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>5</button>
-          <button type="button" onClick={() => handleNum('6')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>6</button>
-          <button type="button" onClick={() => handleOp('+')} className={`${btnClass} bg-blue-100 text-blue-600 hover:bg-blue-200`}>+</button>
-          <button type="button" onClick={() => handleNum('1')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>1</button>
-          <button type="button" onClick={() => handleNum('2')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>2</button>
-          <button type="button" onClick={() => handleNum('3')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>3</button>
-          <button type="button" onClick={handleCalculate} className={`${btnClass} row-span-2 bg-blue-600 text-white hover:bg-blue-700 h-[96px]`}>=</button>
-          <button type="button" onClick={() => handleNum('0')} className={`${btnClass} col-span-2 bg-gray-100 hover:bg-gray-200`}>0</button>
-          <button type="button" onClick={() => handleNum(',')} className={`${btnClass} bg-gray-100 hover:bg-gray-200`}>,</button>
-        </div>
-        <button type="button" onClick={handleApply} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold shadow-md text-sm">Aplicar Valor</button>
       </div>
     </div>
   );
@@ -224,10 +217,6 @@ export default function FinanceApp() {
     try { await deleteDoc(doc(db, 'users', user.uid, 'transactions', id)); } 
     catch(e) { console.error(e) }
   };
-
-  // ==========================================
-  // COMPONENTES DAS ABAS
-  // ==========================================
 
   const Dashboard = () => {
     const availableMonths = [...new Set(transactions.map(tx => {
@@ -989,7 +978,13 @@ export default function FinanceApp() {
       }
     });
 
-    const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => b.monthYear.localeCompare(a.monthYear));
+    // Ordenação Cronológica das Faturas (Ascendente - Antigas/Atuais primeiro)
+    const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => a.monthYear.localeCompare(b.monthYear));
+    
+    // Ordenação dos lançamentos individuais dentro de cada fatura (Por Data)
+    invoicesArray.forEach((inv: any) => {
+        inv.transactions.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    });
 
     const handlePayInvoice = async (invoice: any) => {
       if (!user) return;
@@ -1017,16 +1012,6 @@ export default function FinanceApp() {
       setEditForm({ desc: tx.desc, totalAmount: tx.totalAmount, date: tx.date });
       setUpdateScope('single');
     };
-
-    useEffect(() => {
-      if (editingTx) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = 'auto';
-      }
-      return () => { document.body.style.overflow = 'auto'; };
-    }, [editingTx]);
 
     const handleSaveEdit = async (e: any) => {
       e.preventDefault();
@@ -1186,48 +1171,50 @@ export default function FinanceApp() {
         )}
 
         {editingTx && (
-          <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">Editar Lançamento</h3>
-              <form onSubmit={handleSaveEdit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Descrição</label>
-                  <input type="text" value={editForm.desc} onChange={e => setEditForm({...editForm, desc: e.target.value})} className="w-full p-2 border rounded-lg" required />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Valor Total (R$)</label>
-                  <input type="number" step="0.01" value={editForm.totalAmount} onChange={e => setEditForm({...editForm, totalAmount: e.target.value})} className="w-full p-2 border rounded-lg" required />
-                </div>
-                {updateScope === 'single' && (
+          <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto animate-fadeIn">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Editar Lançamento</h3>
+                <form onSubmit={handleSaveEdit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Data</label>
-                    <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full p-2 border rounded-lg" required />
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Descrição</label>
+                    <input type="text" value={editForm.desc} onChange={e => setEditForm({...editForm, desc: e.target.value})} className="w-full p-2 border rounded-lg" required />
                   </div>
-                )}
-                
-                {editingTx.groupId && (
-                  <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                    <label className="block text-xs font-bold text-blue-800 mb-2">Este é um lançamento recorrente. Deseja alterar:</label>
-                    <div className="space-y-2 text-sm text-gray-700">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" value="single" checked={updateScope === 'single'} onChange={() => setUpdateScope('single')} className="text-blue-600" />
-                        Apenas este mês
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" value="future" checked={updateScope === 'future'} onChange={() => setUpdateScope('future')} className="text-blue-600" />
-                        Este e os próximos meses pendentes
-                      </label>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Valor Total (R$)</label>
+                    <input type="number" step="0.01" value={editForm.totalAmount} onChange={e => setEditForm({...editForm, totalAmount: e.target.value})} className="w-full p-2 border rounded-lg" required />
+                  </div>
+                  {updateScope === 'single' && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Data</label>
+                      <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full p-2 border rounded-lg" required />
                     </div>
+                  )}
+                  
+                  {editingTx.groupId && (
+                    <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                      <label className="block text-xs font-bold text-blue-800 mb-2">Este é um lançamento recorrente. Deseja alterar:</label>
+                      <div className="space-y-2 text-sm text-gray-700">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" value="single" checked={updateScope === 'single'} onChange={() => setUpdateScope('single')} className="text-blue-600" />
+                          Apenas este mês
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" value="future" checked={updateScope === 'future'} onChange={() => setUpdateScope('future')} className="text-blue-600" />
+                          Este e os próximos meses pendentes
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => setEditingTx(null)} className="flex-1 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium">Cancelar</button>
+                    <button type="submit" disabled={isUpdating} className="flex-1 py-2 text-white bg-blue-600 rounded-lg font-medium disabled:opacity-50">
+                      {isUpdating ? 'Salvando...' : 'Salvar'}
+                    </button>
                   </div>
-                )}
-                
-                <div className="flex gap-2 pt-2">
-                  <button type="button" onClick={() => setEditingTx(null)} className="flex-1 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium">Cancelar</button>
-                  <button type="submit" disabled={isUpdating} className="flex-1 py-2 text-white bg-blue-600 rounded-lg font-medium disabled:opacity-50">
-                    {isUpdating ? 'Salvando...' : 'Salvar'}
-                  </button>
-                </div>
-              </form>
+                </form>
+              </div>
             </div>
           </div>
         )}
@@ -1252,6 +1239,8 @@ export default function FinanceApp() {
 
     // --- Inputs Add/Edit Ativo ---
     const [tickerInput, setTickerInput] = useState('');
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
     const [quantityInput, setQuantityInput] = useState('');
     const [displayUnitPrice, setDisplayUnitPrice] = useState('');
     const [brokerInput, setBrokerInput] = useState('');
@@ -1263,16 +1252,22 @@ export default function FinanceApp() {
     const [displaySellFees, setDisplaySellFees] = useState('');
     const [sellDate, setSellDate] = useState(new Date().toISOString().substring(0, 10));
 
-    // Desativa rolagem do fundo quando abrir modais
+    // Efeito para busca dinâmica de Tickers
     useEffect(() => {
-      if (isAddOpen || editingAsset || sellingAsset) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = 'auto';
-      }
-      return () => { document.body.style.overflow = 'auto'; };
-    }, [isAddOpen, editingAsset, sellingAsset]);
+      const timeout = setTimeout(async () => {
+        if (tickerInput.length >= 2) {
+          setIsSearching(true);
+          try {
+            const res = await fetch(`https://brapi.dev/api/quote/list?search=${tickerInput}&limit=5`);
+            const data = await res.json();
+            if (data.stocks) setSuggestions(data.stocks);
+            else setSuggestions([]);
+          } catch (err) { setSuggestions([]); } 
+          finally { setIsSearching(false); }
+        } else { setSuggestions([]); }
+      }, 500);
+      return () => clearTimeout(timeout);
+    }, [tickerInput]);
 
     // Agrupamento e Filtragem por Corretora
     const investmentsToRender = filterBroker === 'Geral' ? investments : investments.filter(inv => inv.broker === filterBroker);
@@ -1290,7 +1285,7 @@ export default function FinanceApp() {
       return acc;
     }, {})).map((g: any) => {
       g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
-      g.lots.sort((a: any, b: any) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime());
+      g.lots.sort((a: any, b: any) => new Date(a.buyDate).getTime() - new Date(b.buyDate).getTime());
       return g;
     });
 
@@ -1305,7 +1300,7 @@ export default function FinanceApp() {
       const now = Date.now();
 
       if (!force && cached.timestamp && (now - cached.timestamp < CACHE_TTL)) {
-         setPrices(cached.prices);
+         setPrices(cached.prices || {});
          setLastSync(cached.lastSync + ' (Cache)');
          return;
       }
@@ -1314,7 +1309,7 @@ export default function FinanceApp() {
       setLastSync('Atualizando...');
       try {
         const res = await fetch(`https://brapi.dev/api/quote/${tickers}`);
-        if (res.status === 429) throw new Error('rate_limit');
+        if (!res.ok) throw new Error(res.status === 429 ? 'rate_limit' : 'api_error');
         const data = await res.json();
         
         if (data && data.results) {
@@ -1324,22 +1319,25 @@ export default function FinanceApp() {
           const syncTime = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
           setLastSync(syncTime);
           localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, prices: map, lastSync: syncTime }));
+        } else {
+           throw new Error('invalid_data');
         }
       } catch (err: any) { 
+        console.error("Brapi fetch error:", err);
         if (cached.prices) {
            setPrices(cached.prices);
            setLastSync(cached.lastSync + (err.message === 'rate_limit' ? ' (Limite da API)' : ' (Offline)'));
         } else {
-           setLastSync(err.message === 'rate_limit' ? "Erro (Limite de consultas da API)" : "Erro de conexão");
+           setLastSync(err.message === 'rate_limit' ? "Erro (Limite de consultas da API)" : "Erro de conexão com B3");
         }
       } finally { setIsRefreshing(false); }
     };
 
     useEffect(() => {
-      if (investments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
+      if (groupedInvestments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
         refreshQuotes();
       }
-    }, [investments.length]);
+    }, [investments.length]); // Somente disparado quando ocorrem inserções/exclusões reais
 
     const handleSaveAsset = async (e: any) => {
       e.preventDefault();
@@ -1376,7 +1374,7 @@ export default function FinanceApp() {
 
         await addDoc(collection(db, 'users', user.uid, 'investments'), newAsset);
         setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(''); setIsAddOpen(false); setAssetError('');
-        refreshQuotes(true);
+        refreshQuotes(true); // Força atualização de preços ao cadastrar novo
       } catch (err) { 
         console.error(err); setAssetError('Erro ao salvar o ativo.');
       } finally { setIsSavingAsset(false); }
@@ -1517,7 +1515,7 @@ export default function FinanceApp() {
               <div 
                 key={c.name} 
                 onClick={() => setFilterBroker(c.name)} 
-                className={`min-w-[260px] p-5 rounded-3xl snap-start cursor-pointer transition-all duration-300 ease-in-out ${filterBroker === c.name ? 'bg-gradient-to-br from-blue-900 to-indigo-900 text-white shadow-xl scale-100' : 'bg-white border border-gray-200 text-gray-800 scale-95 opacity-70 hover:opacity-100'}`}
+                className={`min-w-[260px] flex-shrink-0 p-5 rounded-3xl snap-start cursor-pointer transition-all duration-300 ease-in-out ${filterBroker === c.name ? 'bg-gradient-to-br from-blue-900 to-indigo-900 text-white shadow-xl scale-100' : 'bg-white border border-gray-200 text-gray-800 scale-95 opacity-70 hover:opacity-100'}`}
               >
                 <span className={`text-xs font-bold uppercase tracking-wider ${filterBroker === c.name ? 'text-blue-200' : 'text-gray-400'}`}>
                   {c.name === 'Geral' ? 'Patrimônio B3' : `Corretora: ${c.name}`}
@@ -1540,7 +1538,7 @@ export default function FinanceApp() {
           </div>
           <p className="text-[10px] text-gray-400 text-right flex items-center justify-end gap-1 mt-1">
             Última atualização: {lastSync} 
-            <button onClick={() => refreshQuotes(true)} className={`p-1 bg-gray-100 rounded-md hover:bg-gray-200 text-gray-600 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}><Icons.Refresh /></button>
+            <button onClick={() => refreshQuotes(true)} className={`p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 text-gray-600 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}><Icons.Refresh /></button>
           </p>
         </div>
 
@@ -1637,93 +1635,108 @@ export default function FinanceApp() {
         )}
 
         {(isAddOpen || editingAsset) && (
-          <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 overflow-visible">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-gray-800">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
-                <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
-              </div>
-              
-              {assetError && <div className="p-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg">{assetError}</div>}
-              
-              <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
+          <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-gray-800">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
+                  <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
+                </div>
                 
-                <div>
-                  <input type="text" placeholder="Ticker (Ex: PETR4, MXRF11)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500" required disabled={!!editingAsset} list="ticker-suggestions" />
-                  <datalist id="ticker-suggestions">
-                    {mergedTickersForSearch.map(t => <option key={t} value={t} />)}
-                  </datalist>
-                </div>
+                {assetError && <div className="p-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg">{assetError}</div>}
+                
+                <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
+                  
+                  <div className="relative">
+                    <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500" required disabled={!!editingAsset} list="ticker-suggestions" />
+                    <datalist id="ticker-suggestions">
+                      {mergedTickersForSearch.map(t => <option key={t} value={t} />)}
+                    </datalist>
+                    {isSearching && !editingAsset && <span className="absolute right-3 top-3 text-xs text-gray-400">Buscando...</span>}
+                    {suggestions.length > 0 && !editingAsset && (
+                      <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
+                        {suggestions.map(s => (
+                          <li key={s.stock} onClick={() => { setTickerInput(s.stock); setSuggestions([]); }} className="p-2 border-b border-gray-50 text-xs cursor-pointer hover:bg-blue-50 flex flex-col">
+                            <span className="font-bold text-gray-800">{s.stock}</span>
+                            <span className="text-gray-500 truncate">{s.name}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1">Quantidade</label>
-                     <input type="number" step="any" placeholder="Qtd" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                       <label className="block text-xs font-medium text-gray-500 mb-1">Quantidade</label>
+                       <input type="number" step="any" placeholder="Qtd" value={quantityInput} onChange={(e) => setQuantityInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
+                    <div>
+                       <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
+                       <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
                   </div>
-                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
-                     <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                       <label className="block text-xs font-medium text-gray-500 mb-1">Corretora</label>
+                       <input type="text" placeholder="Ex: NuInvest" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" list="broker-suggestions" />
+                       <datalist id="broker-suggestions">
+                         {allBrokers.map(b => <option key={b} value={b} />)}
+                       </datalist>
+                    </div>
+                    <div>
+                       <label className="block text-xs font-medium text-gray-500 mb-1">Data da Compra</label>
+                       <input type="date" value={buyDateInput} onChange={(e) => setBuyDateInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1">Corretora</label>
-                     <input type="text" placeholder="Ex: NuInvest" value={brokerInput} onChange={(e) => setBrokerInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" list="broker-suggestions" />
-                     <datalist id="broker-suggestions">
-                       {allBrokers.map(b => <option key={b} value={b} />)}
-                     </datalist>
-                  </div>
-                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1">Data da Compra</label>
-                     <input type="date" value={buyDateInput} onChange={(e) => setBuyDateInput(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
-                  </div>
-                </div>
-                <button type="submit" disabled={isSavingAsset} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-2 disabled:opacity-50 transition-colors shadow-md">
-                   {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Compra' : 'Salvar na Carteira')}
-                </button>
-              </form>
+                  <button type="submit" disabled={isSavingAsset} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-2 disabled:opacity-50 transition-colors shadow-md">
+                     {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Compra' : 'Salvar na Carteira')}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         )}
 
         {sellingAsset && (
-          <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
-              <div className="flex justify-between items-center">
-                 <h3 className="font-bold text-gray-800">Registrar Venda: {sellingAsset.ticker}</h3>
-                 <button onClick={() => setSellingAsset(null)} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
-              </div>
-              
-              <div className="bg-gray-50 p-3 rounded-xl text-xs text-gray-500 border border-gray-100">
-                Disponível em carteira: <b className="text-gray-800">{sellingAsset.totalQuantity} cotas</b><br/>
-                PM Global: <b className="text-gray-800">R$ {formatBRL(sellingAsset.averagePM)}</b>
-              </div>
+          <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center">
+                   <h3 className="font-bold text-gray-800">Registrar Venda: {sellingAsset.ticker}</h3>
+                   <button onClick={() => setSellingAsset(null)} className="text-gray-400 hover:text-gray-800 font-bold px-2 py-1">✕</button>
+                </div>
+                
+                <div className="bg-gray-50 p-3 rounded-xl text-xs text-gray-500 border border-gray-100">
+                  Disponível em carteira: <b className="text-gray-800">{sellingAsset.totalQuantity} cotas</b><br/>
+                  PM Global: <b className="text-gray-800">R$ {formatBRL(sellingAsset.averagePM)}</b>
+                </div>
 
-              <form onSubmit={handleConfirmSale} className="space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Qtd. a Vender</label>
-                    <input type="number" step="any" max={sellingAsset.totalQuantity} placeholder={`Max: ${sellingAsset.totalQuantity}`} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                <form onSubmit={handleConfirmSale} className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Qtd. a Vender</label>
+                      <input type="number" step="any" max={sellingAsset.totalQuantity} placeholder={`Max: ${sellingAsset.totalQuantity}`} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
+                      <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" required />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Preço Unitário</label>
-                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" required />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Taxas B3 / Custos</label>
+                      <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Data da Venda</label>
+                      <input type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Taxas B3 / Custos</label>
-                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Data da Venda</label>
-                    <input type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" required />
-                  </div>
-                </div>
-                <button type="submit" className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl mt-2 transition-colors shadow-md">
-                  Confirmar Venda & Apurar IR
-                </button>
-              </form>
+                  <button type="submit" className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl mt-2 transition-colors shadow-md">
+                    Confirmar Venda & Apurar IR
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         )}
