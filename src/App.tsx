@@ -1454,7 +1454,7 @@ export default function FinanceApp() {
 
       const saleRecord = {
         ticker: sellingAsset.ticker, type: sellingAsset.type, broker: 'Múltiplas/Calculado',
-        buyDate: 'Preço Médio Global', saleDate, quantitySold: qtyToSell, unitSalePrice: price,
+        buyDate: 'Preço Médio Global', saleDate: sellDate, quantitySold: qtyToSell, unitSalePrice: price,
         unitCostBasis: sellingAsset.averagePM, totalSaleAmount: totalSaleGross, fees,
         netProfit, isDayTrade, taxPayable, taxRule, createdAt: new Date().toISOString()
       };
