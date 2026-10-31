@@ -1639,8 +1639,9 @@ export default function FinanceApp() {
         )}
 
         {(isAddOpen || editingAsset) && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-start sm:items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 w-full max-w-sm max-h-[calc(100vh-2rem)] min-h-0 rounded-3xl p-5 shadow-2xl space-y-3 overflow-y-auto overscroll-contain border border-gray-100 dark:border-gray-700" style={{ maxHeight: 'calc(100dvh - 2rem)', WebkitOverflowScrolling: 'touch' }}>
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto overscroll-contain p-2 sm:p-4 animate-fadeIn" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+            <div className="min-h-full flex items-start sm:items-center justify-center">
+              <div className="bg-white dark:bg-gray-800 w-full max-w-sm my-2 sm:my-4 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-2 border border-gray-100 dark:border-gray-700">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
                 <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
@@ -1648,7 +1649,7 @@ export default function FinanceApp() {
               
               {assetError && <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded-lg">{assetError}</div>}
               
-              <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
+              <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-2 text-sm">
                 
                 <div className="relative">
                   <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required disabled={!!editingAsset} list="ticker-suggestions" />
@@ -1684,6 +1685,7 @@ export default function FinanceApp() {
                    {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Compra' : 'Salvar na Carteira')}
                 </button>
               </form>
+              </div>
             </div>
           </div>
         )}
