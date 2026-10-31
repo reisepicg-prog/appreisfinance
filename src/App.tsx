@@ -1728,6 +1728,14 @@ export default function FinanceApp() {
     const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '' });
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
+    const [payingInvoice, setPayingInvoice] = useState<any>(null);
+    const getLocalDateString = () => {
+      const date = new Date();
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+    const [invoicePaymentDate, setInvoicePaymentDate] = useState(() => getLocalDateString());
+    const [markThirdPartiesReceived, setMarkThirdPartiesReceived] = useState(false);
+    const [isPayingInvoice, setIsPayingInvoice] = useState(false);
 
     const filterMonth = filtersHist.month;
     const setFilterMonth = (month: string) => setFiltersHist(prev => ({ ...prev, month }));
@@ -1799,16 +1807,37 @@ export default function FinanceApp() {
         });
     });
 
-    const handlePayInvoice = async (invoice: any) => {
-      if (!user) return;
+    const handlePayInvoice = (invoice: any) => {
+      setInvoicePaymentDate(getLocalDateString());
+      setMarkThirdPartiesReceived(false);
+      setPayingInvoice(invoice);
+    };
+
+    const handleConfirmPayInvoice = async (e: any) => {
+      e.preventDefault();
+      if (!user || !payingInvoice || !invoicePaymentDate) return;
+      setIsPayingInvoice(true);
       try {
-        const updatePromises = invoice.transactions
-          .filter((tx: any) => tx.status !== 'paid')
-          .map((tx: any) => updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), { status: 'paid' }));
-        
+        const updatePromises = payingInvoice.transactions.map((tx: any) => {
+          const changes: any = {};
+          if (tx.status !== 'paid') {
+            changes.status = 'paid';
+            changes.paymentDate = invoicePaymentDate;
+          }
+          if (markThirdPartiesReceived && tx.splits?.length) {
+            changes.splits = tx.splits.map((split: any) => split?.name ? { ...split, paid: true } : split);
+          }
+          return Object.keys(changes).length
+            ? updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), changes)
+            : Promise.resolve();
+        });
+
         await Promise.all(updatePromises);
+        setPayingInvoice(null);
       } catch (err) {
         console.error("Erro ao pagar fatura", err);
+      } finally {
+        setIsPayingInvoice(false);
       }
     };
 
@@ -1816,7 +1845,10 @@ export default function FinanceApp() {
       if (!user) return;
       try {
         const newStatus = tx.status === 'paid' ? 'pending' : 'paid';
-        await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), { status: newStatus });
+        await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), {
+          status: newStatus,
+          paymentDate: newStatus === 'paid' ? getLocalDateString() : ''
+        });
       } catch (err) { console.error(err); }
     };
 
@@ -1950,6 +1982,9 @@ export default function FinanceApp() {
                                 {tx.type === 'income' ? 'Recebido em: ' : 'Compra: '} 
                                 {tx.purchaseDate ? new Date(tx.purchaseDate).toLocaleDateString('pt-BR') : tx.date ? new Date(tx.date).toLocaleDateString('pt-BR') : '-'}
                               </p>
+                              {tx.status === 'paid' && tx.paymentDate && (
+                                <p className="text-[10px] text-green-600 dark:text-green-400">Efetivado em: {new Date(`${tx.paymentDate}T12:00:00`).toLocaleDateString('pt-BR')}</p>
+                              )}
                             </div>
                             <div className="text-right">
                               <p className={`text-sm ${tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-gray-800 dark:text-gray-200'}`}>
@@ -2010,6 +2045,34 @@ export default function FinanceApp() {
                 );
               })
             )}
+          </div>
+        )}
+
+        {payingInvoice && (
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[10000] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 border border-gray-100 dark:border-gray-700">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Pagar fatura</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{payingInvoice.methodName} • {payingInvoice.dateLabel}</p>
+              </div>
+              <form onSubmit={handleConfirmPayInvoice} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Data do pagamento</label>
+                  <input type="date" value={invoicePaymentDate} onChange={e => setInvoicePaymentDate(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
+                </div>
+                <label className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                  <input type="checkbox" checked={markThirdPartiesReceived} onChange={e => setMarkThirdPartiesReceived(e.target.checked)} className="mt-0.5 text-blue-600 rounded" />
+                  <span>Também marcar todos os valores de terceiros desta fatura como recebidos.</span>
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Esta opção atualiza as cobranças individuais sem alterar a data nem o status de outras faturas.</p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setPayingInvoice(null)} className="flex-1 py-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg font-medium">Cancelar</button>
+                  <button type="submit" disabled={isPayingInvoice} className="flex-1 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg font-medium disabled:opacity-50">
+                    {isPayingInvoice ? 'Salvando...' : 'Confirmar pagamento'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
