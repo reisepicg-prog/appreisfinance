@@ -213,14 +213,7 @@ export default function FinanceApp() {
   }, [isDarkMode]);
 
   const toggleDarkMode = () => {
-    const nextThemeIsDark = !document.documentElement.classList.contains('dark');
-    const theme = nextThemeIsDark ? 'dark' : 'light';
-    setIsDarkMode(nextThemeIsDark);
-    document.documentElement.classList.toggle('dark', nextThemeIsDark);
-    document.body.classList.toggle('dark', nextThemeIsDark);
-    document.documentElement.style.colorScheme = theme;
-    document.body.style.colorScheme = theme;
-    localStorage.setItem('theme', theme);
+    setIsDarkMode(current => !current);
   };
 
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
@@ -1640,9 +1633,9 @@ export default function FinanceApp() {
         )}
 
         {(isAddOpen || editingAsset) && createPortal(
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto overscroll-contain p-2 sm:p-4 animate-fadeIn" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
-            <div className="min-h-full flex items-start sm:items-center justify-center">
-              <div className="bg-white dark:bg-gray-800 w-full max-w-sm my-2 sm:my-4 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-2 border border-gray-100 dark:border-gray-700">
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+              <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain rounded-3xl p-4 sm:p-5 shadow-2xl space-y-2 border border-gray-100 dark:border-gray-700">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
                 <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
