@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
@@ -203,14 +204,17 @@ export default function FinanceApp() {
   });
   
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    const theme = isDarkMode ? 'dark' : 'light';
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    document.body.classList.toggle('dark', isDarkMode);
+    document.documentElement.style.colorScheme = theme;
+    document.body.style.colorScheme = theme;
+    localStorage.setItem('theme', theme);
   }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(current => !current);
+  };
 
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
@@ -949,15 +953,7 @@ export default function FinanceApp() {
 
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
-    const [myPixKey, setMyPixKey] = useState(() => {
-       if (typeof window !== 'undefined') return localStorage.getItem('myPixKey') || '';
-       return '';
-    });
-
-    const handlePixKeyChange = (val: string) => {
-       setMyPixKey(val);
-       localStorage.setItem('myPixKey', val);
-    };
+    const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
 
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
         if (!tx?.date) return '';
@@ -966,15 +962,22 @@ export default function FinanceApp() {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))).filter(m => m !== '').sort() as string[];
 
-    const today = new Date();
-    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    
-    const [selectedMonth, setSelectedMonth] = useState(
-        availableMonths.includes(currentMonthStr) ? currentMonthStr : (availableMonths[availableMonths.length - 1] || currentMonthStr)
-    );
-    
-    const [filterPerson, setFilterPerson] = useState('all');
-    const [filterStatus, setFilterStatus] = useState('all');
+    const defaultCollectionsMonth = availableMonths.includes(currentMonthStr)
+      ? currentMonthStr
+      : (availableMonths[availableMonths.length - 1] || currentMonthStr);
+
+    const selectedMonth = filtersColl.month;
+    const setSelectedMonth = (month: string) => setFiltersColl(prev => ({ ...prev, month }));
+    const filterPerson = filtersColl.person;
+    const setFilterPerson = (person: string) => setFiltersColl(prev => ({ ...prev, person }));
+    const filterStatus = filtersColl.status;
+    const setFilterStatus = (status: string) => setFiltersColl(prev => ({ ...prev, status }));
+
+    useEffect(() => {
+      if (filtersColl.month === currentMonthStr && defaultCollectionsMonth !== currentMonthStr) {
+        setFiltersColl(prev => prev.month === currentMonthStr ? { ...prev, month: defaultCollectionsMonth } : prev);
+      }
+    }, [filtersColl.month, currentMonthStr, defaultCollectionsMonth]);
 
     const debtsByPerson: any = {};
     
@@ -1083,7 +1086,7 @@ export default function FinanceApp() {
       const total = unpaidItems.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
       
       if (!myPixKey) {
-         alert("Por favor, preencha sua Chave Pix no topo da tela para gerar o QR Code.");
+         alert("Configure uma Chave Pix Padrão na aba Cartões para gerar o QR Code.");
          return;
       }
       
@@ -1097,16 +1100,12 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Fechamento e Cobranças</h2>
-          {(filtersColl.month !== currentMonthStr || filtersColl.person !== 'all' || filtersColl.status !== 'all') && (
-            <button onClick={() => setFiltersColl({ month: currentMonthStr, person: 'all', status: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          {(filtersColl.month !== defaultCollectionsMonth || filtersColl.person !== 'all' || filtersColl.status !== 'all') && (
+            <button onClick={() => setFiltersColl({ month: defaultCollectionsMonth, person: 'all', status: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="md:col-span-3 mb-2">
-             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Sua Chave Pix para Recebimento (Fica salva)</label>
-             <input type="text" value={myPixKey} onChange={(e) => handlePixKeyChange(e.target.value)} placeholder="CPF, Celular, E-mail..." className="w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 py-2 px-3 rounded-lg text-sm focus:outline-none" />
-          </div>
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Mês</label>
             <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1633,9 +1632,10 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {(isAddOpen || editingAsset) && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 overflow-visible border border-gray-100 dark:border-gray-700">
+        {(isAddOpen || editingAsset) && createPortal(
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+              <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain rounded-3xl p-4 sm:p-5 shadow-2xl space-y-2 border border-gray-100 dark:border-gray-700">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
                 <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
@@ -1643,7 +1643,7 @@ export default function FinanceApp() {
               
               {assetError && <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded-lg">{assetError}</div>}
               
-              <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-3 text-sm">
+              <form onSubmit={editingAsset ? handleSaveEditAsset : handleSaveAsset} className="space-y-2 text-sm">
                 
                 <div className="relative">
                   <input type="text" placeholder="Buscar ativo (Ex: Itau, VALE3)" value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required disabled={!!editingAsset} list="ticker-suggestions" />
@@ -1679,8 +1679,10 @@ export default function FinanceApp() {
                    {isSavingAsset ? 'Salvando...' : (editingAsset ? 'Atualizar Compra' : 'Salvar na Carteira')}
                 </button>
               </form>
+              </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {sellingAsset && (
@@ -1733,10 +1735,21 @@ export default function FinanceApp() {
     const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '' });
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
+    const [payingInvoice, setPayingInvoice] = useState<any>(null);
+    const getLocalDateString = () => {
+      const date = new Date();
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+    const [invoicePaymentDate, setInvoicePaymentDate] = useState(() => getLocalDateString());
+    const [markThirdPartiesReceived, setMarkThirdPartiesReceived] = useState(false);
+    const [isPayingInvoice, setIsPayingInvoice] = useState(false);
 
-    const [filterMonth, setFilterMonth] = useState('all');
-    const [filterType, setFilterType] = useState('all');
-    const [filterPerson, setFilterPerson] = useState('all');
+    const filterMonth = filtersHist.month;
+    const setFilterMonth = (month: string) => setFiltersHist(prev => ({ ...prev, month }));
+    const filterType = filtersHist.type;
+    const setFilterType = (type: string) => setFiltersHist(prev => ({ ...prev, type }));
+    const filterPerson = filtersHist.person;
+    const setFilterPerson = (person: string) => setFiltersHist(prev => ({ ...prev, person }));
 
     const availableMonths = Array.from(new Set((transactions || []).map(t => {
       if (!t?.date) return '';
@@ -1801,16 +1814,37 @@ export default function FinanceApp() {
         });
     });
 
-    const handlePayInvoice = async (invoice: any) => {
-      if (!user) return;
+    const handlePayInvoice = (invoice: any) => {
+      setInvoicePaymentDate(getLocalDateString());
+      setMarkThirdPartiesReceived(false);
+      setPayingInvoice(invoice);
+    };
+
+    const handleConfirmPayInvoice = async (e: any) => {
+      e.preventDefault();
+      if (!user || !payingInvoice || !invoicePaymentDate) return;
+      setIsPayingInvoice(true);
       try {
-        const updatePromises = invoice.transactions
-          .filter((tx: any) => tx.status !== 'paid')
-          .map((tx: any) => updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), { status: 'paid' }));
-        
+        const updatePromises = payingInvoice.transactions.map((tx: any) => {
+          const changes: any = {};
+          if (tx.status !== 'paid') {
+            changes.status = 'paid';
+            changes.paymentDate = invoicePaymentDate;
+          }
+          if (markThirdPartiesReceived && tx.splits?.length) {
+            changes.splits = tx.splits.map((split: any) => split?.name ? { ...split, paid: true } : split);
+          }
+          return Object.keys(changes).length
+            ? updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), changes)
+            : Promise.resolve();
+        });
+
         await Promise.all(updatePromises);
+        setPayingInvoice(null);
       } catch (err) {
         console.error("Erro ao pagar fatura", err);
+      } finally {
+        setIsPayingInvoice(false);
       }
     };
 
@@ -1818,7 +1852,10 @@ export default function FinanceApp() {
       if (!user) return;
       try {
         const newStatus = tx.status === 'paid' ? 'pending' : 'paid';
-        await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), { status: newStatus });
+        await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), {
+          status: newStatus,
+          paymentDate: newStatus === 'paid' ? getLocalDateString() : ''
+        });
       } catch (err) { console.error(err); }
     };
 
@@ -1874,8 +1911,8 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
-          {(filterMonth !== 'all' || filterType !== 'all' || filterPerson !== 'all') && (
-            <button onClick={() => {setFilterMonth('all'); setFilterType('all'); setFilterPerson('all');}} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all') && (
+            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
@@ -1952,6 +1989,9 @@ export default function FinanceApp() {
                                 {tx.type === 'income' ? 'Recebido em: ' : 'Compra: '} 
                                 {tx.purchaseDate ? new Date(tx.purchaseDate).toLocaleDateString('pt-BR') : tx.date ? new Date(tx.date).toLocaleDateString('pt-BR') : '-'}
                               </p>
+                              {tx.status === 'paid' && tx.paymentDate && (
+                                <p className="text-[10px] text-green-600 dark:text-green-400">Efetivado em: {new Date(`${tx.paymentDate}T12:00:00`).toLocaleDateString('pt-BR')}</p>
+                              )}
                             </div>
                             <div className="text-right">
                               <p className={`text-sm ${tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-gray-800 dark:text-gray-200'}`}>
@@ -2012,6 +2052,34 @@ export default function FinanceApp() {
                 );
               })
             )}
+          </div>
+        )}
+
+        {payingInvoice && (
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[10000] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 border border-gray-100 dark:border-gray-700">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Pagar fatura</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{payingInvoice.methodName} • {payingInvoice.dateLabel}</p>
+              </div>
+              <form onSubmit={handleConfirmPayInvoice} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Data do pagamento</label>
+                  <input type="date" value={invoicePaymentDate} onChange={e => setInvoicePaymentDate(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
+                </div>
+                <label className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                  <input type="checkbox" checked={markThirdPartiesReceived} onChange={e => setMarkThirdPartiesReceived(e.target.checked)} className="mt-0.5 text-blue-600 rounded" />
+                  <span>Também marcar todos os valores de terceiros desta fatura como recebidos.</span>
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Esta opção atualiza as cobranças individuais sem alterar a data nem o status de outras faturas.</p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setPayingInvoice(null)} className="flex-1 py-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg font-medium">Cancelar</button>
+                  <button type="submit" disabled={isPayingInvoice} className="flex-1 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg font-medium disabled:opacity-50">
+                    {isPayingInvoice ? 'Salvando...' : 'Confirmar pagamento'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
@@ -2223,7 +2291,7 @@ export default function FinanceApp() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setIsDarkMode(!isDarkMode)} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
+            <button onClick={toggleDarkMode} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
               {isDarkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
             </button>
             <button onClick={() => setActiveTab('settings')} title="Configurações e Backup" className={`p-2.5 rounded-full transition-colors ${activeTab === 'settings' ? 'bg-blue-800 dark:bg-gray-600 text-white' : 'bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white'}`}>
