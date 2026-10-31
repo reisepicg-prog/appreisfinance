@@ -949,15 +949,7 @@ export default function FinanceApp() {
 
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
-    const [myPixKey, setMyPixKey] = useState(() => {
-       if (typeof window !== 'undefined') return localStorage.getItem('myPixKey') || '';
-       return '';
-    });
-
-    const handlePixKeyChange = (val: string) => {
-       setMyPixKey(val);
-       localStorage.setItem('myPixKey', val);
-    };
+    const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
 
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
         if (!tx?.date) return '';
@@ -966,15 +958,22 @@ export default function FinanceApp() {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))).filter(m => m !== '').sort() as string[];
 
-    const today = new Date();
-    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    
-    const [selectedMonth, setSelectedMonth] = useState(
-        availableMonths.includes(currentMonthStr) ? currentMonthStr : (availableMonths[availableMonths.length - 1] || currentMonthStr)
-    );
-    
-    const [filterPerson, setFilterPerson] = useState('all');
-    const [filterStatus, setFilterStatus] = useState('all');
+    const defaultCollectionsMonth = availableMonths.includes(currentMonthStr)
+      ? currentMonthStr
+      : (availableMonths[availableMonths.length - 1] || currentMonthStr);
+
+    const selectedMonth = filtersColl.month;
+    const setSelectedMonth = (month: string) => setFiltersColl(prev => ({ ...prev, month }));
+    const filterPerson = filtersColl.person;
+    const setFilterPerson = (person: string) => setFiltersColl(prev => ({ ...prev, person }));
+    const filterStatus = filtersColl.status;
+    const setFilterStatus = (status: string) => setFiltersColl(prev => ({ ...prev, status }));
+
+    useEffect(() => {
+      if (filtersColl.month === currentMonthStr && defaultCollectionsMonth !== currentMonthStr) {
+        setFiltersColl(prev => prev.month === currentMonthStr ? { ...prev, month: defaultCollectionsMonth } : prev);
+      }
+    }, [filtersColl.month, currentMonthStr, defaultCollectionsMonth]);
 
     const debtsByPerson: any = {};
     
@@ -1083,7 +1082,7 @@ export default function FinanceApp() {
       const total = unpaidItems.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
       
       if (!myPixKey) {
-         alert("Por favor, preencha sua Chave Pix no topo da tela para gerar o QR Code.");
+         alert("Configure uma Chave Pix Padrão na aba Cartões para gerar o QR Code.");
          return;
       }
       
@@ -1097,16 +1096,12 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Fechamento e Cobranças</h2>
-          {(filtersColl.month !== currentMonthStr || filtersColl.person !== 'all' || filtersColl.status !== 'all') && (
-            <button onClick={() => setFiltersColl({ month: currentMonthStr, person: 'all', status: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          {(filtersColl.month !== defaultCollectionsMonth || filtersColl.person !== 'all' || filtersColl.status !== 'all') && (
+            <button onClick={() => setFiltersColl({ month: defaultCollectionsMonth, person: 'all', status: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="md:col-span-3 mb-2">
-             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Sua Chave Pix para Recebimento (Fica salva)</label>
-             <input type="text" value={myPixKey} onChange={(e) => handlePixKeyChange(e.target.value)} placeholder="CPF, Celular, E-mail..." className="w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 py-2 px-3 rounded-lg text-sm focus:outline-none" />
-          </div>
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Mês</label>
             <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1634,8 +1629,8 @@ export default function FinanceApp() {
         )}
 
         {(isAddOpen || editingAsset) && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 overflow-visible border border-gray-100 dark:border-gray-700">
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-start sm:items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3 overflow-y-auto overscroll-contain border border-gray-100 dark:border-gray-700" style={{ maxHeight: 'calc(100dvh - 2rem)' }}>
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
                 <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
@@ -1734,9 +1729,12 @@ export default function FinanceApp() {
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
 
-    const [filterMonth, setFilterMonth] = useState('all');
-    const [filterType, setFilterType] = useState('all');
-    const [filterPerson, setFilterPerson] = useState('all');
+    const filterMonth = filtersHist.month;
+    const setFilterMonth = (month: string) => setFiltersHist(prev => ({ ...prev, month }));
+    const filterType = filtersHist.type;
+    const setFilterType = (type: string) => setFiltersHist(prev => ({ ...prev, type }));
+    const filterPerson = filtersHist.person;
+    const setFilterPerson = (person: string) => setFiltersHist(prev => ({ ...prev, person }));
 
     const availableMonths = Array.from(new Set((transactions || []).map(t => {
       if (!t?.date) return '';
@@ -1874,8 +1872,8 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
-          {(filterMonth !== 'all' || filterType !== 'all' || filterPerson !== 'all') && (
-            <button onClick={() => {setFilterMonth('all'); setFilterType('all'); setFilterPerson('all');}} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all') && (
+            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
