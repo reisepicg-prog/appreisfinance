@@ -1004,6 +1004,20 @@ export default function FinanceApp() {
       }
     });
 
+    filteredTransactions.forEach(tx => {
+      if (tx.type === 'expense' && (parseFloat(tx.myAmount) || 0) > 0) {
+        if (!debtsByPerson['Eu']) debtsByPerson['Eu'] = [];
+        debtsByPerson['Eu'].push({
+          txId: tx.id,
+          splitIndex: -1,
+          desc: tx.desc || '',
+          amount: parseFloat(tx.myAmount) || 0,
+          date: tx.date || '',
+          paid: tx.myPaid || false
+        });
+      }
+    });
+
     const allPeopleNames = Object.keys(debtsByPerson).sort();
     const peopleToRender = allPeopleNames.filter(name => filterPerson === 'all' || name === filterPerson);
 
@@ -1012,11 +1026,36 @@ export default function FinanceApp() {
       try {
         const tx = transactions.find(t => t.id === txId);
         if (!tx) return;
-        const updatedSplits = [...tx.splits];
+        if (splitIndex === -1) {
+          await updateDoc(doc(db, 'users', user.uid, 'transactions', txId), { myPaid: !currentStatus });
+          return;
+        }
+        const updatedSplits = [...(tx.splits || [])];
         updatedSplits[splitIndex].paid = !currentStatus;
         await updateDoc(doc(db, 'users', user.uid, 'transactions', txId), {
           splits: updatedSplits
         });
+      } catch (err) { console.error(err); }
+    };
+
+    const handleMarkPersonPaid = async (name: string, items: any[]) => {
+      if (!user) return;
+      try {
+        const updatesByTransaction = new Map<string, any>();
+        items.filter(item => !item.paid).forEach(item => {
+          const tx = transactions.find(t => t.id === item.txId);
+          if (!tx) return;
+          if (item.splitIndex === -1) {
+            updatesByTransaction.set(tx.id, { myPaid: true });
+            return;
+          }
+          const changes = updatesByTransaction.get(tx.id) || { splits: [...(tx.splits || [])] };
+          if (changes.splits[item.splitIndex]) changes.splits[item.splitIndex].paid = true;
+          updatesByTransaction.set(tx.id, changes);
+        });
+        await Promise.all(Array.from(updatesByTransaction.entries()).map(([txId, changes]) =>
+          updateDoc(doc(db, 'users', user.uid, 'transactions', txId), changes)
+        ));
       } catch (err) { console.error(err); }
     };
 
@@ -1152,6 +1191,9 @@ export default function FinanceApp() {
                        </button>
                        <button onClick={() => openQrCode(name, filteredItems)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors">
                           <Icons.QrCode size={20} />
+                       </button>
+                       <button onClick={() => handleMarkPersonPaid(name, filteredItems)} className="bg-green-600 hover:bg-green-700 text-white px-3 py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors text-xs">
+                          <Icons.Check size={18} /> Marcar tudo como pago
                        </button>
                     </div>
                   )}
@@ -1711,7 +1753,9 @@ export default function FinanceApp() {
       if (!tx?.date) return false;
       if (filterMonth !== 'all' && filterMonth !== '' && !String(tx.date).startsWith(filterMonth)) return false;
       if (filterType !== 'all' && String(tx.type) !== filterType) return false;
-      if (filterPerson !== 'all') {
+      if (filterPerson === '__mine__') {
+        if ((parseFloat(tx.myAmount) || 0) <= 0) return false;
+      } else if (filterPerson !== 'all') {
         const hasPerson = tx.splits?.some((s: any) => String(s?.name) === filterPerson);
         if (!hasPerson) return false;
       }
@@ -1858,7 +1902,8 @@ export default function FinanceApp() {
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Envolvidos</label>
             <select value={filterPerson} onChange={(e) => setFilterPerson(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="all">Todos / Apenas Eu</option>
+              <option value="all">Todos</option>
+              <option value="__mine__">Apenas Eu</option>
               {availablePersons.map(name => <option key={name as string} value={name as string}>{name as string}</option>)}
             </select>
           </div>
@@ -1873,7 +1918,8 @@ export default function FinanceApp() {
             ) : (
               invoicesArray.map((invoice: any) => {
                 const cashbackPct = invoice.card ? parseFloat(invoice.card.cashbackPct) || 0 : 0;
-                const cashbackAmount = (invoice.totalAmount * (cashbackPct / 100));
+                const invoiceVisibleAmount = filterPerson === '__mine__' ? invoice.myAmount : invoice.totalAmount;
+                const cashbackAmount = (invoiceVisibleAmount * (cashbackPct / 100));
 
                 return (
                   <div key={invoice.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
@@ -1886,7 +1932,7 @@ export default function FinanceApp() {
                         <p className="text-xs text-gray-500 dark:text-gray-400">Vencimento: {invoice.dateLabel}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-lg text-gray-800 dark:text-gray-100">R$ {formatBRL(invoice.totalAmount)}</p>
+                        <p className="font-bold text-lg text-gray-800 dark:text-gray-100">R$ {formatBRL(invoiceVisibleAmount)}</p>
                         {cashbackAmount > 0 && (
                           <p className="text-xs text-green-600 dark:text-green-400 font-medium">+ R$ {formatBRL(cashbackAmount)} de Cashback</p>
                         )}
@@ -1909,20 +1955,32 @@ export default function FinanceApp() {
                             </div>
                             <div className="text-right">
                               <p className={`text-sm ${tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-gray-800 dark:text-gray-200'}`}>
-                                R$ {formatBRL(tx.totalAmount)}
+                                R$ {formatBRL(filterPerson === '__mine__' ? tx.myAmount : tx.totalAmount)}
                               </p>
-                              {tx.type !== 'income' && tx.myAmount !== tx.totalAmount && (
+                              {filterPerson !== '__mine__' && tx.type !== 'income' && tx.myAmount !== tx.totalAmount && (
                                 <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Sua parte: R$ {formatBRL(tx.myAmount)}</p>
                               )}
                             </div>
                           </div>
                           
-                          {tx.splits?.length > 0 && (
+                          {(tx.splits?.length > 0 || (tx.type !== 'income' && (parseFloat(tx.myAmount) || 0) > 0)) && (
                             <div className="mt-2 bg-blue-50/50 dark:bg-blue-900/20 rounded p-1.5 text-[10px]">
-                              {tx.splits.map((s: any, i: number) => (
+                              {tx.type !== 'income' && (parseFloat(tx.myAmount) || 0) > 0 && (
+                                <div className="flex justify-between text-gray-500 dark:text-gray-400 border-b border-blue-100 dark:border-blue-800 pb-1 mb-1">
+                                  <span>Minha parte</span>
+                                  <span className="flex items-center gap-2">
+                                    R$ {formatBRL(tx.myAmount)}
+                                    <b className={tx.myPaid ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>{tx.myPaid ? 'Pago' : 'Pendente'}</b>
+                                  </span>
+                                </div>
+                              )}
+                              {tx.splits?.map((s: any, i: number) => (
                                 <div key={i} className="flex justify-between text-gray-500 dark:text-gray-400">
                                   <span>{s.name}</span>
-                                  <span>R$ {formatBRL(s.amount)}</span>
+                                  <span className="flex items-center gap-2">
+                                    R$ {formatBRL(s.amount)}
+                                    <b className={s.paid ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>{s.paid ? 'Pago' : 'Pendente'}</b>
+                                  </span>
                                 </div>
                               ))}
                             </div>
