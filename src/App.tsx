@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
@@ -1638,7 +1639,7 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {(isAddOpen || editingAsset) && (
+        {(isAddOpen || editingAsset) && createPortal(
           <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto overscroll-contain p-2 sm:p-4 animate-fadeIn" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
             <div className="min-h-full flex items-start sm:items-center justify-center">
               <div className="bg-white dark:bg-gray-800 w-full max-w-sm my-2 sm:my-4 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-2 border border-gray-100 dark:border-gray-700">
@@ -1687,7 +1688,8 @@ export default function FinanceApp() {
               </form>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {sellingAsset && (
