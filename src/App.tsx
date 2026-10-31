@@ -252,7 +252,7 @@ export default function FinanceApp() {
 
     const txQuery = query(collection(db, 'users', user.uid, 'transactions'));
     const unsubscribeTxs = onSnapshot(txQuery, (snapshot) => {
-      const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const txs: any[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       txs.sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime());
       setTransactions(txs);
       setIsLoading(false);
@@ -270,7 +270,7 @@ export default function FinanceApp() {
 
     const salesQuery = query(collection(db, 'users', user.uid, 'salesHistory'));
     const unsubscribeSales = onSnapshot(salesQuery, (snapshot) => {
-      const sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const sales: any[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       sales.sort((a, b) => new Date(b?.saleDate || 0).getTime() - new Date(a?.saleDate || 0).getTime());
       setSalesHistory(sales);
     }, console.error);
