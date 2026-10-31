@@ -203,13 +203,12 @@ export default function FinanceApp() {
   });
   
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    const theme = isDarkMode ? 'dark' : 'light';
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    document.body.classList.toggle('dark', isDarkMode);
+    document.documentElement.style.colorScheme = theme;
+    document.body.style.colorScheme = theme;
+    localStorage.setItem('theme', theme);
   }, [isDarkMode]);
 
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
@@ -1630,7 +1629,7 @@ export default function FinanceApp() {
 
         {(isAddOpen || editingAsset) && (
           <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-start sm:items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3 overflow-y-auto overscroll-contain border border-gray-100 dark:border-gray-700" style={{ maxHeight: 'calc(100dvh - 2rem)' }}>
+            <div className="bg-white dark:bg-gray-800 w-full max-w-sm max-h-[calc(100vh-2rem)] min-h-0 rounded-3xl p-5 shadow-2xl space-y-3 overflow-y-auto overscroll-contain border border-gray-100 dark:border-gray-700" style={{ maxHeight: 'calc(100dvh - 2rem)', WebkitOverflowScrolling: 'touch' }}>
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{editingAsset ? 'Editar Compra' : 'Adicionar Ativo'}</h3>
                 <button onClick={() => { setIsAddOpen(false); setEditingAsset(null); }} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
@@ -2284,7 +2283,7 @@ export default function FinanceApp() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setIsDarkMode(!isDarkMode)} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
+            <button onClick={() => setIsDarkMode(previous => !previous)} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
               {isDarkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
             </button>
             <button onClick={() => setActiveTab('settings')} title="Configurações e Backup" className={`p-2.5 rounded-full transition-colors ${activeTab === 'settings' ? 'bg-blue-800 dark:bg-gray-600 text-white' : 'bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white'}`}>
