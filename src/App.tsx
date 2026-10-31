@@ -211,6 +211,17 @@ export default function FinanceApp() {
     localStorage.setItem('theme', theme);
   }, [isDarkMode]);
 
+  const toggleDarkMode = () => {
+    const nextThemeIsDark = !document.documentElement.classList.contains('dark');
+    const theme = nextThemeIsDark ? 'dark' : 'light';
+    setIsDarkMode(nextThemeIsDark);
+    document.documentElement.classList.toggle('dark', nextThemeIsDark);
+    document.body.classList.toggle('dark', nextThemeIsDark);
+    document.documentElement.style.colorScheme = theme;
+    document.body.style.colorScheme = theme;
+    localStorage.setItem('theme', theme);
+  };
+
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all' });
@@ -2283,7 +2294,7 @@ export default function FinanceApp() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setIsDarkMode(previous => !previous)} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
+            <button onClick={toggleDarkMode} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
               {isDarkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
             </button>
             <button onClick={() => setActiveTab('settings')} title="Configurações e Backup" className={`p-2.5 rounded-full transition-colors ${activeTab === 'settings' ? 'bg-blue-800 dark:bg-gray-600 text-white' : 'bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white'}`}>
