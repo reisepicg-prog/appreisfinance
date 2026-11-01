@@ -207,6 +207,8 @@ export default function FinanceApp() {
     const theme = isDarkMode ? 'dark' : 'light';
     document.documentElement.classList.toggle('dark', isDarkMode);
     document.body.classList.toggle('dark', isDarkMode);
+    document.documentElement.dataset.theme = theme;
+    document.body.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
     document.body.style.colorScheme = theme;
     localStorage.setItem('theme', theme);
@@ -419,6 +421,7 @@ export default function FinanceApp() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [cardForm, setCardForm] = useState({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
     const [displayLimit, setDisplayLimit] = useState('');
+    const [selectedPixCard, setSelectedPixCard] = useState<any>(null);
 
     const handleSaveCard = async (e: any) => {
       e.preventDefault();
@@ -562,17 +565,24 @@ export default function FinanceApp() {
                       {(parseFloat(c.cashbackPct) || 0) > 0 && <p className="text-xs text-green-600 dark:text-green-400 font-medium">{c.cashbackPct}% de Cashback</p>}
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                     <button onClick={() => openEditCard(c)} className="p-2 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"><Icons.Edit size={16} /></button>
-                     <button onClick={() => handleDeleteCard(c.id)} className="p-2 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><Icons.Trash size={16} /></button>
+                  <div className="flex min-w-0 items-center justify-end gap-2">
+                    {c.pixKey && (
+                      <div className="flex min-w-0 items-center gap-2 text-xs">
+                        <span className="font-bold text-gray-500 dark:text-gray-400">Pix:</span>
+                        <span title={c.pixKey} className="max-w-[180px] truncate text-gray-800 dark:text-gray-200">{c.pixKey}</span>
+                        <button type="button" title="Mostrar QR Code Pix" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); setSelectedPixCard({ ...c, payload }); }} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 font-semibold text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">
+                          <Icons.QrCode size={16} /><span className="hidden sm:inline">QR Code</span>
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex shrink-0 gap-1">
+                      <button onClick={() => openEditCard(c)} className="p-2 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"><Icons.Edit size={16} /></button>
+                      <button onClick={() => handleDeleteCard(c.id)} className="p-2 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><Icons.Trash size={16} /></button>
+                    </div>
                   </div>
                 </div>
 
-                {c.pixKey && (
-                  <div className="text-xs bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-lg p-2.5 mb-3 flex items-center gap-2">
-                     <span className="font-bold text-gray-600 dark:text-gray-400">Pix:</span> <span className="text-gray-800 dark:text-gray-200">{c.pixKey}</span>
-                  </div>
-                )}
+
                 {c.obs && (
                   <div className="text-[11px] text-gray-500 dark:text-gray-400 italic border-l-2 border-gray-200 dark:border-gray-600 pl-2 mb-3">
                      {c.obs}
@@ -601,6 +611,27 @@ export default function FinanceApp() {
             <p className="text-gray-500 dark:text-gray-400 text-center py-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">Nenhum registro cadastrado ainda.</p>
           )}
         </div>
+      {selectedPixCard && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
+          <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div role="dialog" aria-modal="true" className="my-auto max-h-full w-full max-w-sm overflow-y-auto overscroll-contain rounded-3xl border border-gray-100 bg-white p-6 text-center shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">Pix • {selectedPixCard.name}</h3>
+                <button type="button" onClick={() => setSelectedPixCard(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+              </div>
+              <div className="mb-4 flex justify-center rounded-xl bg-gray-50 p-3 dark:bg-gray-100">
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(selectedPixCard.payload)}`} alt={`QR Code Pix de ${selectedPixCard.name}`} className="h-56 w-56" />
+              </div>
+              <p className="mb-4 break-all text-xs text-gray-500 dark:text-gray-400">Chave: <b className="text-gray-800 dark:text-gray-200">{selectedPixCard.pixKey}</b></p>
+              <button type="button" onClick={async () => {
+                await navigator.clipboard.writeText(selectedPixCard.payload);
+                alert('Pix Copia e Cola copiado para a área de transferência!');
+              }} className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white shadow-md transition-colors hover:bg-blue-700">Copiar Pix Copia e Cola</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       </div>
     );
   };
@@ -1202,9 +1233,10 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {qrCodeModal && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm shadow-xl text-center border border-gray-100 dark:border-gray-700">
+        {qrCodeModal && createPortal(
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+              <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain shadow-xl text-center border border-gray-100 dark:border-gray-700">
                <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-gray-800 dark:text-gray-100">Cobrar {qrCodeModal.name}</h3>
                   <button onClick={() => setQrCodeModal(null)} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
@@ -1229,8 +1261,10 @@ export default function FinanceApp() {
                >
                   Copiar Pix Copia e Cola
                </button>
+              </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );
@@ -1290,55 +1324,63 @@ export default function FinanceApp() {
       return g;
     });
 
-    const CACHE_KEY = 'brapi_quotes';
-    const CACHE_TTL = 15 * 60 * 1000; 
+    const CACHE_TTL = 15 * 60 * 1000;
 
     const refreshQuotes = async (force = false) => {
       if (investments.length === 0) return;
-      
-      const tickers = Array.from(new Set(investments.map((i: any) => i.ticker.toUpperCase()))).join(',');
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+
+      const tickerList = Array.from(new Set(investments.map((i: any) => String(i.ticker || '').toUpperCase()))).filter(Boolean);
+      const cacheKey = `brapi_quotes_${tickerList.slice().sort().join('_')}`;
+      let cached: any = {};
+      try { cached = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch { cached = {}; }
       const now = Date.now();
 
-      if (!force && cached.timestamp && (now - cached.timestamp < CACHE_TTL)) {
-         setPrices(cached.prices || {});
-         setLastSync(cached.lastSync + ' (Cache)');
-         return;
+      if (!force && cached.timestamp && now - cached.timestamp < CACHE_TTL) {
+        setPrices(cached.prices || {});
+        setLastSync((cached.lastSync || '') + ' (Cache)');
+        return;
       }
 
       setIsRefreshing(true);
       setLastSync('Atualizando...');
       try {
-        const res = await fetch(`https://brapi.dev/api/quote/${tickers}`);
-        if (!res.ok) throw new Error(res.status === 429 ? 'rate_limit' : 'api_error');
+        const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(tickerList.join(','))}`);
         const data = await res.json();
-        
-        if (data && data.results) {
-          const map: any = {};
-          data.results.forEach((r: any) => { map[r.symbol] = r.regularMarketPrice; });
-          setPrices(map);
-          const syncTime = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-          setLastSync(syncTime);
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, prices: map, lastSync: syncTime }));
-        } else {
-           throw new Error('invalid_data');
+        if (!res.ok) {
+          if (data.code === 'MISSING_API_TOKEN') throw new Error('missing_api_token');
+          if (res.status === 401) throw new Error('invalid_api_token');
+          if (res.status === 404) throw new Error('no_quotes');
+          if (res.status === 429) {
+            const retryAfter = res.headers.get('Retry-After') || data.retryAfter;
+            throw new Error(retryAfter ? `rate_limit:${retryAfter}` : 'rate_limit');
+          }
+          throw new Error('api_error');
         }
-      } catch (err: any) { 
-        console.error("Brapi fetch error:", err);
-        if (cached.prices) {
-           setPrices(cached.prices);
-           setLastSync(cached.lastSync + (err.message === 'rate_limit' ? ' (Limite da API)' : ' (Offline)'));
+
+        const map = data.prices || {};
+        if (Object.keys(map).length === 0) throw new Error('no_quotes');
+        setPrices(map);
+        const syncTime = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        setLastSync(data.unavailable?.length ? `${syncTime} (sem cotação: ${data.unavailable.join(', ')})` : syncTime);
+        localStorage.setItem(cacheKey, JSON.stringify({ timestamp: now, prices: map, lastSync: syncTime }));
+      } catch (err: any) {
+        console.error('Quote fetch error:', err);
+        if (cached.prices && Object.keys(cached.prices).length) {
+          setPrices(cached.prices);
+          setLastSync((cached.lastSync || '') + (err.message === 'missing_api_token' ? ' (configure BRAPI_TOKEN)' : String(err.message).startsWith('rate_limit') ? ` (limite da API; tente novamente em ${err.message.split(':')[1] || 'alguns minutos'})` : err.message === 'invalid_api_token' ? ' (token brapi inválido)' : ' (offline)'));
         } else {
-           setLastSync(err.message === 'rate_limit' ? "Erro (Limite de consultas da API)" : "Erro de conexão com B3");
+          setLastSync(err.message === 'missing_api_token' ? 'Configure BRAPI_TOKEN na Vercel' : String(err.message).startsWith('rate_limit') ? `Limite de consultas da API; tente novamente em ${err.message.split(':')[1] || 'alguns minutos'}` : err.message === 'invalid_api_token' ? 'Token BRAPI_TOKEN inválido' : 'Sem cotações disponíveis');
         }
-      } finally { setIsRefreshing(false); }
+      } finally {
+        setIsRefreshing(false);
+      }
     };
 
     useEffect(() => {
       if (groupedInvestments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
         refreshQuotes();
       }
-    }, [investments.length]); 
+    }, [investments.length]);
 
     const handleSaveAsset = async (e: any) => {
       e.preventDefault();
@@ -1509,7 +1551,7 @@ export default function FinanceApp() {
         
         {/* Painel Horizontal Deslizante de Corretoras */}
         <div>
-          <div className="flex gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+          <div className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none" style={{ msOverflowStyle: 'auto', scrollbarWidth: 'thin', touchAction: 'pan-x' }}>
             {brokerCards.map(c => (
               <div 
                 key={c.name} 
@@ -1685,9 +1727,10 @@ export default function FinanceApp() {
           document.body
         )}
 
-        {sellingAsset && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 border border-gray-100 dark:border-gray-700">
+        {sellingAsset && createPortal(
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+              <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 border border-gray-100 dark:border-gray-700">
               <div className="flex justify-between items-center">
                  <h3 className="font-bold text-gray-800 dark:text-gray-100">Registrar Venda: {sellingAsset.ticker}</h3>
                  <button onClick={() => setSellingAsset(null)} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
@@ -1723,8 +1766,10 @@ export default function FinanceApp() {
                   Confirmar Venda & Apurar IR
                 </button>
               </form>
+              </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );
@@ -2350,6 +2395,10 @@ export default function FinanceApp() {
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         
         .dark { background-color: #111827 !important; color: #f3f4f6 !important; }
+        .dark .bg-slate-50 { background-color: #111827 !important; }
+        html[data-theme="dark"] #root, body[data-theme="dark"] #root { background-color: #111827 !important; color: #f3f4f6 !important; }
+        html[data-theme="light"] #root, body[data-theme="light"] #root { background-color: #f8fafc !important; color: #1f2937 !important; }
+        .dark .text-slate-900 { color: #f3f4f6 !important; }
         .dark .bg-white { background-color: #1f2937 !important; border-color: #374151 !important; }
         .dark .bg-gray-50 { background-color: #111827 !important; border-color: #374151 !important; }
         .dark .bg-gray-100 { background-color: #374151 !important; }
