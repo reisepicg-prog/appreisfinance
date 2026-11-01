@@ -207,6 +207,8 @@ export default function FinanceApp() {
     const theme = isDarkMode ? 'dark' : 'light';
     document.documentElement.classList.toggle('dark', isDarkMode);
     document.body.classList.toggle('dark', isDarkMode);
+    document.documentElement.dataset.theme = theme;
+    document.body.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
     document.body.style.colorScheme = theme;
     localStorage.setItem('theme', theme);
@@ -1509,7 +1511,7 @@ export default function FinanceApp() {
         
         {/* Painel Horizontal Deslizante de Corretoras */}
         <div>
-          <div className="flex gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+          <div className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none" style={{ msOverflowStyle: 'auto', scrollbarWidth: 'thin', touchAction: 'pan-x' }}>
             {brokerCards.map(c => (
               <div 
                 key={c.name} 
@@ -2354,6 +2356,8 @@ export default function FinanceApp() {
         
         .dark { background-color: #111827 !important; color: #f3f4f6 !important; }
         .dark .bg-slate-50 { background-color: #111827 !important; }
+        html[data-theme="dark"] #root, body[data-theme="dark"] #root { background-color: #111827 !important; color: #f3f4f6 !important; }
+        html[data-theme="light"] #root, body[data-theme="light"] #root { background-color: #f8fafc !important; color: #1f2937 !important; }
         .dark .text-slate-900 { color: #f3f4f6 !important; }
         .dark .bg-white { background-color: #1f2937 !important; border-color: #374151 !important; }
         .dark .bg-gray-50 { background-color: #111827 !important; border-color: #374151 !important; }
