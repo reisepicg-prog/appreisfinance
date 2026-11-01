@@ -421,6 +421,7 @@ export default function FinanceApp() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [cardForm, setCardForm] = useState({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
     const [displayLimit, setDisplayLimit] = useState('');
+    const [selectedPixCard, setSelectedPixCard] = useState<any>(null);
 
     const handleSaveCard = async (e: any) => {
       e.preventDefault();
@@ -573,7 +574,7 @@ export default function FinanceApp() {
                 {c.pixKey && (
                   <div className="text-xs bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-lg p-2.5 mb-3 flex flex-wrap items-center gap-2">
                      <span className="font-bold text-gray-600 dark:text-gray-400">Pix:</span> <span className="text-gray-800 dark:text-gray-200 break-all">{c.pixKey}</span>
-                     <button type="button" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); window.open(`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payload)}`, '_blank', 'noopener,noreferrer'); }} className="ml-auto inline-flex items-center gap-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50">
+                     <button type="button" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); setSelectedPixCard({ ...c, payload }); }} className="ml-auto inline-flex items-center gap-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50">
                        <Icons.QrCode size={16} /> QR Code
                      </button>
                   </div>
@@ -607,6 +608,27 @@ export default function FinanceApp() {
           )}
         </div>
       </div>
+      {selectedPixCard && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
+          <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div role="dialog" aria-modal="true" className="my-auto max-h-full w-full max-w-sm overflow-y-auto overscroll-contain rounded-3xl border border-gray-100 bg-white p-6 text-center shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">Pix • {selectedPixCard.name}</h3>
+                <button type="button" onClick={() => setSelectedPixCard(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+              </div>
+              <div className="mb-4 flex justify-center rounded-xl bg-gray-50 p-3 dark:bg-gray-100">
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(selectedPixCard.payload)}`} alt={`QR Code Pix de ${selectedPixCard.name}`} className="h-56 w-56" />
+              </div>
+              <p className="mb-4 break-all text-xs text-gray-500 dark:text-gray-400">Chave: <b className="text-gray-800 dark:text-gray-200">{selectedPixCard.pixKey}</b></p>
+              <button type="button" onClick={async () => {
+                await navigator.clipboard.writeText(selectedPixCard.payload);
+                alert('Pix Copia e Cola copiado para a área de transferência!');
+              }} className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white shadow-md transition-colors hover:bg-blue-700">Copiar Pix Copia e Cola</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     );
   };
 
