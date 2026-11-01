@@ -565,20 +565,24 @@ export default function FinanceApp() {
                       {(parseFloat(c.cashbackPct) || 0) > 0 && <p className="text-xs text-green-600 dark:text-green-400 font-medium">{c.cashbackPct}% de Cashback</p>}
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                     <button onClick={() => openEditCard(c)} className="p-2 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"><Icons.Edit size={16} /></button>
-                     <button onClick={() => handleDeleteCard(c.id)} className="p-2 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><Icons.Trash size={16} /></button>
+                  <div className="flex min-w-0 items-center justify-end gap-2">
+                    {c.pixKey && (
+                      <div className="flex min-w-0 items-center gap-2 text-xs">
+                        <span className="font-bold text-gray-500 dark:text-gray-400">Pix:</span>
+                        <span title={c.pixKey} className="max-w-[180px] truncate text-gray-800 dark:text-gray-200">{c.pixKey}</span>
+                        <button type="button" title="Mostrar QR Code Pix" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); setSelectedPixCard({ ...c, payload }); }} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 font-semibold text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">
+                          <Icons.QrCode size={16} /><span className="hidden sm:inline">QR Code</span>
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex shrink-0 gap-1">
+                      <button onClick={() => openEditCard(c)} className="p-2 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"><Icons.Edit size={16} /></button>
+                      <button onClick={() => handleDeleteCard(c.id)} className="p-2 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><Icons.Trash size={16} /></button>
+                    </div>
                   </div>
                 </div>
 
-                {c.pixKey && (
-                  <div className="text-xs bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-lg p-2.5 mb-3 flex flex-wrap items-center gap-2">
-                     <span className="font-bold text-gray-600 dark:text-gray-400">Pix:</span> <span className="text-gray-800 dark:text-gray-200 break-all">{c.pixKey}</span>
-                     <button type="button" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); setSelectedPixCard({ ...c, payload }); }} className="ml-auto inline-flex items-center gap-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50">
-                       <Icons.QrCode size={16} /> QR Code
-                     </button>
-                  </div>
-                )}
+
                 {c.obs && (
                   <div className="text-[11px] text-gray-500 dark:text-gray-400 italic border-l-2 border-gray-200 dark:border-gray-600 pl-2 mb-3">
                      {c.obs}
