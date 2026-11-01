@@ -475,6 +475,10 @@ export default function FinanceApp() {
        setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
     };
 
+    const sortedCards = [...cards].sort((a: any, b: any) =>
+      String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR', { sensitivity: 'base' })
+    );
+
     return (
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-6">
@@ -536,7 +540,7 @@ export default function FinanceApp() {
         )}
 
         <div className="grid grid-cols-1 gap-4">
-          {cards.map(c => {
+          {sortedCards.map(c => {
             const usedLimit = (transactions || [])
               .filter(tx => tx?.methodId === c.id && tx?.status !== 'paid')
               .reduce((acc, tx) => acc + (parseFloat(tx?.totalAmount) || 0), 0);
