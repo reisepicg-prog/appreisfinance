@@ -295,6 +295,7 @@ export default function FinanceApp() {
   // ==========================================
 
   const Dashboard = () => {
+    const [detailType, setDetailType] = useState<string | null>(null);
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
         const d = new Date(tx?.date || '');
         if (isNaN(d.getTime())) return '';
@@ -378,7 +379,7 @@ export default function FinanceApp() {
         </div>
 
         {/* Barras de Progresso */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl shadow-sm">
+        <div role="button" tabIndex={0} onClick={() => setDetailType('income')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setDetailType('income'); }} className="cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl shadow-sm hover:border-emerald-400 transition-colors">
           <div className="flex justify-between items-end mb-2">
              <div>
                 <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Receitas</h3>
@@ -391,7 +392,7 @@ export default function FinanceApp() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl shadow-sm">
+        <div role="button" tabIndex={0} onClick={() => setDetailType('expense')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setDetailType('expense'); }} className="cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl shadow-sm hover:border-red-400 transition-colors">
           <div className="flex justify-between items-end mb-2">
              <div>
                 <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Despesas</h3>
@@ -412,6 +413,37 @@ export default function FinanceApp() {
            </div>
            <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">R$ {formatBRL(totalReceivables)}</p>
         </div>
+      {detailType && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
+          <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div role="dialog" aria-modal="true" className="my-auto max-h-full w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{detailType === 'income' ? 'Receitas do período' : 'Despesas do período'}</h3>
+                <button type="button" onClick={() => setDetailType(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+              </div>
+              <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">{viewMode === 'all' ? 'Todos os períodos' : `Período: ${selectedMonth}`}</p>
+              <div className="space-y-2">
+                {(detailType === 'income' ? incomes : expenses).length === 0 ? (
+                  <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum lançamento neste período.</p>
+                ) : (detailType === 'income' ? incomes : expenses).map((tx: any) => (
+                  <div key={tx.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">
+                    <div className="flex justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-800 dark:text-gray-100">{tx.desc}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{tx.category || 'Sem categoria'} • {tx.date ? new Date(`${tx.date}T12:00:00`).toLocaleDateString('pt-BR') : 'Sem data'}</p>
+                      </div>
+                      <p className="shrink-0 text-sm font-bold text-gray-800 dark:text-gray-100">R$ {formatBRL(detailType === 'income' ? tx.totalAmount : tx.myAmount)}</p>
+                    </div>
+                    {tx.observation && <p className="mt-2 whitespace-pre-wrap text-xs text-gray-600 dark:text-gray-300">{tx.observation}</p>}
+                    <p className={`mt-1 text-[10px] font-medium ${tx.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{tx.status === 'paid' ? (detailType === 'income' ? 'Recebido' : 'Pago') : 'Pendente'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       </div>
     );
   };
@@ -643,6 +675,8 @@ export default function FinanceApp() {
   const TransactionForm = () => {
     const [txType, setTxType] = useState('expense');
     const [desc, setDesc] = useState('');
+    const [category, setCategory] = useState('');
+    const [observation, setObservation] = useState('');
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
     const [calcTarget, setCalcTarget] = useState<any>(null);
@@ -659,6 +693,7 @@ export default function FinanceApp() {
     const [splits, setSplits] = useState<any[]>([{ name: '', amount: 0, displayAmount: '', paid: false }]);
     const [errorMsg, setErrorMsg] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const categoryOptions = txType === 'income' ? ['Salário', 'Renda extra', 'Investimentos', 'Vendas', 'Reembolso', 'Outros'] : ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Contas e serviços', 'Compras', 'Impostos', 'Outros'];
 
     useEffect(() => {
       if (txType === 'income' || methodId === 'pix' || cards.length === 0) {
@@ -768,14 +803,14 @@ export default function FinanceApp() {
             const initialStatus = txType === 'income' ? (isFuture ? 'pending' : 'paid') : 'pending';
 
             const newTx = {
-              type: txType, desc: desc + suffix, totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
+              type: txType, desc: desc + suffix, category, observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
               date: formattedDate, method: cardName, methodId: finalMethodId, splits: instSplits, groupId, status: initialStatus,
               createdAt: new Date().toISOString()
             };
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
         
-        setDesc(''); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setCategory(''); setObservation(''); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
       } catch (err) { console.error(err); setErrorMsg("Erro ao salvar."); } finally { setIsSaving(false); }
     };
@@ -824,6 +859,20 @@ export default function FinanceApp() {
                 />
                 <button type="button" onClick={() => setCalcTarget('main')} className="px-4 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors text-xl" title="Calculadora">🧮</button>
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
+              <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="">Selecione uma categoria</option>
+                {categoryOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observação (opcional)</label>
+              <input type="text" value={observation} onChange={e => setObservation(e.target.value)} placeholder="Detalhes adicionais" className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
           </div>
 
