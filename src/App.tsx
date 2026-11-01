@@ -571,8 +571,11 @@ export default function FinanceApp() {
                 </div>
 
                 {c.pixKey && (
-                  <div className="text-xs bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-lg p-2.5 mb-3 flex items-center gap-2">
-                     <span className="font-bold text-gray-600 dark:text-gray-400">Pix:</span> <span className="text-gray-800 dark:text-gray-200">{c.pixKey}</span>
+                  <div className="text-xs bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-lg p-2.5 mb-3 flex flex-wrap items-center gap-2">
+                     <span className="font-bold text-gray-600 dark:text-gray-400">Pix:</span> <span className="text-gray-800 dark:text-gray-200 break-all">{c.pixKey}</span>
+                     <button type="button" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); window.open(`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payload)}`, '_blank', 'noopener,noreferrer'); }} className="ml-auto inline-flex items-center gap-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50">
+                       <Icons.QrCode size={16} /> QR Code
+                     </button>
                   </div>
                 )}
                 {c.obs && (
@@ -1204,9 +1207,10 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {qrCodeModal && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm shadow-xl text-center border border-gray-100 dark:border-gray-700">
+        {qrCodeModal && createPortal(
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+              <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain shadow-xl text-center border border-gray-100 dark:border-gray-700">
                <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-gray-800 dark:text-gray-100">Cobrar {qrCodeModal.name}</h3>
                   <button onClick={() => setQrCodeModal(null)} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
@@ -1231,8 +1235,10 @@ export default function FinanceApp() {
                >
                   Copiar Pix Copia e Cola
                </button>
+              </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );
