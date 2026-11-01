@@ -607,7 +607,6 @@ export default function FinanceApp() {
             <p className="text-gray-500 dark:text-gray-400 text-center py-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">Nenhum registro cadastrado ainda.</p>
           )}
         </div>
-      </div>
       {selectedPixCard && createPortal(
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
           <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -629,6 +628,7 @@ export default function FinanceApp() {
         </div>,
         document.body
       )}
+      </div>
     );
   };
 
