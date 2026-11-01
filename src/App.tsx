@@ -1685,9 +1685,10 @@ export default function FinanceApp() {
           document.body
         )}
 
-        {sellingAsset && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 border border-gray-100 dark:border-gray-700">
+        {sellingAsset && createPortal(
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+              <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 border border-gray-100 dark:border-gray-700">
               <div className="flex justify-between items-center">
                  <h3 className="font-bold text-gray-800 dark:text-gray-100">Registrar Venda: {sellingAsset.ticker}</h3>
                  <button onClick={() => setSellingAsset(null)} className="text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-bold px-2 py-1">✕</button>
@@ -1723,8 +1724,10 @@ export default function FinanceApp() {
                   Confirmar Venda & Apurar IR
                 </button>
               </form>
+              </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );
@@ -2350,6 +2353,8 @@ export default function FinanceApp() {
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         
         .dark { background-color: #111827 !important; color: #f3f4f6 !important; }
+        .dark .bg-slate-50 { background-color: #111827 !important; }
+        .dark .text-slate-900 { color: #f3f4f6 !important; }
         .dark .bg-white { background-color: #1f2937 !important; border-color: #374151 !important; }
         .dark .bg-gray-50 { background-color: #111827 !important; border-color: #374151 !important; }
         .dark .bg-gray-100 { background-color: #374151 !important; }
