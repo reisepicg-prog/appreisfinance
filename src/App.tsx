@@ -1324,55 +1324,58 @@ export default function FinanceApp() {
       return g;
     });
 
-    const CACHE_KEY = 'brapi_quotes';
-    const CACHE_TTL = 15 * 60 * 1000; 
+    const CACHE_TTL = 15 * 60 * 1000;
 
     const refreshQuotes = async (force = false) => {
       if (investments.length === 0) return;
-      
-      const tickers = Array.from(new Set(investments.map((i: any) => i.ticker.toUpperCase()))).join(',');
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+
+      const tickerList = Array.from(new Set(investments.map((i: any) => String(i.ticker || '').toUpperCase()))).filter(Boolean);
+      const cacheKey = `brapi_quotes_${tickerList.slice().sort().join('_')}`;
+      let cached: any = {};
+      try { cached = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch { cached = {}; }
       const now = Date.now();
 
-      if (!force && cached.timestamp && (now - cached.timestamp < CACHE_TTL)) {
-         setPrices(cached.prices || {});
-         setLastSync(cached.lastSync + ' (Cache)');
-         return;
+      if (!force && cached.timestamp && now - cached.timestamp < CACHE_TTL) {
+        setPrices(cached.prices || {});
+        setLastSync((cached.lastSync || '') + ' (Cache)');
+        return;
       }
 
       setIsRefreshing(true);
       setLastSync('Atualizando...');
       try {
-        const res = await fetch(`https://brapi.dev/api/quote/${tickers}`);
-        if (!res.ok) throw new Error(res.status === 429 ? 'rate_limit' : 'api_error');
+        const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(tickerList.join(','))}`);
         const data = await res.json();
-        
-        if (data && data.results) {
-          const map: any = {};
-          data.results.forEach((r: any) => { map[r.symbol] = r.regularMarketPrice; });
-          setPrices(map);
-          const syncTime = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-          setLastSync(syncTime);
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, prices: map, lastSync: syncTime }));
-        } else {
-           throw new Error('invalid_data');
+        if (!res.ok) {
+          if (data.error === 'missing_api_token') throw new Error('missing_api_token');
+          if (res.status === 429) throw new Error('rate_limit');
+          throw new Error('api_error');
         }
-      } catch (err: any) { 
-        console.error("Brapi fetch error:", err);
-        if (cached.prices) {
-           setPrices(cached.prices);
-           setLastSync(cached.lastSync + (err.message === 'rate_limit' ? ' (Limite da API)' : ' (Offline)'));
+
+        const map = data.prices || {};
+        if (Object.keys(map).length === 0) throw new Error('no_quotes');
+        setPrices(map);
+        const syncTime = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        setLastSync(data.unavailable?.length ? `${syncTime} (sem cotação: ${data.unavailable.join(', ')})` : syncTime);
+        localStorage.setItem(cacheKey, JSON.stringify({ timestamp: now, prices: map, lastSync: syncTime }));
+      } catch (err: any) {
+        console.error('Quote fetch error:', err);
+        if (cached.prices && Object.keys(cached.prices).length) {
+          setPrices(cached.prices);
+          setLastSync((cached.lastSync || '') + (err.message === 'missing_api_token' ? ' (configure BRAPI_TOKEN)' : err.message === 'rate_limit' ? ' (limite da API)' : ' (offline)'));
         } else {
-           setLastSync(err.message === 'rate_limit' ? "Erro (Limite de consultas da API)" : "Erro de conexão com B3");
+          setLastSync(err.message === 'missing_api_token' ? 'Configure BRAPI_TOKEN na Vercel' : err.message === 'rate_limit' ? 'Limite de consultas da API' : 'Sem cotações disponíveis');
         }
-      } finally { setIsRefreshing(false); }
+      } finally {
+        setIsRefreshing(false);
+      }
     };
 
     useEffect(() => {
       if (groupedInvestments.length > 0 && Object.keys(prices).length === 0 && !isRefreshing) {
         refreshQuotes();
       }
-    }, [investments.length]); 
+    }, [investments.length]);
 
     const handleSaveAsset = async (e: any) => {
       e.preventDefault();
