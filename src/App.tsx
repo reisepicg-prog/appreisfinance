@@ -221,7 +221,7 @@ export default function FinanceApp() {
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all' });
-  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', unpaidOnly: false });
+  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: false });
 
   // --- Listas Inteligentes de Memória (Autocomplete) ---
   const allDescriptions = Array.from(new Set((transactions || []).map(t => {
@@ -295,6 +295,7 @@ export default function FinanceApp() {
   // ==========================================
 
   const Dashboard = () => {
+    const [detailType, setDetailType] = useState<string | null>(null);
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
         const d = new Date(tx?.date || '');
         if (isNaN(d.getTime())) return '';
@@ -302,9 +303,11 @@ export default function FinanceApp() {
     }))).filter(m => m !== '').sort().reverse() as string[];
 
     const [viewMode, setViewMode] = useState('month'); 
-    const [selectedMonth, setSelectedMonth] = useState(
-        availableMonths.includes(currentMonthStr) ? currentMonthStr : (availableMonths[0] || currentMonthStr)
-    );
+    const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
+    const [calendarYear, setCalendarYear] = useState(() => Number(currentMonthStr.slice(0, 4)) || new Date().getFullYear());
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const selectedMonthLabel = new Date(`${selectedMonth}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const monthNames = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
     const filteredTxs = viewMode === 'all' 
         ? transactions 
@@ -341,22 +344,33 @@ export default function FinanceApp() {
         </div>
 
         {viewMode === 'month' && (
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Mês de Referência:</span>
-            <select 
-              value={selectedMonth} 
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-1.5 px-3 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {availableMonths.length === 0 && <option value={selectedMonth}>{selectedMonth}</option>}
-              {availableMonths.map(month => {
-                  const [y, m] = (month as string).split('-');
-                  return <option key={month as string} value={month as string}>{`${m}/${y}`}</option>
-              })}
-            </select>
+          <div className="mb-2 max-w-xl">
+            <button type="button" onClick={() => setIsCalendarOpen(open => !open)} aria-expanded={isCalendarOpen} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold capitalize text-gray-700 shadow-sm hover:border-blue-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Mês de Referência:</span>
+              <span>{selectedMonthLabel}</span>
+              <Icons.ChevronDown size={16} className={isCalendarOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+            </button>
+            {isCalendarOpen && (
+              <div className="mt-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Escolher mês</span>
+                  <div className="flex items-center gap-3">
+                    <button type="button" aria-label="Ano anterior" onClick={() => setCalendarYear(year => year - 1)} className="rounded-lg px-2 py-1 font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">‹</button>
+                    <span className="min-w-12 text-center font-bold text-gray-800 dark:text-gray-100">{calendarYear}</span>
+                    <button type="button" aria-label="Próximo ano" onClick={() => setCalendarYear(year => year + 1)} className="rounded-lg px-2 py-1 font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">›</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                  {monthNames.map((name, index) => {
+                    const monthValue = `${calendarYear}-${String(index + 1).padStart(2, '0')}`;
+                    const active = selectedMonth === monthValue;
+                    return <button key={monthValue} type="button" onClick={() => { setSelectedMonth(monthValue); setIsCalendarOpen(false); }} className={`rounded-lg px-2 py-2 text-xs font-bold transition-colors ${active ? 'bg-blue-600 text-white shadow' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>{name}</button>;
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
-        
         {/* Painéis de Saldo Real x Projetado */}
         <div className="grid grid-cols-2 gap-4">
            <div className="bg-blue-600 p-5 rounded-xl text-white shadow-md relative overflow-hidden">
@@ -378,7 +392,7 @@ export default function FinanceApp() {
         </div>
 
         {/* Barras de Progresso */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl shadow-sm">
+        <div role="button" tabIndex={0} onClick={() => setDetailType('income')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setDetailType('income'); }} className="cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl shadow-sm hover:border-emerald-400 transition-colors">
           <div className="flex justify-between items-end mb-2">
              <div>
                 <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Receitas</h3>
@@ -391,7 +405,7 @@ export default function FinanceApp() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl shadow-sm">
+        <div role="button" tabIndex={0} onClick={() => setDetailType('expense')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setDetailType('expense'); }} className="cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl shadow-sm hover:border-red-400 transition-colors">
           <div className="flex justify-between items-end mb-2">
              <div>
                 <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Despesas</h3>
@@ -412,6 +426,37 @@ export default function FinanceApp() {
            </div>
            <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">R$ {formatBRL(totalReceivables)}</p>
         </div>
+      {detailType && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
+          <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div role="dialog" aria-modal="true" className="my-auto max-h-full w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{detailType === 'income' ? 'Receitas do período' : 'Despesas do período'}</h3>
+                <button type="button" onClick={() => setDetailType(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+              </div>
+              <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">{viewMode === 'all' ? 'Todos os períodos' : `Período: ${selectedMonth}`}</p>
+              <div className="space-y-2">
+                {(detailType === 'income' ? incomes : expenses).length === 0 ? (
+                  <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum lançamento neste período.</p>
+                ) : (detailType === 'income' ? incomes : expenses).map((tx: any) => (
+                  <div key={tx.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">
+                    <div className="flex justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-800 dark:text-gray-100">{tx.desc}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{tx.category || 'Sem categoria'} • {tx.date ? new Date(`${tx.date}T12:00:00`).toLocaleDateString('pt-BR') : 'Sem data'}</p>
+                      </div>
+                      <p className="shrink-0 text-sm font-bold text-gray-800 dark:text-gray-100">R$ {formatBRL(detailType === 'income' ? tx.totalAmount : tx.myAmount)}</p>
+                    </div>
+                    {tx.observation && <p className="mt-2 whitespace-pre-wrap text-xs text-gray-600 dark:text-gray-300">{tx.observation}</p>}
+                    <p className={`mt-1 text-[10px] font-medium ${tx.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{tx.status === 'paid' ? (detailType === 'income' ? 'Recebido' : 'Pago') : 'Pendente'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       </div>
     );
   };
@@ -643,6 +688,8 @@ export default function FinanceApp() {
   const TransactionForm = () => {
     const [txType, setTxType] = useState('expense');
     const [desc, setDesc] = useState('');
+    const [category, setCategory] = useState('');
+    const [observation, setObservation] = useState('');
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
     const [calcTarget, setCalcTarget] = useState<any>(null);
@@ -659,6 +706,7 @@ export default function FinanceApp() {
     const [splits, setSplits] = useState<any[]>([{ name: '', amount: 0, displayAmount: '', paid: false }]);
     const [errorMsg, setErrorMsg] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const categoryOptions = txType === 'income' ? ['Salário', 'Renda extra', 'Investimentos', 'Vendas', 'Reembolso', 'Outros'] : ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Contas e serviços', 'Compras', 'Impostos', 'Outros'];
 
     useEffect(() => {
       if (txType === 'income' || methodId === 'pix' || cards.length === 0) {
@@ -768,14 +816,14 @@ export default function FinanceApp() {
             const initialStatus = txType === 'income' ? (isFuture ? 'pending' : 'paid') : 'pending';
 
             const newTx = {
-              type: txType, desc: desc + suffix, totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
+              type: txType, desc: desc + suffix, category, observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
               date: formattedDate, method: cardName, methodId: finalMethodId, splits: instSplits, groupId, status: initialStatus,
               createdAt: new Date().toISOString()
             };
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
         
-        setDesc(''); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setCategory(''); setObservation(''); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
       } catch (err) { console.error(err); setErrorMsg("Erro ao salvar."); } finally { setIsSaving(false); }
     };
@@ -824,6 +872,20 @@ export default function FinanceApp() {
                 />
                 <button type="button" onClick={() => setCalcTarget('main')} className="px-4 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors text-xl" title="Calculadora">🧮</button>
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
+              <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="">Selecione uma categoria</option>
+                {categoryOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observação (opcional)</label>
+              <input type="text" value={observation} onChange={e => setObservation(e.target.value)} placeholder="Detalhes adicionais" className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
           </div>
 
@@ -988,6 +1050,7 @@ export default function FinanceApp() {
 
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
+    const [filtersExpanded, setFiltersExpanded] = useState(false);
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
 
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
@@ -1135,12 +1198,13 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Fechamento e Cobranças</h2>
+          <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
           {(filtersColl.month !== defaultCollectionsMonth || filtersColl.person !== 'all' || filtersColl.status !== 'all') && (
             <button onClick={() => setFiltersColl({ month: defaultCollectionsMonth, person: 'all', status: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        {filtersExpanded && <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Mês</label>
             <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1166,7 +1230,7 @@ export default function FinanceApp() {
               <option value="paid">Só Pagos</option>
             </select>
           </div>
-        </div>
+        </div>}
         
         {peopleToRender.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700 text-center">
@@ -1794,12 +1858,15 @@ export default function FinanceApp() {
     const [invoicePaymentDate, setInvoicePaymentDate] = useState(() => getLocalDateString());
     const [markThirdPartiesReceived, setMarkThirdPartiesReceived] = useState(false);
     const [isPayingInvoice, setIsPayingInvoice] = useState(false);
+    const [filtersExpanded, setFiltersExpanded] = useState(false);
 
     const filterMonth = filtersHist.month;
     const setFilterMonth = (month: string) => setFiltersHist(prev => ({ ...prev, month }));
     const filterType = filtersHist.type;
     const setFilterType = (type: string) => setFiltersHist(prev => ({ ...prev, type }));
     const filterPerson = filtersHist.person;
+    const filterMethodId = filtersHist.methodId;
+    const setFilterMethodId = (methodId: string) => setFiltersHist(prev => ({ ...prev, methodId }));
     const setFilterPerson = (person: string) => setFiltersHist(prev => ({ ...prev, person }));
 
     const availableMonths = Array.from(new Set((transactions || []).map(t => {
@@ -1809,6 +1876,7 @@ export default function FinanceApp() {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))).filter(m => m !== '').sort().reverse() as string[];
     
+    const availableMethods = Array.from(new Map((transactions || []).map((tx: any) => [String(tx?.methodId || 'pix'), String(tx?.method || 'Pix/Conta')])).entries()).sort((a: any, b: any) => a[1].localeCompare(b[1], 'pt-BR', { sensitivity: 'base' }));
     const availablePersons = Array.from(new Set((transactions || []).flatMap(t => t.splits?.map((s: any) => String(s?.name || '')) || []))).filter(Boolean).sort() as string[];
 
     const groupedInvoices: any = {};
@@ -1817,6 +1885,7 @@ export default function FinanceApp() {
       if (!tx?.date) return false;
       if (filterMonth !== 'all' && filterMonth !== '' && !String(tx.date).startsWith(filterMonth)) return false;
       if (filterType !== 'all' && String(tx.type) !== filterType) return false;
+      if (filterMethodId !== 'all' && String(tx.methodId || 'pix') !== filterMethodId) return false;
       if (filterPerson === '__mine__') {
         if ((parseFloat(tx.myAmount) || 0) <= 0) return false;
       } else if (filterPerson !== 'all') {
@@ -1964,12 +2033,13 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
-          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.unpaidOnly) && (
-            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all', unpaidOnly: false })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
+          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || filtersHist.unpaidOnly) && (
+            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: false })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+        {filtersExpanded && <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Mês</label>
             <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1997,11 +2067,18 @@ export default function FinanceApp() {
               {availablePersons.map(name => <option key={name as string} value={name as string}>{name as string}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Cartão/Conta</label>
+            <select value={filterMethodId} onChange={e => setFilterMethodId(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">Todos</option>
+              {availableMethods.map(([id, name]: any) => <option key={id} value={id}>{name}</option>)}
+            </select>
+          </div>
           <label className="flex items-center gap-2 self-end rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
             <input type="checkbox" checked={filtersHist.unpaidOnly} onChange={e => setFiltersHist(prev => ({ ...prev, unpaidOnly: e.target.checked }))} className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500" />
             Mostrar apenas faturas não pagas
           </label>
-        </div>
+        </div>}
 
         {isLoading ? (
           <p className="text-center text-gray-500 dark:text-gray-400">Sincronizando...</p>
