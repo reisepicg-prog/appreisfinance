@@ -221,7 +221,7 @@ export default function FinanceApp() {
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all' });
-  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all' });
+  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', unpaidOnly: false });
 
   // --- Listas Inteligentes de Memória (Autocomplete) ---
   const allDescriptions = Array.from(new Set((transactions || []).map(t => {
@@ -1136,7 +1136,7 @@ export default function FinanceApp() {
           )}
         </div>
         
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Mês</label>
             <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1322,7 +1322,9 @@ export default function FinanceApp() {
       g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
       g.lots.sort((a: any, b: any) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime());
       return g;
-    });
+    }).sort((a: any, b: any) =>
+      String(a.companyName || a.ticker).localeCompare(String(b.companyName || b.ticker), 'pt-BR', { sensitivity: 'base' })
+    );
 
     const CACHE_TTL = 15 * 60 * 1000;
 
@@ -1849,7 +1851,9 @@ export default function FinanceApp() {
       }
     });
 
-    const invoicesArray = Object.values(groupedInvoices).sort((a: any, b: any) => String(a.monthYear).localeCompare(String(b.monthYear)));
+    const invoicesArray = Object.values(groupedInvoices)
+      .filter((invoice: any) => !filtersHist.unpaidOnly || !invoice.isFullyPaid)
+      .sort((a: any, b: any) => String(a.monthYear).localeCompare(String(b.monthYear)));
     
     invoicesArray.forEach((inv: any) => {
         inv.transactions.sort((a: any, b: any) => {
@@ -1956,8 +1960,8 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
-          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all') && (
-            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.unpaidOnly) && (
+            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all', unpaidOnly: false })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
@@ -1989,6 +1993,10 @@ export default function FinanceApp() {
               {availablePersons.map(name => <option key={name as string} value={name as string}>{name as string}</option>)}
             </select>
           </div>
+          <label className="flex items-center gap-2 self-end rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+            <input type="checkbox" checked={filtersHist.unpaidOnly} onChange={e => setFiltersHist(prev => ({ ...prev, unpaidOnly: e.target.checked }))} className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500" />
+            Mostrar apenas faturas não pagas
+          </label>
         </div>
 
         {isLoading ? (
