@@ -1347,8 +1347,13 @@ export default function FinanceApp() {
         const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(tickerList.join(','))}`);
         const data = await res.json();
         if (!res.ok) {
-          if (data.error === 'missing_api_token') throw new Error('missing_api_token');
-          if (res.status === 429) throw new Error('rate_limit');
+          if (data.code === 'MISSING_API_TOKEN') throw new Error('missing_api_token');
+          if (res.status === 401) throw new Error('invalid_api_token');
+          if (res.status === 404) throw new Error('no_quotes');
+          if (res.status === 429) {
+            const retryAfter = res.headers.get('Retry-After') || data.retryAfter;
+            throw new Error(retryAfter ? `rate_limit:${retryAfter}` : 'rate_limit');
+          }
           throw new Error('api_error');
         }
 
@@ -1362,9 +1367,9 @@ export default function FinanceApp() {
         console.error('Quote fetch error:', err);
         if (cached.prices && Object.keys(cached.prices).length) {
           setPrices(cached.prices);
-          setLastSync((cached.lastSync || '') + (err.message === 'missing_api_token' ? ' (configure BRAPI_TOKEN)' : err.message === 'rate_limit' ? ' (limite da API)' : ' (offline)'));
+          setLastSync((cached.lastSync || '') + (err.message === 'missing_api_token' ? ' (configure BRAPI_TOKEN)' : String(err.message).startsWith('rate_limit') ? ` (limite da API; tente novamente em ${err.message.split(':')[1] || 'alguns minutos'})` : err.message === 'invalid_api_token' ? ' (token brapi inválido)' : ' (offline)'));
         } else {
-          setLastSync(err.message === 'missing_api_token' ? 'Configure BRAPI_TOKEN na Vercel' : err.message === 'rate_limit' ? 'Limite de consultas da API' : 'Sem cotações disponíveis');
+          setLastSync(err.message === 'missing_api_token' ? 'Configure BRAPI_TOKEN na Vercel' : String(err.message).startsWith('rate_limit') ? `Limite de consultas da API; tente novamente em ${err.message.split(':')[1] || 'alguns minutos'}` : err.message === 'invalid_api_token' ? 'Token BRAPI_TOKEN inválido' : 'Sem cotações disponíveis');
         }
       } finally {
         setIsRefreshing(false);
