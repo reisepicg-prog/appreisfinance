@@ -306,6 +306,8 @@ export default function FinanceApp() {
     const [selectedMonth, setSelectedMonth] = useState(
         availableMonths.includes(currentMonthStr) ? currentMonthStr : (availableMonths[0] || currentMonthStr)
     );
+    const [calendarYear, setCalendarYear] = useState(() => Number(selectedMonth.slice(0, 4)) || new Date().getFullYear());
+    const monthNames = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
     const filteredTxs = viewMode === 'all' 
         ? transactions 
@@ -342,22 +344,24 @@ export default function FinanceApp() {
         </div>
 
         {viewMode === 'month' && (
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Mês de Referência:</span>
-            <select 
-              value={selectedMonth} 
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-1.5 px-3 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {availableMonths.length === 0 && <option value={selectedMonth}>{selectedMonth}</option>}
-              {availableMonths.map(month => {
-                  const [y, m] = (month as string).split('-');
-                  return <option key={month as string} value={month as string}>{`${m}/${y}`}</option>
+          <div className="mb-2 max-w-xl rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Mês de Referência</span>
+              <div className="flex items-center gap-3">
+                <button type="button" aria-label="Ano anterior" onClick={() => setCalendarYear(year => year - 1)} className="rounded-lg px-2 py-1 font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">‹</button>
+                <span className="min-w-12 text-center font-bold text-gray-800 dark:text-gray-100">{calendarYear}</span>
+                <button type="button" aria-label="Próximo ano" onClick={() => setCalendarYear(year => year + 1)} className="rounded-lg px-2 py-1 font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">›</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+              {monthNames.map((name, index) => {
+                const monthValue = `${calendarYear}-${String(index + 1).padStart(2, '0')}`;
+                const active = selectedMonth === monthValue;
+                return <button key={monthValue} type="button" onClick={() => setSelectedMonth(monthValue)} className={`rounded-lg px-2 py-2 text-xs font-bold transition-colors ${active ? 'bg-blue-600 text-white shadow' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>{name}</button>;
               })}
-            </select>
+            </div>
           </div>
         )}
-        
         {/* Painéis de Saldo Real x Projetado */}
         <div className="grid grid-cols-2 gap-4">
            <div className="bg-blue-600 p-5 rounded-xl text-white shadow-md relative overflow-hidden">
