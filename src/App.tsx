@@ -1041,6 +1041,7 @@ export default function FinanceApp() {
 
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
+    const [filtersExpanded, setFiltersExpanded] = useState(false);
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
 
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
@@ -1188,12 +1189,13 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Fechamento e Cobranças</h2>
+          <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
           {(filtersColl.month !== defaultCollectionsMonth || filtersColl.person !== 'all' || filtersColl.status !== 'all') && (
             <button onClick={() => setFiltersColl({ month: defaultCollectionsMonth, person: 'all', status: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        {filtersExpanded && <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Mês</label>
             <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1219,7 +1221,7 @@ export default function FinanceApp() {
               <option value="paid">Só Pagos</option>
             </select>
           </div>
-        </div>
+        </div>}
         
         {peopleToRender.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700 text-center">
