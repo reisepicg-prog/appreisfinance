@@ -221,7 +221,7 @@ export default function FinanceApp() {
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all' });
-  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: false });
+  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true });
 
   // --- Listas Inteligentes de Memória (Autocomplete) ---
   const allDescriptions = Array.from(new Set((transactions || []).map(t => {
@@ -2064,14 +2064,14 @@ export default function FinanceApp() {
     };
 
     useEffect(() => {
-      if (editingTx) {
+      if (editingTx || settlementTx) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         document.body.style.overflow = 'hidden';
       } else {
         document.body.style.overflow = 'auto';
       }
       return () => { document.body.style.overflow = 'auto'; };
-    }, [editingTx]);
+    }, [editingTx, settlementTx]);
 
     const handleSaveEdit = async (e: any) => {
       e.preventDefault();
@@ -2110,7 +2110,7 @@ export default function FinanceApp() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
           <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
-          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || filtersHist.unpaidOnly) && (
+          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || !filtersHist.unpaidOnly) && (
             <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: false })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
@@ -2301,9 +2301,9 @@ export default function FinanceApp() {
         )}
 
         {settlementTx && createPortal(
-          <div className="fixed inset-0 z-[10000] overflow-y-auto bg-black/60 p-4 dark:bg-black/80">
-            <div className="flex min-h-full items-start justify-center pt-2">
-            <form onSubmit={handleConfirmSettlement} className="my-2 max-h-[calc(100dvh-2rem)] w-full max-w-sm space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[10000] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+            <form onSubmit={handleConfirmSettlement} role="dialog" aria-modal="true" className="w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain space-y-4 rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{settlementTx.type === 'income' ? 'Efetivar receita' : 'Efetivar despesa'}</h3>
                 <button type="button" onClick={() => setSettlementTx(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
@@ -2330,9 +2330,10 @@ export default function FinanceApp() {
           document.body
         )}
 
-        {editingTx && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 border border-gray-100 dark:border-gray-700">
+        {editingTx && createPortal(
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain shadow-xl space-y-4 border border-gray-100 dark:border-gray-700">
               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Editar Lançamento</h3>
               <form onSubmit={handleSaveEdit} className="space-y-4">
                 <div>
@@ -2374,7 +2375,9 @@ export default function FinanceApp() {
                 </div>
               </form>
             </div>
-          </div>
+            </div>
+          </div>,
+          document.body
         )}
       </div>
     );
