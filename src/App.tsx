@@ -107,6 +107,21 @@ const formatBRL = (value: number | string): string => {
   return (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+const parseLocalDate = (value: any): Date => {
+  const dateText = String(value || '');
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateText);
+  if (dateOnlyMatch) {
+    return new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]), 12);
+  }
+  return new Date(value || NaN);
+};
+
+const formatLocalDate = (value: any): string => {
+  if (!value) return '-';
+  const date = parseLocalDate(value);
+  return isNaN(date.getTime()) ? '-' : date.toLocaleDateString('pt-BR');
+};
+
 // --- Lista Estática Inteligente para Autocomplete (B3) ---
 const POPULAR_TICKERS = ["AAPL34", "ABEV3", "ALOS3", "ARZZ3", "ASAI3", "AZUL4", "B3SA3", "BBAS3", "BBDC3", "BBDC4", "BBSE3", "BPAC11", "BRAP4", "BRFS3", "BRKM5", "CCRO3", "CIEL3", "CMIG4", "COGN3", "CPFE3", "CPLE6", "CRFB3", "CSAN3", "CSNA3", "CVCB3", "CYRE3", "ELET3", "ELET6", "EMBR3", "ENEV3", "ENGI11", "EQTL3", "EZTC3", "FLRY3", "GGBR4", "GOAU4", "GOLL4", "HAPV3", "HGLG11", "HYPE3", "IGTI11", "IRBR3", "ITSA4", "ITUB4", "JBSS3", "KLBN11", "KNRI11", "LREN3", "LWSA3", "MGLU3", "MRFG3", "MRVE3", "MULT3", "MXRF11", "NTCO3", "PCAR3", "PETR3", "PETR4", "PETZ3", "PRIO3", "RADL3", "RAIL3", "RDOR3", "RENT3", "RRRP3", "SANB11", "SBSP3", "SIMH3", "SLCE3", "SOMA3", "SUZB3", "TAEE11", "TIMS3", "TOTS3", "UGPA3", "USIM5", "VALE3", "VAMO3", "VBBR3", "VILG11", "VISC11", "VIVT3", "WEGE3", "XPLG11", "XPML11", "YDUQ3"];
 
@@ -297,7 +312,7 @@ export default function FinanceApp() {
   const Dashboard = () => {
     const [detailType, setDetailType] = useState<string | null>(null);
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
-        const d = new Date(tx?.date || '');
+        const d = parseLocalDate(tx?.date);
         if (isNaN(d.getTime())) return '';
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))).filter(m => m !== '').sort().reverse() as string[];
@@ -1104,7 +1119,7 @@ export default function FinanceApp() {
 
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
         if (!tx?.date) return '';
-        const d = new Date(tx.date);
+        const d = parseLocalDate(tx.date);
         if (isNaN(d.getTime())) return '';
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))).filter(m => m !== '').sort() as string[];
@@ -1130,7 +1145,7 @@ export default function FinanceApp() {
     
     const filteredTransactions = (transactions || []).filter(tx => {
         if (!tx?.date) return false;
-        const d = new Date(tx.date);
+        const d = parseLocalDate(tx.date);
         if (isNaN(d.getTime())) return false;
         const txMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         if (selectedMonth !== 'all' && txMonthStr !== selectedMonth) return false;
@@ -1216,7 +1231,7 @@ export default function FinanceApp() {
       const total = unpaidItems.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
       let text = `Olá, aqui é o resumo das suas contas comigo:\n\n`;
       unpaidItems.forEach(item => {
-        const dateFormatted = new Date(item.date).toLocaleDateString('pt-BR');
+        const dateFormatted = formatLocalDate(item.date);
         text += `- ${item.desc} (Venc: ${dateFormatted}): R$ ${formatBRL(item.amount)}\n`;
       });
       text += `\n*Total a pagar: R$ ${formatBRL(total)}*`;
@@ -1437,7 +1452,7 @@ export default function FinanceApp() {
       return acc;
     }, {})).map((g: any) => {
       g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
-      g.lots.sort((a: any, b: any) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime());
+      g.lots.sort((a: any, b: any) => parseLocalDate(b.buyDate).getTime() - parseLocalDate(a.buyDate).getTime());
       return g;
     }).sort((a: any, b: any) =>
       String(a.companyName || a.ticker).localeCompare(String(b.companyName || b.ticker), 'pt-BR', { sensitivity: 'base' })
@@ -1756,7 +1771,7 @@ export default function FinanceApp() {
                         <div key={lot.id} className="flex justify-between items-center bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 text-xs shadow-sm">
                           <div>
                             <p className="font-bold text-gray-700 dark:text-gray-200">{lot.quantity} cotas <span className="text-gray-400 dark:text-gray-500 font-normal ml-1">({lot.broker})</span></p>
-                            <p className="text-gray-500 dark:text-gray-400">{new Date(lot.buyDate).toLocaleDateString('pt-BR')} • PM: R$ {formatBRL(lot.unitPrice)}</p>
+                            <p className="text-gray-500 dark:text-gray-400">{formatLocalDate(lot.buyDate)} • PM: R$ {formatBRL(lot.unitPrice)}</p>
                           </div>
                           <div className="flex gap-1">
                              <button onClick={() => openEditAsset(lot)} className="p-1.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"><Icons.Edit size={16} /></button>
@@ -1782,7 +1797,7 @@ export default function FinanceApp() {
                   <span className={s.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>Resultado: R$ {formatBRL(s.netProfit)}</span>
                 </div>
                 <div className="flex justify-between text-gray-400 dark:text-gray-500">
-                  <span>Venda em {new Date(s.saleDate).toLocaleDateString('pt-BR')}</span>
+                  <span>Venda em {formatLocalDate(s.saleDate)}</span>
                   <span className="font-semibold text-gray-700 dark:text-gray-300">
                     {s.taxPayable > 0 ? `DARF a Pagar: R$ ${formatBRL(s.taxPayable)}` : 'Isento de IR'}
                   </span>
@@ -1926,7 +1941,7 @@ export default function FinanceApp() {
 
     const availableMonths = Array.from(new Set((transactions || []).map(t => {
       if (!t?.date) return '';
-      const d = new Date(t.date);
+      const d = parseLocalDate(t.date);
       if (isNaN(d.getTime())) return '';
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))).filter(m => m !== '').sort().reverse() as string[];
@@ -1951,7 +1966,7 @@ export default function FinanceApp() {
     });
 
     filteredTxsForHistory.forEach(tx => {
-      const date = new Date(tx.date);
+      const date = parseLocalDate(tx.date);
       const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const key = `${monthYear}|${tx.methodId}`;
       
@@ -1985,8 +2000,8 @@ export default function FinanceApp() {
     
     invoicesArray.forEach((inv: any) => {
         inv.transactions.sort((a: any, b: any) => {
-           const dateA = new Date(a.purchaseDate || a.date).getTime();
-           const dateB = new Date(b.purchaseDate || b.date).getTime();
+           const dateA = parseLocalDate(a.purchaseDate || a.date).getTime();
+           const dateB = parseLocalDate(b.purchaseDate || b.date).getTime();
            return (dateA || 0) - (dateB || 0);
         });
     });
@@ -2197,7 +2212,7 @@ export default function FinanceApp() {
                               </p>
                               <p className="text-[10px] text-gray-400 dark:text-gray-500">
                                 {tx.type === 'income' ? 'Recebido em: ' : 'Compra: '} 
-                                {tx.purchaseDate ? new Date(tx.purchaseDate).toLocaleDateString('pt-BR') : tx.date ? new Date(tx.date).toLocaleDateString('pt-BR') : '-'}
+                                {tx.purchaseDate ? formatLocalDate(tx.purchaseDate) : tx.date ? parseLocalDate(tx.date).toLocaleDateString('pt-BR') : '-'}
                               </p>
                               {tx.status === 'paid' && tx.paymentDate && (
                                 <p className="text-[10px] text-green-600 dark:text-green-400">Efetivado em: {new Date(`${tx.paymentDate}T12:00:00`).toLocaleDateString('pt-BR')}</p>
