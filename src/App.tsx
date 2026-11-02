@@ -1877,6 +1877,11 @@ export default function FinanceApp() {
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
     const [payingInvoice, setPayingInvoice] = useState<any>(null);
+    const [invoicePaymentAccountId, setInvoicePaymentAccountId] = useState('');
+    const [settlementTx, setSettlementTx] = useState<any>(null);
+    const [settlementAccountId, setSettlementAccountId] = useState('');
+    const bankAccounts = cards.filter((card: any) => !(parseFloat(card.limit) > 0));
+
     const getLocalDateString = () => {
       const date = new Date();
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -1965,12 +1970,13 @@ export default function FinanceApp() {
     const handlePayInvoice = (invoice: any) => {
       setInvoicePaymentDate(getLocalDateString());
       setMarkThirdPartiesReceived(false);
+      setInvoicePaymentAccountId(cards.find((card: any) => card.isDefaultAccount && !(parseFloat(card.limit) > 0))?.id || '');
       setPayingInvoice(invoice);
     };
 
     const handleConfirmPayInvoice = async (e: any) => {
       e.preventDefault();
-      if (!user || !payingInvoice || !invoicePaymentDate) return;
+      if (!user || !payingInvoice || !invoicePaymentDate || !invoicePaymentAccountId) return;
       setIsPayingInvoice(true);
       try {
         const updatePromises = payingInvoice.transactions.map((tx: any) => {
@@ -1978,6 +1984,7 @@ export default function FinanceApp() {
           if (tx.status !== 'paid') {
             changes.status = 'paid';
             changes.paymentDate = invoicePaymentDate;
+            changes.settlementAccountId = invoicePaymentAccountId;
           }
           if (markThirdPartiesReceived && tx.splits?.length) {
             changes.splits = tx.splits.map((split: any) => split?.name ? { ...split, paid: true } : split);
@@ -1999,12 +2006,30 @@ export default function FinanceApp() {
     const handleToggleStatus = async (tx: any) => {
       if (!user) return;
       try {
-        const newStatus = tx.status === 'paid' ? 'pending' : 'paid';
+        if (tx.status !== 'paid') {
+          setSettlementTx(tx);
+          setSettlementAccountId(tx.settlementAccountId || cards.find((card: any) => card.isDefaultAccount && !(parseFloat(card.limit) > 0))?.id || '');
+          return;
+        }
         await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), {
-          status: newStatus,
-          paymentDate: newStatus === 'paid' ? getLocalDateString() : ''
+          status: 'pending',
+          paymentDate: '',
+          settlementAccountId: ''
         });
       } catch (err) { console.error(err); }
+    };
+
+    const handleConfirmSettlement = async (e: any) => {
+      e.preventDefault();
+      if (!user || !settlementTx || !settlementAccountId) return;
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'transactions', settlementTx.id), {
+          status: 'paid',
+          paymentDate: getLocalDateString(),
+          settlementAccountId
+        });
+        setSettlementTx(null);
+      } catch (err) { console.error('Erro ao efetivar lançamento', err); }
     };
 
     const openEditModal = (tx: any) => {
@@ -2224,6 +2249,13 @@ export default function FinanceApp() {
               </div>
               <form onSubmit={handleConfirmPayInvoice} className="space-y-4">
                 <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Conta bancária usada para pagar</label>
+                  <select value={invoicePaymentAccountId} onChange={e => setInvoicePaymentAccountId(e.target.value)} required className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg">
+                    <option value="">Selecione uma conta</option>
+                    {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Data do pagamento</label>
                   <input type="date" value={invoicePaymentDate} onChange={e => setInvoicePaymentDate(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
                 </div>
@@ -2240,6 +2272,29 @@ export default function FinanceApp() {
                 </div>
               </form>
             </div>
+          </div>
+        )}
+
+        {settlementTx && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/60 p-4 dark:bg-black/80">
+            <form onSubmit={handleConfirmSettlement} className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">{settlementTx.type === 'income' ? 'Efetivar receita' : 'Efetivar despesa'}</h3>
+                <button type="button" onClick={() => setSettlementTx(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{settlementTx.desc}</p>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Conta bancária</label>
+                <select required value={settlementAccountId} onChange={e => setSettlementAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                  <option value="">Selecione uma conta</option>
+                  {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setSettlementTx(null)} className="flex-1 rounded-lg bg-gray-100 py-2 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button>
+                <button type="submit" className="flex-1 rounded-lg bg-green-600 py-2 font-medium text-white">Confirmar</button>
+              </div>
+            </form>
           </div>
         )}
 
