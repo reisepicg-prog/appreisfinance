@@ -1911,9 +1911,15 @@ export default function FinanceApp() {
 
   const History = () => {
     const [editingTx, setEditingTx] = useState<any>(null);
-    const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '' });
+    const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '', category: '' });
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
+    const editCategoryOptions = editingTx?.type === 'income'
+      ? ['Salário', 'Renda extra', 'Investimentos', 'Vendas', 'Reembolso', 'Outros']
+      : ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Contas e serviços', 'Compras', 'Impostos', 'Outros'];
+    const categoryOptions = editingTx?.category && !editCategoryOptions.includes(editingTx.category)
+      ? [editingTx.category, ...editCategoryOptions]
+      : editCategoryOptions;
     const [payingInvoice, setPayingInvoice] = useState<any>(null);
     const [invoicePaymentAccountId, setInvoicePaymentAccountId] = useState('');
     const [settlementTx, setSettlementTx] = useState<any>(null);
@@ -2074,7 +2080,7 @@ export default function FinanceApp() {
 
     const openEditModal = (tx: any) => {
       setEditingTx(tx);
-      setEditForm({ desc: tx.desc || '', totalAmount: tx.totalAmount || '', date: tx.date || '' });
+      setEditForm({ desc: tx.desc || '', totalAmount: tx.totalAmount || '', date: tx.date || '', category: tx.category || '' });
       setUpdateScope('single');
     };
 
@@ -2107,7 +2113,8 @@ export default function FinanceApp() {
             desc: updateScope === 'future' ? t.desc : editForm.desc, 
             totalAmount: newTotal,
             myAmount: newMyAmount,
-            date: updateScope === 'single' ? editForm.date : t.date
+            date: updateScope === 'single' ? editForm.date : t.date,
+            category: editForm.category
           });
         });
 
@@ -2354,6 +2361,13 @@ export default function FinanceApp() {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
                   <input type="text" value={editForm.desc} onChange={e => setEditForm({...editForm, desc: e.target.value})} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
+                  <select value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg">
+                    <option value="">Sem categoria</option>
+                    {categoryOptions.map(category => <option key={category} value={category}>{category}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Total (R$)</label>
