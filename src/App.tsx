@@ -483,6 +483,8 @@ export default function FinanceApp() {
     const [displayLimit, setDisplayLimit] = useState('');
     const [displayOpeningBalance, setDisplayOpeningBalance] = useState('');
     const [selectedPixCard, setSelectedPixCard] = useState<any>(null);
+    const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+    const [selectedCardMonth, setSelectedCardMonth] = useState(currentMonthStr);
 
     const handleSaveCard = async (e: any) => {
       e.preventDefault();
@@ -547,6 +549,53 @@ export default function FinanceApp() {
     const sortedCards = [...cards].sort((a: any, b: any) =>
       String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR', { sensitivity: 'base' })
     );
+    const selectedCard = cards.find((card: any) => card.id === selectedCardId) || null;
+    const selectedCardIsCredit = selectedCard ? (parseFloat(selectedCard.limit) || 0) > 0 : false;
+    const selectedCardMovements: any[] = selectedCard
+      ? selectedCardIsCredit
+        ? transactions
+            .filter((tx: any) => tx.methodId === selectedCard.id && String(tx.date || '').startsWith(selectedCardMonth))
+            .map((tx: any) => ({
+              id: `transaction-${tx.id}`,
+              description: tx.desc || 'Lançamento',
+              date: tx.date,
+              amount: parseFloat(tx.totalAmount) || 0,
+              type: tx.type === 'income' ? 'income' : 'expense',
+              status: tx.status === 'paid' ? (tx.type === 'income' ? 'Recebido' : 'Pago') : 'Pendente',
+              detail: tx.category || tx.method || ''
+            }))
+        : [
+            ...transactions
+              .filter((tx: any) => tx.status === 'paid' && tx.settlementAccountId === selectedCard.id && String(tx.paymentDate || tx.date || '').startsWith(selectedCardMonth))
+              .map((tx: any) => ({
+                id: `settlement-${tx.id}`,
+                description: tx.desc || 'Lançamento',
+                date: tx.paymentDate || tx.date,
+                amount: parseFloat(tx.totalAmount) || 0,
+                type: tx.type === 'income' ? 'income' : 'expense',
+                status: 'Efetivado',
+                detail: tx.method || ''
+              })),
+            ...transactions.flatMap((tx: any) => (tx.splits || [])
+              .filter((split: any) => split?.paid && split?.receivedAccountId === selectedCard.id && String(split.receivedDate || '').startsWith(selectedCardMonth))
+              .map((split: any, index: number) => ({
+                id: `reimbursement-${tx.id}-${index}`,
+                description: `${tx.desc || 'Lançamento'} • Reembolso de ${split.name}`,
+                date: split.receivedDate,
+                amount: parseFloat(split.amount) || 0,
+                type: 'income',
+                status: 'Recebido',
+                detail: 'Reembolso'
+              })))
+          ]
+      : [];
+    selectedCardMovements.sort((a: any, b: any) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
+
+    const changeSelectedCardMonth = (amount: number) => {
+      const [year, month] = selectedCardMonth.split('-').map(Number);
+      const nextMonth = new Date(year, month - 1 + amount, 1, 12);
+      setSelectedCardMonth(`${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`);
+    };
 
     return (
       <div className="animate-fadeIn pb-8">
@@ -702,6 +751,9 @@ export default function FinanceApp() {
                     </div>
                   </div>
                 )}
+                <button type="button" onClick={() => setSelectedCardId(selectedCardId === c.id ? null : c.id)} aria-expanded={selectedCardId === c.id} className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40">
+                  <Icons.Calendar size={16} /> {selectedCardId === c.id ? 'Ocultar lançamentos' : 'Ver lançamentos'}
+                </button>
               </div>
             );
           })}
@@ -709,6 +761,39 @@ export default function FinanceApp() {
             <p className="text-gray-500 dark:text-gray-400 text-center py-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">Nenhum registro cadastrado ainda.</p>
           )}
         </div>
+        {selectedCard && (
+          <section className="mt-5 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 p-4 dark:border-gray-700">
+              <div>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">Lançamentos • {selectedCard.name}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{selectedCardIsCredit ? 'Compras realizadas neste cartão' : 'Entradas e saídas efetivadas nesta conta'}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => changeSelectedCardMonth(-1)} aria-label="Mês anterior" className="rounded-lg bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">‹</button>
+                <input type="month" value={selectedCardMonth} onChange={e => setSelectedCardMonth(e.target.value)} className="rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                <button type="button" onClick={() => changeSelectedCardMonth(1)} aria-label="Próximo mês" className="rounded-lg bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">›</button>
+                <button type="button" onClick={() => setSelectedCardId(null)} aria-label="Fechar lançamentos" className="ml-1 px-2 py-1 font-bold text-gray-400">✕</button>
+              </div>
+            </div>
+            {selectedCardMovements.length === 0 ? (
+              <p className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum lançamento neste mês.</p>
+            ) : (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {selectedCardMovements.map((movement: any) => (
+                  <div key={movement.id} className="flex items-center justify-between gap-3 p-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{movement.description}</p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{formatLocalDate(movement.date)}{movement.detail ? ` • ${movement.detail}` : ''} • {movement.status}</p>
+                    </div>
+                    <span className={`shrink-0 text-sm font-bold ${movement.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {movement.type === 'income' ? '+' : '−'} R$ {formatBRL(movement.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       {selectedPixCard && createPortal(
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
           <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
