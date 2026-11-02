@@ -715,6 +715,7 @@ export default function FinanceApp() {
     const [txType, setTxType] = useState('expense');
     const [desc, setDesc] = useState('');
     const [category, setCategory] = useState('');
+    const [incomeAccountId, setIncomeAccountId] = useState('');
     const [observation, setObservation] = useState('');
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
@@ -731,8 +732,14 @@ export default function FinanceApp() {
     const [includeMe, setIncludeMe] = useState(true);
     const [splits, setSplits] = useState<any[]>([{ name: '', amount: 0, displayAmount: '', paid: false }]);
     const [errorMsg, setErrorMsg] = useState('');
+    const bankAccounts = cards.filter((card: any) => !(parseFloat(card.limit) > 0));
+    const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const [isSaving, setIsSaving] = useState(false);
     const categoryOptions = txType === 'income' ? ['Salário', 'Renda extra', 'Investimentos', 'Vendas', 'Reembolso', 'Outros'] : ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Contas e serviços', 'Compras', 'Impostos', 'Outros'];
+
+    useEffect(() => {
+      if (!incomeAccountId && defaultBankAccountId) setIncomeAccountId(defaultBankAccountId);
+    }, [defaultBankAccountId, incomeAccountId]);
 
     useEffect(() => {
       if (txType === 'income' || methodId === 'pix' || cards.length === 0) {
@@ -796,6 +803,10 @@ export default function FinanceApp() {
       if (!user) return;
       if (!desc || !amount) { setErrorMsg("Preencha descrição e valor total."); return; }
       
+      if (txType === 'income' && purchaseDate <= new Date().toISOString().split('T')[0] && !incomeAccountId) {
+        setErrorMsg('Selecione a conta bancária onde a receita foi recebida.');
+        return;
+      }
       if (txType === 'expense') {
         if (installments < 1) { setErrorMsg("Preencha a quantidade de parcelas."); return; }
         if (isSplit && includeMe && myShare < -0.05) { setErrorMsg("A soma das divisões não pode ser maior que o valor total."); return; }
@@ -844,12 +855,13 @@ export default function FinanceApp() {
             const newTx = {
               type: txType, desc: desc + suffix, category, observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
               date: formattedDate, method: cardName, methodId: finalMethodId, splits: instSplits, groupId, status: initialStatus,
+              settlementAccountId: initialStatus === 'paid' && txType === 'income' ? incomeAccountId : '',
               createdAt: new Date().toISOString()
             };
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
         
-        setDesc(''); setCategory(''); setObservation(''); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setCategory(''); setObservation(''); setIncomeAccountId(defaultBankAccountId); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
       } catch (err) { console.error(err); setErrorMsg("Erro ao salvar."); } finally { setIsSaving(false); }
     };
@@ -901,6 +913,15 @@ export default function FinanceApp() {
             </div>
           </div>
 
+          {txType === 'income' && purchaseDate <= new Date().toISOString().split('T')[0] && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Conta onde recebeu</label>
+              <select required value={incomeAccountId} onChange={e => setIncomeAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                <option value="">Selecione uma conta</option>
+                {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
