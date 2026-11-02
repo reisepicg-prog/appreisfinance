@@ -2009,6 +2009,7 @@ export default function FinanceApp() {
     const [payingInvoice, setPayingInvoice] = useState<any>(null);
     const [invoicePaymentAccountId, setInvoicePaymentAccountId] = useState('');
     const [invoiceReceivedAccountId, setInvoiceReceivedAccountId] = useState('');
+    const [thirdPartyReceivedDate, setThirdPartyReceivedDate] = useState('');
     const [settlementTx, setSettlementTx] = useState<any>(null);
     const [settlementAccountId, setSettlementAccountId] = useState('');
     const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
@@ -2105,12 +2106,13 @@ export default function FinanceApp() {
       const defaultAccountId = cards.find((card: any) => card.isDefaultAccount && card.brand === 'Conta/Pix')?.id || '';
       setInvoicePaymentAccountId(defaultAccountId);
       setInvoiceReceivedAccountId(defaultAccountId);
+      setThirdPartyReceivedDate(getLocalDateString());
       setPayingInvoice(invoice);
     };
 
     const handleConfirmPayInvoice = async (e: any) => {
       e.preventDefault();
-      if (!user || !payingInvoice || !invoicePaymentDate || !invoicePaymentAccountId || (markThirdPartiesReceived && !invoiceReceivedAccountId)) return;
+      if (!user || !payingInvoice || !invoicePaymentDate || !invoicePaymentAccountId || (markThirdPartiesReceived && (!invoiceReceivedAccountId || !thirdPartyReceivedDate))) return;
       setIsPayingInvoice(true);
       try {
         const updatePromises = payingInvoice.transactions.map((tx: any) => {
@@ -2127,7 +2129,7 @@ export default function FinanceApp() {
                 ...split,
                 paid: true,
                 receivedAccountId: split.receivedAccountId || invoiceReceivedAccountId,
-                receivedDate: split.receivedDate || invoicePaymentDate
+                receivedDate: split.receivedDate || thirdPartyReceivedDate
               };
             });
           }
@@ -2408,6 +2410,7 @@ export default function FinanceApp() {
                   <span>Também marcar todos os valores de terceiros desta fatura como recebidos.</span>
                 </label>
                 {markThirdPartiesReceived && (
+                  <>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Conta onde os valores de terceiros foram recebidos</label>
                     <select required value={invoiceReceivedAccountId} onChange={e => setInvoiceReceivedAccountId(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg">
@@ -2415,8 +2418,13 @@ export default function FinanceApp() {
                       {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Data em que os valores foram recebidos</label>
+                    <input type="date" required value={thirdPartyReceivedDate} onChange={e => setThirdPartyReceivedDate(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" />
+                  </div>
+                  </>
                 )}
-                <p className="text-xs text-gray-500 dark:text-gray-400">Quando marcar recebimentos, escolha também a conta que recebeu esses valores. Ela pode ser diferente da conta usada para pagar a fatura.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Quando marcar recebimentos, escolha também a conta e a data em que os valores entraram. A conta pode ser diferente da usada para pagar a fatura.</p>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setPayingInvoice(null)} className="flex-1 py-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg font-medium">Cancelar</button>
                   <button type="submit" disabled={isPayingInvoice} className="flex-1 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg font-medium disabled:opacity-50">
