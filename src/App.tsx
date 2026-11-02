@@ -2111,7 +2111,7 @@ export default function FinanceApp() {
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
           <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
           {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || !filtersHist.unpaidOnly) && (
-            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: false })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
