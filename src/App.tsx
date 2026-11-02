@@ -630,6 +630,12 @@ export default function FinanceApp() {
             const availableLimit = cardLimit - usedLimit;
             const availablePct = cardLimit > 0 ? (availableLimit / cardLimit) * 100 : 0;
             const isCard = cardLimit > 0;
+            const settlementBalance = transactions.filter((tx: any) => tx.status === 'paid' && tx.settlementAccountId === c.id)
+              .reduce((sum: number, tx: any) => sum + (tx.type === 'income' ? 1 : -1) * (parseFloat(tx.totalAmount) || 0), 0);
+            const receivedReimbursements = transactions.reduce((sum: number, tx: any) =>
+              sum + (tx.splits || []).filter((split: any) => split?.paid && split?.receivedAccountId === c.id)
+                .reduce((splitSum: number, split: any) => splitSum + (parseFloat(split.amount) || 0), 0), 0);
+            const currentAccountBalance = (parseFloat(c.openingBalance) || 0) + settlementBalance + receivedReimbursements;
 
             return (
               <div key={c.id} className={`bg-white dark:bg-gray-800 p-5 rounded-xl border shadow-sm flex flex-col group transition-colors ${c.isDefaultPix || c.isDefaultAccount ? 'border-blue-400 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700'}`}>
@@ -672,7 +678,7 @@ export default function FinanceApp() {
                 {!(parseFloat(c.limit) > 0) && (
                   <div className="mb-3 flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-800 dark:bg-blue-900/20">
                     <span className="text-gray-600 dark:text-gray-300">Saldo atual{c.isDefaultAccount ? ' • Conta Padrão' : ''}</span>
-                    <strong className="text-blue-700 dark:text-blue-300">R$ {formatBRL((parseFloat(c.openingBalance) || 0) + transactions.filter((tx: any) => tx.status === 'paid' && tx.settlementAccountId === c.id).reduce((sum: number, tx: any) => sum + (tx.type === 'income' ? 1 : -1) * (parseFloat(tx.totalAmount) || 0), 0))}</strong>
+                    <strong className="text-blue-700 dark:text-blue-300">R$ {formatBRL(currentAccountBalance)}</strong>
                   </div>
                 )}
                 {c.obs && (
@@ -1114,7 +1120,12 @@ export default function FinanceApp() {
 
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
+    const [collectionPayment, setCollectionPayment] = useState<any>(null);
+    const [collectionPaymentAccountId, setCollectionPaymentAccountId] = useState('');
+    const [collectionPaymentDate, setCollectionPaymentDate] = useState('');
     const [filtersExpanded, setFiltersExpanded] = useState(false);
+    const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
+    const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
 
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
@@ -1163,7 +1174,9 @@ export default function FinanceApp() {
             desc: tx.desc || '', 
             amount: split.amount || 0, 
             date: tx.date || '',
-            paid: split.paid || false
+            paid: split.paid || false,
+            receivedAccountId: split.receivedAccountId || '',
+            receivedDate: split.receivedDate || ''
           });
         });
       }
@@ -1186,6 +1199,13 @@ export default function FinanceApp() {
     const allPeopleNames = Object.keys(debtsByPerson).sort();
     const peopleToRender = allPeopleNames.filter(name => filterPerson === 'all' || name === filterPerson);
 
+    const openCollectionPayment = (name: string, items: any[]) => {
+      const today = new Date();
+      setCollectionPayment({ name, items });
+      setCollectionPaymentAccountId(defaultBankAccountId);
+      setCollectionPaymentDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
+    };
+
     const toggleSplitPaid = async (txId: string, splitIndex: number, currentStatus: boolean) => {
       if (!user) return;
       try {
@@ -1196,32 +1216,68 @@ export default function FinanceApp() {
           return;
         }
         const updatedSplits = [...(tx.splits || [])];
-        updatedSplits[splitIndex].paid = !currentStatus;
-        await updateDoc(doc(db, 'users', user.uid, 'transactions', txId), {
-          splits: updatedSplits
-        });
+        if (currentStatus) {
+          updatedSplits[splitIndex] = { ...updatedSplits[splitIndex], paid: false, receivedAccountId: '', receivedDate: '' };
+          await updateDoc(doc(db, 'users', 'transactions', txId), { splits: updatedSplits });
+          return;
+        }
+        const split = updatedSplits[splitIndex];
+        if (!split) return;
+        openCollectionPayment(split.name || '', [{
+          txId,
+          splitIndex,
+          desc: tx.desc || '',
+          amount: split.amount || 0,
+          date: tx.date || '',
+          paid: false
+        }]);
       } catch (err) { console.error(err); }
     };
 
     const handleMarkPersonPaid = async (name: string, items: any[]) => {
       if (!user) return;
+      const unpaidItems = items.filter(item => !item.paid);
+      if (!unpaidItems.length) return;
+      if (name !== 'Eu') {
+        openCollectionPayment(name, unpaidItems);
+        return;
+      }
       try {
         const updatesByTransaction = new Map<string, any>();
-        items.filter(item => !item.paid).forEach(item => {
+        unpaidItems.forEach(item => {
           const tx = transactions.find(t => t.id === item.txId);
-          if (!tx) return;
-          if (item.splitIndex === -1) {
-            updatesByTransaction.set(tx.id, { myPaid: true });
-            return;
-          }
-          const changes = updatesByTransaction.get(tx.id) || { splits: [...(tx.splits || [])] };
-          if (changes.splits[item.splitIndex]) changes.splits[item.splitIndex].paid = true;
-          updatesByTransaction.set(tx.id, changes);
+          if (tx && item.splitIndex === -1) updatesByTransaction.set(tx.id, { myPaid: true });
         });
         await Promise.all(Array.from(updatesByTransaction.entries()).map(([txId, changes]) =>
           updateDoc(doc(db, 'users', user.uid, 'transactions', txId), changes)
         ));
       } catch (err) { console.error(err); }
+    };
+
+    const handleConfirmCollectionPayment = async (e: any) => {
+      e.preventDefault();
+      if (!user || !collectionPayment || !collectionPaymentAccountId || !collectionPaymentDate) return;
+      try {
+        const updatesByTransaction = new Map<string, any>();
+        collectionPayment.items.forEach((item: any) => {
+          const tx = transactions.find(t => t.id === item.txId);
+          if (!tx || item.splitIndex < 0) return;
+          const changes = updatesByTransaction.get(tx.id) || { splits: (tx.splits || []).map((split: any) => ({ ...split })) };
+          if (changes.splits[item.splitIndex]) {
+            changes.splits[item.splitIndex] = {
+              ...changes.splits[item.splitIndex],
+              paid: true,
+              receivedAccountId: collectionPaymentAccountId,
+              receivedDate: collectionPaymentDate
+            };
+            updatesByTransaction.set(tx.id, changes);
+          }
+        });
+        await Promise.all(Array.from(updatesByTransaction.entries()).map(([txId, changes]) =>
+          updateDoc(doc(db, 'users', user.uid, 'transactions', txId), changes)
+        ));
+        setCollectionPayment(null);
+      } catch (err) { console.error('Erro ao registrar recebimento', err); }
     };
 
     const handleWhatsApp = (name: string, items: any[]) => {
@@ -1363,6 +1419,36 @@ export default function FinanceApp() {
               );
             })}
           </div>
+        )}
+
+        {collectionPayment && createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80 animate-fadeIn">
+            <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <form onSubmit={handleConfirmCollectionPayment} role="dialog" aria-modal="true" className="my-auto max-h-full w-full max-w-sm space-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-gray-800 dark:text-gray-100">Registrar recebimento</h3>
+                  <button type="button" onClick={() => setCollectionPayment(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Recebido de {collectionPayment.name}: <strong>R$ {formatBRL(collectionPayment.items.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0))}</strong></p>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Conta onde o valor foi recebido</label>
+                  <select required value={collectionPaymentAccountId} onChange={e => setCollectionPaymentAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">Selecione uma conta</option>
+                    {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data do recebimento</label>
+                  <input type="date" required value={collectionPaymentDate} onChange={e => setCollectionPaymentDate(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setCollectionPayment(null)} className="flex-1 rounded-lg bg-gray-100 py-2 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button>
+                  <button type="submit" className="flex-1 rounded-lg bg-green-600 py-2 font-medium text-white">Confirmar recebimento</button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
         )}
 
         {qrCodeModal && createPortal(
