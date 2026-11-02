@@ -2179,7 +2179,13 @@ export default function FinanceApp() {
 
     const openEditModal = (tx: any) => {
       setEditingTx(tx);
-      setEditForm({ desc: tx.desc || '', totalAmount: tx.totalAmount || '', date: tx.date || '', category: tx.category || '' });
+      const editAmount = Number(tx.totalAmount);
+      setEditForm({
+        desc: tx.desc || '',
+        totalAmount: Number.isFinite(editAmount) ? editAmount.toFixed(2) : '',
+        date: tx.date || '',
+        category: tx.category || ''
+      });
       setUpdateScope('single');
     };
 
@@ -2198,7 +2204,8 @@ export default function FinanceApp() {
       if (!user || !editingTx) return;
       setIsUpdating(true);
       try {
-        const newTotal = parseFloat(editForm.totalAmount) || 0;
+        const parsedTotal = parseFloat(editForm.totalAmount) || 0;
+        const newTotal = Math.round((parsedTotal + Number.EPSILON) * 100) / 100;
         let targets = [editingTx];
         
         if (updateScope === 'future' && editingTx.groupId) {
@@ -2207,7 +2214,7 @@ export default function FinanceApp() {
 
         const promises = targets.map(t => {
           const ratio = t.totalAmount > 0 ? (t.myAmount / t.totalAmount) : 1;
-          const newMyAmount = newTotal * ratio;
+          const newMyAmount = Math.round((newTotal * ratio + Number.EPSILON) * 100) / 100;
           return updateDoc(doc(db, 'users', user.uid, 'transactions', t.id), {
             desc: updateScope === 'future' ? t.desc : editForm.desc, 
             totalAmount: newTotal,
