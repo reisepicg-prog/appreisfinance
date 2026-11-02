@@ -464,8 +464,9 @@ export default function FinanceApp() {
   const CardsManagement = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [cardForm, setCardForm] = useState({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+    const [cardForm, setCardForm] = useState({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false, isDefaultAccount: false, openingBalance: 0 });
     const [displayLimit, setDisplayLimit] = useState('');
+    const [displayOpeningBalance, setDisplayOpeningBalance] = useState('');
     const [selectedPixCard, setSelectedPixCard] = useState<any>(null);
 
     const handleSaveCard = async (e: any) => {
@@ -475,8 +476,15 @@ export default function FinanceApp() {
         const cardData = {
           name: cardForm.name, brand: cardForm.brand, closingDay: cardForm.closingDay || '', dueDay: cardForm.dueDay || '',
           limit: parseCurrencyToNumber(displayLimit) || 0, cashbackPct: parseFloat(cardForm.cashbackPct as any) || 0,
-          obs: cardForm.obs || '', pixKey: cardForm.pixKey || '', isDefaultPix: cardForm.isDefaultPix
+          obs: cardForm.obs || '', pixKey: cardForm.pixKey || '', isDefaultPix: cardForm.isDefaultPix,
+          isDefaultAccount: cardForm.brand === 'Conta/Pix' && cardForm.isDefaultAccount,
+          openingBalance: cardForm.brand === 'Conta/Pix' ? parseCurrencyToNumber(displayOpeningBalance) : 0
         };
+
+        if (cardData.isDefaultAccount) {
+           const others = cards.filter(c => c.isDefaultAccount && c.id !== editingId);
+           for (const account of others) await updateDoc(doc(db, 'users', user.uid, 'cards', account.id), { isDefaultAccount: false });
+        }
 
         if (cardData.isDefaultPix) {
            const others = cards.filter(c => c.isDefaultPix && c.id !== editingId);
@@ -491,8 +499,8 @@ export default function FinanceApp() {
            await addDoc(collection(db, 'users', user.uid, 'cards'), cardData);
         }
 
-        setIsAdding(false); setEditingId(null); setDisplayLimit('');
-        setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+        setIsAdding(false); setEditingId(null); setDisplayLimit(''); setDisplayOpeningBalance('');
+        setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false, isDefaultAccount: false, openingBalance: 0 });
       } catch (err) { console.error(err); }
     };
 
@@ -508,16 +516,17 @@ export default function FinanceApp() {
        setEditingId(c.id);
        setCardForm({
           name: c.name || '', brand: c.brand || 'Conta/Pix', closingDay: c.closingDay || '', dueDay: c.dueDay || '',
-          limit: c.limit || 0, cashbackPct: c.cashbackPct || 0, obs: c.obs || '', pixKey: c.pixKey || '', isDefaultPix: c.isDefaultPix || false
+          limit: c.limit || 0, cashbackPct: c.cashbackPct || 0, obs: c.obs || '', pixKey: c.pixKey || '', isDefaultPix: c.isDefaultPix || false, isDefaultAccount: c.isDefaultAccount || false, openingBalance: c.openingBalance || 0
        });
        setDisplayLimit(formatCurrencyInput(Math.round((c.limit || 0) * 100)));
+       setDisplayOpeningBalance(formatCurrencyInput(Math.round((c.openingBalance || 0) * 100)));
        setIsAdding(true);
        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const cancelEdit = () => {
-       setIsAdding(false); setEditingId(null); setDisplayLimit('');
-       setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+       setIsAdding(false); setEditingId(null); setDisplayLimit(''); setDisplayOpeningBalance('');
+       setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false, isDefaultAccount: false, openingBalance: 0 });
     };
 
     const sortedCards = [...cards].sort((a: any, b: any) =>
@@ -542,7 +551,7 @@ export default function FinanceApp() {
                 <input required type="text" value={cardForm.name} onChange={e => setCardForm({...cardForm, name: e.target.value})} placeholder="Ex: Nubank, Itaú..." className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Limite (0 = Conta)</label>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Limite do cartão</label>
                 <input type="text" inputMode="numeric" value={displayLimit} onChange={e => setDisplayLimit(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
               </div>
               <div>
@@ -555,6 +564,17 @@ export default function FinanceApp() {
                   <option value="Amex">Amex</option>
                 </select>
               </div>
+              {cardForm.brand === 'Conta/Pix' && (
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Saldo inicial da conta</label>
+                  <input type="text" inputMode="numeric" value={displayOpeningBalance} onChange={e => setDisplayOpeningBalance(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
+                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Informe o saldo atual no início do controle.</p>
+                  <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" checked={cardForm.isDefaultAccount} onChange={e => setCardForm({...cardForm, isDefaultAccount: e.target.checked})} className="h-4 w-4 rounded text-blue-600" />
+                    Conta Padrão para efetivações
+                  </label>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Dia Fechamento</label>
                 <input type="number" min="1" max="31" value={cardForm.closingDay} onChange={e => setCardForm({...cardForm, closingDay: e.target.value})} placeholder="Opcional" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
@@ -632,6 +652,12 @@ export default function FinanceApp() {
                 </div>
 
 
+                {!(parseFloat(c.limit) > 0) && (
+                  <div className="mb-3 flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-800 dark:bg-blue-900/20">
+                    <span className="text-gray-600 dark:text-gray-300">Saldo atual{c.isDefaultAccount ? ' • Conta Padrão' : ''}</span>
+                    <strong className="text-blue-700 dark:text-blue-300">R$ {formatBRL((parseFloat(c.openingBalance) || 0) + transactions.filter((tx: any) => tx.status === 'paid' && tx.settlementAccountId === c.id).reduce((sum: number, tx: any) => sum + (tx.type === 'income' ? 1 : -1) * (parseFloat(tx.totalAmount) || 0), 0))}</strong>
+                  </div>
+                )}
                 {c.obs && (
                   <div className="text-[11px] text-gray-500 dark:text-gray-400 italic border-l-2 border-gray-200 dark:border-gray-600 pl-2 mb-3">
                      {c.obs}
