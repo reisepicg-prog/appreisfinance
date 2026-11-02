@@ -475,7 +475,7 @@ export default function FinanceApp() {
       try {
         const cardData = {
           name: cardForm.name, brand: cardForm.brand, closingDay: cardForm.closingDay || '', dueDay: cardForm.dueDay || '',
-          limit: parseCurrencyToNumber(displayLimit) || 0, cashbackPct: parseFloat(cardForm.cashbackPct as any) || 0,
+          limit: cardForm.brand === 'Conta/Pix' ? 0 : (parseCurrencyToNumber(displayLimit) || 0), cashbackPct: parseFloat(cardForm.cashbackPct as any) || 0,
           obs: cardForm.obs || '', pixKey: cardForm.pixKey || '', isDefaultPix: cardForm.isDefaultPix,
           isDefaultAccount: cardForm.brand === 'Conta/Pix' && cardForm.isDefaultAccount,
           openingBalance: cardForm.brand === 'Conta/Pix' ? parseCurrencyToNumber(displayOpeningBalance) : 0
@@ -734,7 +734,7 @@ export default function FinanceApp() {
     const [includeMe, setIncludeMe] = useState(true);
     const [splits, setSplits] = useState<any[]>([{ name: '', amount: 0, displayAmount: '', paid: false }]);
     const [errorMsg, setErrorMsg] = useState('');
-    const bankAccounts = cards.filter((card: any) => !(parseFloat(card.limit) > 0));
+    const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
     const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const [isSaving, setIsSaving] = useState(false);
     const categoryOptions = txType === 'income' ? ['Salário', 'Renda extra', 'Investimentos', 'Vendas', 'Reembolso', 'Outros'] : ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Contas e serviços', 'Compras', 'Impostos', 'Outros'];
@@ -1903,7 +1903,7 @@ export default function FinanceApp() {
     const [invoicePaymentAccountId, setInvoicePaymentAccountId] = useState('');
     const [settlementTx, setSettlementTx] = useState<any>(null);
     const [settlementAccountId, setSettlementAccountId] = useState('');
-    const bankAccounts = cards.filter((card: any) => !(parseFloat(card.limit) > 0));
+    const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
 
     const getLocalDateString = () => {
       const date = new Date();
