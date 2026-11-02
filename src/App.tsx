@@ -617,7 +617,7 @@ export default function FinanceApp() {
             const isCard = cardLimit > 0;
 
             return (
-              <div key={c.id} className={`bg-white dark:bg-gray-800 p-5 rounded-xl border shadow-sm flex flex-col group transition-colors ${c.isDefaultPix ? 'border-blue-400 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700'}`}>
+              <div key={c.id} className={`bg-white dark:bg-gray-800 p-5 rounded-xl border shadow-sm flex flex-col group transition-colors ${c.isDefaultPix || c.isDefaultAccount ? 'border-blue-400 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isCard ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
@@ -626,7 +626,7 @@ export default function FinanceApp() {
                     <div>
                       <h3 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                          {c.name} 
-                         {c.isDefaultPix && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Check size={16} /> Pix Padrão</span>}
+                         {c.isDefaultPix && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Check size={16} /> Pix Padrão</span>}{c.isDefaultAccount && c.brand === 'Conta/Pix' && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Check size={14} /> Conta Padrão</span>}
                       </h3>
                       {isCard ? (
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Fecha {c.closingDay} • Vence {c.dueDay} {c.brand !== 'Conta/Pix' && `(${c.brand})`}</p>
@@ -1909,6 +1909,7 @@ export default function FinanceApp() {
       const date = new Date();
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     };
+    const [settlementDate, setSettlementDate] = useState(() => getLocalDateString());
     const [invoicePaymentDate, setInvoicePaymentDate] = useState(() => getLocalDateString());
     const [markThirdPartiesReceived, setMarkThirdPartiesReceived] = useState(false);
     const [isPayingInvoice, setIsPayingInvoice] = useState(false);
@@ -2031,7 +2032,8 @@ export default function FinanceApp() {
       try {
         if (tx.status !== 'paid') {
           setSettlementTx(tx);
-          setSettlementAccountId(tx.settlementAccountId || cards.find((card: any) => card.isDefaultAccount && !(parseFloat(card.limit) > 0))?.id || '');
+          setSettlementDate(getLocalDateString());
+          setSettlementAccountId(tx.settlementAccountId || cards.find((card: any) => card.isDefaultAccount && card.brand === 'Conta/Pix')?.id || '');
           return;
         }
         await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), {
@@ -2044,11 +2046,11 @@ export default function FinanceApp() {
 
     const handleConfirmSettlement = async (e: any) => {
       e.preventDefault();
-      if (!user || !settlementTx || !settlementAccountId) return;
+      if (!user || !settlementTx || !settlementAccountId || !settlementDate) return;
       try {
         await updateDoc(doc(db, 'users', user.uid, 'transactions', settlementTx.id), {
           status: 'paid',
-          paymentDate: getLocalDateString(),
+          paymentDate: settlementDate,
           settlementAccountId
         });
         setSettlementTx(null);
@@ -2298,9 +2300,10 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {settlementTx && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/60 p-4 dark:bg-black/80">
-            <form onSubmit={handleConfirmSettlement} className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
+        {settlementTx && createPortal(
+          <div className="fixed inset-0 z-[10000] overflow-y-auto bg-black/60 p-4 dark:bg-black/80">
+            <div className="flex min-h-full items-start justify-center pt-2">
+            <form onSubmit={handleConfirmSettlement} className="my-2 max-h-[calc(100dvh-2rem)] w-full max-w-sm space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{settlementTx.type === 'income' ? 'Efetivar receita' : 'Efetivar despesa'}</h3>
                 <button type="button" onClick={() => setSettlementTx(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
@@ -2313,12 +2316,18 @@ export default function FinanceApp() {
                   {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data da efetivação</label>
+                <input type="date" required value={settlementDate} onChange={e => setSettlementDate(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setSettlementTx(null)} className="flex-1 rounded-lg bg-gray-100 py-2 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button>
                 <button type="submit" className="flex-1 rounded-lg bg-green-600 py-2 font-medium text-white">Confirmar</button>
               </div>
             </form>
-          </div>
+            </div>
+          </div>,
+          document.body
         )}
 
         {editingTx && (
