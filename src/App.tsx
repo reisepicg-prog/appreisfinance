@@ -107,6 +107,21 @@ const formatBRL = (value: number | string): string => {
   return (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+const parseLocalDate = (value: any): Date => {
+  const dateText = String(value || '');
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateText);
+  if (dateOnlyMatch) {
+    return new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]), 12);
+  }
+  return new Date(value || NaN);
+};
+
+const formatLocalDate = (value: any): string => {
+  if (!value) return '-';
+  const date = parseLocalDate(value);
+  return isNaN(date.getTime()) ? '-' : date.toLocaleDateString('pt-BR');
+};
+
 // --- Lista Estática Inteligente para Autocomplete (B3) ---
 const POPULAR_TICKERS = ["AAPL34", "ABEV3", "ALOS3", "ARZZ3", "ASAI3", "AZUL4", "B3SA3", "BBAS3", "BBDC3", "BBDC4", "BBSE3", "BPAC11", "BRAP4", "BRFS3", "BRKM5", "CCRO3", "CIEL3", "CMIG4", "COGN3", "CPFE3", "CPLE6", "CRFB3", "CSAN3", "CSNA3", "CVCB3", "CYRE3", "ELET3", "ELET6", "EMBR3", "ENEV3", "ENGI11", "EQTL3", "EZTC3", "FLRY3", "GGBR4", "GOAU4", "GOLL4", "HAPV3", "HGLG11", "HYPE3", "IGTI11", "IRBR3", "ITSA4", "ITUB4", "JBSS3", "KLBN11", "KNRI11", "LREN3", "LWSA3", "MGLU3", "MRFG3", "MRVE3", "MULT3", "MXRF11", "NTCO3", "PCAR3", "PETR3", "PETR4", "PETZ3", "PRIO3", "RADL3", "RAIL3", "RDOR3", "RENT3", "RRRP3", "SANB11", "SBSP3", "SIMH3", "SLCE3", "SOMA3", "SUZB3", "TAEE11", "TIMS3", "TOTS3", "UGPA3", "USIM5", "VALE3", "VAMO3", "VBBR3", "VILG11", "VISC11", "VIVT3", "WEGE3", "XPLG11", "XPML11", "YDUQ3"];
 
@@ -221,7 +236,7 @@ export default function FinanceApp() {
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all' });
-  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: false });
+  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true });
 
   // --- Listas Inteligentes de Memória (Autocomplete) ---
   const allDescriptions = Array.from(new Set((transactions || []).map(t => {
@@ -297,7 +312,7 @@ export default function FinanceApp() {
   const Dashboard = () => {
     const [detailType, setDetailType] = useState<string | null>(null);
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
-        const d = new Date(tx?.date || '');
+        const d = parseLocalDate(tx?.date);
         if (isNaN(d.getTime())) return '';
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))).filter(m => m !== '').sort().reverse() as string[];
@@ -464,8 +479,9 @@ export default function FinanceApp() {
   const CardsManagement = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [cardForm, setCardForm] = useState({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+    const [cardForm, setCardForm] = useState({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false, isDefaultAccount: false, openingBalance: 0 });
     const [displayLimit, setDisplayLimit] = useState('');
+    const [displayOpeningBalance, setDisplayOpeningBalance] = useState('');
     const [selectedPixCard, setSelectedPixCard] = useState<any>(null);
 
     const handleSaveCard = async (e: any) => {
@@ -474,9 +490,16 @@ export default function FinanceApp() {
       try {
         const cardData = {
           name: cardForm.name, brand: cardForm.brand, closingDay: cardForm.closingDay || '', dueDay: cardForm.dueDay || '',
-          limit: parseCurrencyToNumber(displayLimit) || 0, cashbackPct: parseFloat(cardForm.cashbackPct as any) || 0,
-          obs: cardForm.obs || '', pixKey: cardForm.pixKey || '', isDefaultPix: cardForm.isDefaultPix
+          limit: cardForm.brand === 'Conta/Pix' ? 0 : (parseCurrencyToNumber(displayLimit) || 0), cashbackPct: parseFloat(cardForm.cashbackPct as any) || 0,
+          obs: cardForm.obs || '', pixKey: cardForm.pixKey || '', isDefaultPix: cardForm.isDefaultPix,
+          isDefaultAccount: cardForm.brand === 'Conta/Pix' && cardForm.isDefaultAccount,
+          openingBalance: cardForm.brand === 'Conta/Pix' ? parseCurrencyToNumber(displayOpeningBalance) : 0
         };
+
+        if (cardData.isDefaultAccount) {
+           const others = cards.filter(c => c.isDefaultAccount && c.id !== editingId);
+           for (const account of others) await updateDoc(doc(db, 'users', user.uid, 'cards', account.id), { isDefaultAccount: false });
+        }
 
         if (cardData.isDefaultPix) {
            const others = cards.filter(c => c.isDefaultPix && c.id !== editingId);
@@ -491,8 +514,8 @@ export default function FinanceApp() {
            await addDoc(collection(db, 'users', user.uid, 'cards'), cardData);
         }
 
-        setIsAdding(false); setEditingId(null); setDisplayLimit('');
-        setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+        setIsAdding(false); setEditingId(null); setDisplayLimit(''); setDisplayOpeningBalance('');
+        setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false, isDefaultAccount: false, openingBalance: 0 });
       } catch (err) { console.error(err); }
     };
 
@@ -508,16 +531,17 @@ export default function FinanceApp() {
        setEditingId(c.id);
        setCardForm({
           name: c.name || '', brand: c.brand || 'Conta/Pix', closingDay: c.closingDay || '', dueDay: c.dueDay || '',
-          limit: c.limit || 0, cashbackPct: c.cashbackPct || 0, obs: c.obs || '', pixKey: c.pixKey || '', isDefaultPix: c.isDefaultPix || false
+          limit: c.limit || 0, cashbackPct: c.cashbackPct || 0, obs: c.obs || '', pixKey: c.pixKey || '', isDefaultPix: c.isDefaultPix || false, isDefaultAccount: c.isDefaultAccount || false, openingBalance: c.openingBalance || 0
        });
        setDisplayLimit(formatCurrencyInput(Math.round((c.limit || 0) * 100)));
+       setDisplayOpeningBalance(formatCurrencyInput(Math.round((c.openingBalance || 0) * 100)));
        setIsAdding(true);
        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const cancelEdit = () => {
-       setIsAdding(false); setEditingId(null); setDisplayLimit('');
-       setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false });
+       setIsAdding(false); setEditingId(null); setDisplayLimit(''); setDisplayOpeningBalance('');
+       setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false, isDefaultAccount: false, openingBalance: 0 });
     };
 
     const sortedCards = [...cards].sort((a: any, b: any) =>
@@ -541,10 +565,12 @@ export default function FinanceApp() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Nome (Instituição)</label>
                 <input required type="text" value={cardForm.name} onChange={e => setCardForm({...cardForm, name: e.target.value})} placeholder="Ex: Nubank, Itaú..." className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Limite (0 = Conta)</label>
-                <input type="text" inputMode="numeric" value={displayLimit} onChange={e => setDisplayLimit(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
-              </div>
+              {cardForm.brand !== 'Conta/Pix' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Limite do cartão</label>
+                  <input type="text" inputMode="numeric" value={displayLimit} onChange={e => setDisplayLimit(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Bandeira / Tipo</label>
                 <select value={cardForm.brand} onChange={e => setCardForm({...cardForm, brand: e.target.value})} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100">
@@ -555,6 +581,17 @@ export default function FinanceApp() {
                   <option value="Amex">Amex</option>
                 </select>
               </div>
+              {cardForm.brand === 'Conta/Pix' && (
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Saldo inicial da conta</label>
+                  <input type="text" inputMode="numeric" value={displayOpeningBalance} onChange={e => setDisplayOpeningBalance(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
+                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Informe o saldo atual no início do controle.</p>
+                  <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" checked={cardForm.isDefaultAccount} onChange={e => setCardForm({...cardForm, isDefaultAccount: e.target.checked})} className="h-4 w-4 rounded text-blue-600" />
+                    Conta Padrão para efetivações
+                  </label>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Dia Fechamento</label>
                 <input type="number" min="1" max="31" value={cardForm.closingDay} onChange={e => setCardForm({...cardForm, closingDay: e.target.value})} placeholder="Opcional" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
@@ -593,9 +630,15 @@ export default function FinanceApp() {
             const availableLimit = cardLimit - usedLimit;
             const availablePct = cardLimit > 0 ? (availableLimit / cardLimit) * 100 : 0;
             const isCard = cardLimit > 0;
+            const settlementBalance = transactions.filter((tx: any) => tx.status === 'paid' && tx.settlementAccountId === c.id)
+              .reduce((sum: number, tx: any) => sum + (tx.type === 'income' ? 1 : -1) * (parseFloat(tx.totalAmount) || 0), 0);
+            const receivedReimbursements = transactions.reduce((sum: number, tx: any) =>
+              sum + (tx.splits || []).filter((split: any) => split?.paid && split?.receivedAccountId === c.id)
+                .reduce((splitSum: number, split: any) => splitSum + (parseFloat(split.amount) || 0), 0), 0);
+            const currentAccountBalance = (parseFloat(c.openingBalance) || 0) + settlementBalance + receivedReimbursements;
 
             return (
-              <div key={c.id} className={`bg-white dark:bg-gray-800 p-5 rounded-xl border shadow-sm flex flex-col group transition-colors ${c.isDefaultPix ? 'border-blue-400 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700'}`}>
+              <div key={c.id} className={`bg-white dark:bg-gray-800 p-5 rounded-xl border shadow-sm flex flex-col group transition-colors ${c.isDefaultPix || c.isDefaultAccount ? 'border-blue-400 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isCard ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
@@ -604,7 +647,7 @@ export default function FinanceApp() {
                     <div>
                       <h3 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                          {c.name} 
-                         {c.isDefaultPix && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Check size={16} /> Pix Padrão</span>}
+                         {c.isDefaultPix && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Check size={16} /> Pix Padrão</span>}{c.isDefaultAccount && c.brand === 'Conta/Pix' && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Check size={14} /> Conta Padrão</span>}
                       </h3>
                       {isCard ? (
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Fecha {c.closingDay} • Vence {c.dueDay} {c.brand !== 'Conta/Pix' && `(${c.brand})`}</p>
@@ -632,6 +675,12 @@ export default function FinanceApp() {
                 </div>
 
 
+                {!(parseFloat(c.limit) > 0) && (
+                  <div className="mb-3 flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-800 dark:bg-blue-900/20">
+                    <span className="text-gray-600 dark:text-gray-300">Saldo atual{c.isDefaultAccount ? ' • Conta Padrão' : ''}</span>
+                    <strong className="text-blue-700 dark:text-blue-300">R$ {formatBRL(currentAccountBalance)}</strong>
+                  </div>
+                )}
                 {c.obs && (
                   <div className="text-[11px] text-gray-500 dark:text-gray-400 italic border-l-2 border-gray-200 dark:border-gray-600 pl-2 mb-3">
                      {c.obs}
@@ -689,6 +738,7 @@ export default function FinanceApp() {
     const [txType, setTxType] = useState('expense');
     const [desc, setDesc] = useState('');
     const [category, setCategory] = useState('');
+    const [incomeAccountId, setIncomeAccountId] = useState('');
     const [observation, setObservation] = useState('');
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
@@ -705,8 +755,14 @@ export default function FinanceApp() {
     const [includeMe, setIncludeMe] = useState(true);
     const [splits, setSplits] = useState<any[]>([{ name: '', amount: 0, displayAmount: '', paid: false }]);
     const [errorMsg, setErrorMsg] = useState('');
+    const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
+    const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const [isSaving, setIsSaving] = useState(false);
     const categoryOptions = txType === 'income' ? ['Salário', 'Renda extra', 'Investimentos', 'Vendas', 'Reembolso', 'Outros'] : ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Contas e serviços', 'Compras', 'Impostos', 'Outros'];
+
+    useEffect(() => {
+      if (!incomeAccountId && defaultBankAccountId) setIncomeAccountId(defaultBankAccountId);
+    }, [defaultBankAccountId, incomeAccountId]);
 
     useEffect(() => {
       if (txType === 'income' || methodId === 'pix' || cards.length === 0) {
@@ -770,6 +826,10 @@ export default function FinanceApp() {
       if (!user) return;
       if (!desc || !amount) { setErrorMsg("Preencha descrição e valor total."); return; }
       
+      if (txType === 'income' && purchaseDate <= new Date().toISOString().split('T')[0] && !incomeAccountId) {
+        setErrorMsg('Selecione a conta bancária onde a receita foi recebida.');
+        return;
+      }
       if (txType === 'expense') {
         if (installments < 1) { setErrorMsg("Preencha a quantidade de parcelas."); return; }
         if (isSplit && includeMe && myShare < -0.05) { setErrorMsg("A soma das divisões não pode ser maior que o valor total."); return; }
@@ -818,12 +878,13 @@ export default function FinanceApp() {
             const newTx = {
               type: txType, desc: desc + suffix, category, observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
               date: formattedDate, method: cardName, methodId: finalMethodId, splits: instSplits, groupId, status: initialStatus,
+              settlementAccountId: initialStatus === 'paid' && txType === 'income' ? incomeAccountId : '',
               createdAt: new Date().toISOString()
             };
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
         
-        setDesc(''); setCategory(''); setObservation(''); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setCategory(''); setObservation(''); setIncomeAccountId(defaultBankAccountId); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
       } catch (err) { console.error(err); setErrorMsg("Erro ao salvar."); } finally { setIsSaving(false); }
     };
@@ -875,6 +936,15 @@ export default function FinanceApp() {
             </div>
           </div>
 
+          {txType === 'income' && purchaseDate <= new Date().toISOString().split('T')[0] && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Conta onde recebeu</label>
+              <select required value={incomeAccountId} onChange={e => setIncomeAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                <option value="">Selecione uma conta</option>
+                {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
@@ -1050,12 +1120,17 @@ export default function FinanceApp() {
 
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
+    const [collectionPayment, setCollectionPayment] = useState<any>(null);
+    const [collectionPaymentAccountId, setCollectionPaymentAccountId] = useState('');
+    const [collectionPaymentDate, setCollectionPaymentDate] = useState('');
     const [filtersExpanded, setFiltersExpanded] = useState(false);
+    const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
+    const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
 
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
         if (!tx?.date) return '';
-        const d = new Date(tx.date);
+        const d = parseLocalDate(tx.date);
         if (isNaN(d.getTime())) return '';
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))).filter(m => m !== '').sort() as string[];
@@ -1081,7 +1156,7 @@ export default function FinanceApp() {
     
     const filteredTransactions = (transactions || []).filter(tx => {
         if (!tx?.date) return false;
-        const d = new Date(tx.date);
+        const d = parseLocalDate(tx.date);
         if (isNaN(d.getTime())) return false;
         const txMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         if (selectedMonth !== 'all' && txMonthStr !== selectedMonth) return false;
@@ -1099,7 +1174,9 @@ export default function FinanceApp() {
             desc: tx.desc || '', 
             amount: split.amount || 0, 
             date: tx.date || '',
-            paid: split.paid || false
+            paid: split.paid || false,
+            receivedAccountId: split.receivedAccountId || '',
+            receivedDate: split.receivedDate || ''
           });
         });
       }
@@ -1122,6 +1199,13 @@ export default function FinanceApp() {
     const allPeopleNames = Object.keys(debtsByPerson).sort();
     const peopleToRender = allPeopleNames.filter(name => filterPerson === 'all' || name === filterPerson);
 
+    const openCollectionPayment = (name: string, items: any[]) => {
+      const today = new Date();
+      setCollectionPayment({ name, items });
+      setCollectionPaymentAccountId(defaultBankAccountId);
+      setCollectionPaymentDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
+    };
+
     const toggleSplitPaid = async (txId: string, splitIndex: number, currentStatus: boolean) => {
       if (!user) return;
       try {
@@ -1132,32 +1216,68 @@ export default function FinanceApp() {
           return;
         }
         const updatedSplits = [...(tx.splits || [])];
-        updatedSplits[splitIndex].paid = !currentStatus;
-        await updateDoc(doc(db, 'users', user.uid, 'transactions', txId), {
-          splits: updatedSplits
-        });
+        if (currentStatus) {
+          updatedSplits[splitIndex] = { ...updatedSplits[splitIndex], paid: false, receivedAccountId: '', receivedDate: '' };
+          await updateDoc(doc(db, 'users', user.uid, 'transactions', txId), { splits: updatedSplits });
+          return;
+        }
+        const split = updatedSplits[splitIndex];
+        if (!split) return;
+        openCollectionPayment(split.name || '', [{
+          txId,
+          splitIndex,
+          desc: tx.desc || '',
+          amount: split.amount || 0,
+          date: tx.date || '',
+          paid: false
+        }]);
       } catch (err) { console.error(err); }
     };
 
     const handleMarkPersonPaid = async (name: string, items: any[]) => {
       if (!user) return;
+      const unpaidItems = items.filter(item => !item.paid);
+      if (!unpaidItems.length) return;
+      if (name !== 'Eu') {
+        openCollectionPayment(name, unpaidItems);
+        return;
+      }
       try {
         const updatesByTransaction = new Map<string, any>();
-        items.filter(item => !item.paid).forEach(item => {
+        unpaidItems.forEach(item => {
           const tx = transactions.find(t => t.id === item.txId);
-          if (!tx) return;
-          if (item.splitIndex === -1) {
-            updatesByTransaction.set(tx.id, { myPaid: true });
-            return;
-          }
-          const changes = updatesByTransaction.get(tx.id) || { splits: [...(tx.splits || [])] };
-          if (changes.splits[item.splitIndex]) changes.splits[item.splitIndex].paid = true;
-          updatesByTransaction.set(tx.id, changes);
+          if (tx && item.splitIndex === -1) updatesByTransaction.set(tx.id, { myPaid: true });
         });
         await Promise.all(Array.from(updatesByTransaction.entries()).map(([txId, changes]) =>
           updateDoc(doc(db, 'users', user.uid, 'transactions', txId), changes)
         ));
       } catch (err) { console.error(err); }
+    };
+
+    const handleConfirmCollectionPayment = async (e: any) => {
+      e.preventDefault();
+      if (!user || !collectionPayment || !collectionPaymentAccountId || !collectionPaymentDate) return;
+      try {
+        const updatesByTransaction = new Map<string, any>();
+        collectionPayment.items.forEach((item: any) => {
+          const tx = transactions.find(t => t.id === item.txId);
+          if (!tx || item.splitIndex < 0) return;
+          const changes = updatesByTransaction.get(tx.id) || { splits: (tx.splits || []).map((split: any) => ({ ...split })) };
+          if (changes.splits[item.splitIndex]) {
+            changes.splits[item.splitIndex] = {
+              ...changes.splits[item.splitIndex],
+              paid: true,
+              receivedAccountId: collectionPaymentAccountId,
+              receivedDate: collectionPaymentDate
+            };
+            updatesByTransaction.set(tx.id, changes);
+          }
+        });
+        await Promise.all(Array.from(updatesByTransaction.entries()).map(([txId, changes]) =>
+          updateDoc(doc(db, 'users', user.uid, 'transactions', txId), changes)
+        ));
+        setCollectionPayment(null);
+      } catch (err) { console.error('Erro ao registrar recebimento', err); }
     };
 
     const handleWhatsApp = (name: string, items: any[]) => {
@@ -1167,7 +1287,7 @@ export default function FinanceApp() {
       const total = unpaidItems.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
       let text = `Olá, aqui é o resumo das suas contas comigo:\n\n`;
       unpaidItems.forEach(item => {
-        const dateFormatted = new Date(item.date).toLocaleDateString('pt-BR');
+        const dateFormatted = formatLocalDate(item.date);
         text += `- ${item.desc} (Venc: ${dateFormatted}): R$ ${formatBRL(item.amount)}\n`;
       });
       text += `\n*Total a pagar: R$ ${formatBRL(total)}*`;
@@ -1301,6 +1421,36 @@ export default function FinanceApp() {
           </div>
         )}
 
+        {collectionPayment && createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80 animate-fadeIn">
+            <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <form onSubmit={handleConfirmCollectionPayment} role="dialog" aria-modal="true" className="my-auto max-h-full w-full max-w-sm space-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-gray-800 dark:text-gray-100">Registrar recebimento</h3>
+                  <button type="button" onClick={() => setCollectionPayment(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Recebido de {collectionPayment.name}: <strong>R$ {formatBRL(collectionPayment.items.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0))}</strong></p>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Conta onde o valor foi recebido</label>
+                  <select required value={collectionPaymentAccountId} onChange={e => setCollectionPaymentAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">Selecione uma conta</option>
+                    {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data do recebimento</label>
+                  <input type="date" required value={collectionPaymentDate} onChange={e => setCollectionPaymentDate(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setCollectionPayment(null)} className="flex-1 rounded-lg bg-gray-100 py-2 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button>
+                  <button type="submit" className="flex-1 rounded-lg bg-green-600 py-2 font-medium text-white">Confirmar recebimento</button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
         {qrCodeModal && createPortal(
           <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
             <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
@@ -1388,7 +1538,7 @@ export default function FinanceApp() {
       return acc;
     }, {})).map((g: any) => {
       g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
-      g.lots.sort((a: any, b: any) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime());
+      g.lots.sort((a: any, b: any) => parseLocalDate(b.buyDate).getTime() - parseLocalDate(a.buyDate).getTime());
       return g;
     }).sort((a: any, b: any) =>
       String(a.companyName || a.ticker).localeCompare(String(b.companyName || b.ticker), 'pt-BR', { sensitivity: 'base' })
@@ -1707,7 +1857,7 @@ export default function FinanceApp() {
                         <div key={lot.id} className="flex justify-between items-center bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 text-xs shadow-sm">
                           <div>
                             <p className="font-bold text-gray-700 dark:text-gray-200">{lot.quantity} cotas <span className="text-gray-400 dark:text-gray-500 font-normal ml-1">({lot.broker})</span></p>
-                            <p className="text-gray-500 dark:text-gray-400">{new Date(lot.buyDate).toLocaleDateString('pt-BR')} • PM: R$ {formatBRL(lot.unitPrice)}</p>
+                            <p className="text-gray-500 dark:text-gray-400">{formatLocalDate(lot.buyDate)} • PM: R$ {formatBRL(lot.unitPrice)}</p>
                           </div>
                           <div className="flex gap-1">
                              <button onClick={() => openEditAsset(lot)} className="p-1.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"><Icons.Edit size={16} /></button>
@@ -1733,7 +1883,7 @@ export default function FinanceApp() {
                   <span className={s.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>Resultado: R$ {formatBRL(s.netProfit)}</span>
                 </div>
                 <div className="flex justify-between text-gray-400 dark:text-gray-500">
-                  <span>Venda em {new Date(s.saleDate).toLocaleDateString('pt-BR')}</span>
+                  <span>Venda em {formatLocalDate(s.saleDate)}</span>
                   <span className="font-semibold text-gray-700 dark:text-gray-300">
                     {s.taxPayable > 0 ? `DARF a Pagar: R$ ${formatBRL(s.taxPayable)}` : 'Isento de IR'}
                   </span>
@@ -1847,14 +1997,28 @@ export default function FinanceApp() {
 
   const History = () => {
     const [editingTx, setEditingTx] = useState<any>(null);
-    const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '' });
+    const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '', category: '' });
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
+    const editCategoryOptions = editingTx?.type === 'income'
+      ? ['Salário', 'Renda extra', 'Investimentos', 'Vendas', 'Reembolso', 'Outros']
+      : ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Contas e serviços', 'Compras', 'Impostos', 'Outros'];
+    const categoryOptions = editingTx?.category && !editCategoryOptions.includes(editingTx.category)
+      ? [editingTx.category, ...editCategoryOptions]
+      : editCategoryOptions;
     const [payingInvoice, setPayingInvoice] = useState<any>(null);
+    const [invoicePaymentAccountId, setInvoicePaymentAccountId] = useState('');
+    const [invoiceReceivedAccountId, setInvoiceReceivedAccountId] = useState('');
+    const [thirdPartyReceivedDate, setThirdPartyReceivedDate] = useState('');
+    const [settlementTx, setSettlementTx] = useState<any>(null);
+    const [settlementAccountId, setSettlementAccountId] = useState('');
+    const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
+
     const getLocalDateString = () => {
       const date = new Date();
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     };
+    const [settlementDate, setSettlementDate] = useState(() => getLocalDateString());
     const [invoicePaymentDate, setInvoicePaymentDate] = useState(() => getLocalDateString());
     const [markThirdPartiesReceived, setMarkThirdPartiesReceived] = useState(false);
     const [isPayingInvoice, setIsPayingInvoice] = useState(false);
@@ -1871,7 +2035,7 @@ export default function FinanceApp() {
 
     const availableMonths = Array.from(new Set((transactions || []).map(t => {
       if (!t?.date) return '';
-      const d = new Date(t.date);
+      const d = parseLocalDate(t.date);
       if (isNaN(d.getTime())) return '';
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }))).filter(m => m !== '').sort().reverse() as string[];
@@ -1896,7 +2060,7 @@ export default function FinanceApp() {
     });
 
     filteredTxsForHistory.forEach(tx => {
-      const date = new Date(tx.date);
+      const date = parseLocalDate(tx.date);
       const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const key = `${monthYear}|${tx.methodId}`;
       
@@ -1930,8 +2094,8 @@ export default function FinanceApp() {
     
     invoicesArray.forEach((inv: any) => {
         inv.transactions.sort((a: any, b: any) => {
-           const dateA = new Date(a.purchaseDate || a.date).getTime();
-           const dateB = new Date(b.purchaseDate || b.date).getTime();
+           const dateA = parseLocalDate(a.purchaseDate || a.date).getTime();
+           const dateB = parseLocalDate(b.purchaseDate || b.date).getTime();
            return (dateA || 0) - (dateB || 0);
         });
     });
@@ -1939,12 +2103,16 @@ export default function FinanceApp() {
     const handlePayInvoice = (invoice: any) => {
       setInvoicePaymentDate(getLocalDateString());
       setMarkThirdPartiesReceived(false);
+      const defaultAccountId = cards.find((card: any) => card.isDefaultAccount && card.brand === 'Conta/Pix')?.id || '';
+      setInvoicePaymentAccountId(defaultAccountId);
+      setInvoiceReceivedAccountId(defaultAccountId);
+      setThirdPartyReceivedDate(getLocalDateString());
       setPayingInvoice(invoice);
     };
 
     const handleConfirmPayInvoice = async (e: any) => {
       e.preventDefault();
-      if (!user || !payingInvoice || !invoicePaymentDate) return;
+      if (!user || !payingInvoice || !invoicePaymentDate || !invoicePaymentAccountId || (markThirdPartiesReceived && (!invoiceReceivedAccountId || !thirdPartyReceivedDate))) return;
       setIsPayingInvoice(true);
       try {
         const updatePromises = payingInvoice.transactions.map((tx: any) => {
@@ -1952,9 +2120,18 @@ export default function FinanceApp() {
           if (tx.status !== 'paid') {
             changes.status = 'paid';
             changes.paymentDate = invoicePaymentDate;
+            changes.settlementAccountId = invoicePaymentAccountId;
           }
           if (markThirdPartiesReceived && tx.splits?.length) {
-            changes.splits = tx.splits.map((split: any) => split?.name ? { ...split, paid: true } : split);
+            changes.splits = tx.splits.map((split: any) => {
+              if (!split?.name) return split;
+              return {
+                ...split,
+                paid: true,
+                receivedAccountId: split.receivedAccountId || invoiceReceivedAccountId,
+                receivedDate: split.receivedDate || thirdPartyReceivedDate
+              };
+            });
           }
           return Object.keys(changes).length
             ? updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), changes)
@@ -1973,36 +2150,62 @@ export default function FinanceApp() {
     const handleToggleStatus = async (tx: any) => {
       if (!user) return;
       try {
-        const newStatus = tx.status === 'paid' ? 'pending' : 'paid';
+        if (tx.status !== 'paid') {
+          setSettlementTx(tx);
+          setSettlementDate(getLocalDateString());
+          setSettlementAccountId(tx.settlementAccountId || cards.find((card: any) => card.isDefaultAccount && card.brand === 'Conta/Pix')?.id || '');
+          return;
+        }
         await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), {
-          status: newStatus,
-          paymentDate: newStatus === 'paid' ? getLocalDateString() : ''
+          status: 'pending',
+          paymentDate: '',
+          settlementAccountId: ''
         });
       } catch (err) { console.error(err); }
     };
 
+    const handleConfirmSettlement = async (e: any) => {
+      e.preventDefault();
+      if (!user || !settlementTx || !settlementAccountId || !settlementDate) return;
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'transactions', settlementTx.id), {
+          status: 'paid',
+          paymentDate: settlementDate,
+          settlementAccountId
+        });
+        setSettlementTx(null);
+      } catch (err) { console.error('Erro ao efetivar lançamento', err); }
+    };
+
     const openEditModal = (tx: any) => {
       setEditingTx(tx);
-      setEditForm({ desc: tx.desc || '', totalAmount: tx.totalAmount || '', date: tx.date || '' });
+      const editAmount = Number(tx.totalAmount);
+      setEditForm({
+        desc: tx.desc || '',
+        totalAmount: Number.isFinite(editAmount) ? editAmount.toFixed(2) : '',
+        date: tx.date || '',
+        category: tx.category || ''
+      });
       setUpdateScope('single');
     };
 
     useEffect(() => {
-      if (editingTx) {
+      if (editingTx || settlementTx) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         document.body.style.overflow = 'hidden';
       } else {
         document.body.style.overflow = 'auto';
       }
       return () => { document.body.style.overflow = 'auto'; };
-    }, [editingTx]);
+    }, [editingTx, settlementTx]);
 
     const handleSaveEdit = async (e: any) => {
       e.preventDefault();
       if (!user || !editingTx) return;
       setIsUpdating(true);
       try {
-        const newTotal = parseFloat(editForm.totalAmount) || 0;
+        const parsedTotal = parseFloat(editForm.totalAmount) || 0;
+        const newTotal = Math.round((parsedTotal + Number.EPSILON) * 100) / 100;
         let targets = [editingTx];
         
         if (updateScope === 'future' && editingTx.groupId) {
@@ -2011,12 +2214,13 @@ export default function FinanceApp() {
 
         const promises = targets.map(t => {
           const ratio = t.totalAmount > 0 ? (t.myAmount / t.totalAmount) : 1;
-          const newMyAmount = newTotal * ratio;
+          const newMyAmount = Math.round((newTotal * ratio + Number.EPSILON) * 100) / 100;
           return updateDoc(doc(db, 'users', user.uid, 'transactions', t.id), {
             desc: updateScope === 'future' ? t.desc : editForm.desc, 
             totalAmount: newTotal,
             myAmount: newMyAmount,
-            date: updateScope === 'single' ? editForm.date : t.date
+            date: updateScope === 'single' ? editForm.date : t.date,
+            category: editForm.category
           });
         });
 
@@ -2034,8 +2238,8 @@ export default function FinanceApp() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
           <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
-          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || filtersHist.unpaidOnly) && (
-            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: false })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || !filtersHist.unpaidOnly) && (
+            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
@@ -2121,7 +2325,7 @@ export default function FinanceApp() {
                               </p>
                               <p className="text-[10px] text-gray-400 dark:text-gray-500">
                                 {tx.type === 'income' ? 'Recebido em: ' : 'Compra: '} 
-                                {tx.purchaseDate ? new Date(tx.purchaseDate).toLocaleDateString('pt-BR') : tx.date ? new Date(tx.date).toLocaleDateString('pt-BR') : '-'}
+                                {tx.purchaseDate ? formatLocalDate(tx.purchaseDate) : tx.date ? parseLocalDate(tx.date).toLocaleDateString('pt-BR') : '-'}
                               </p>
                               {tx.status === 'paid' && tx.paymentDate && (
                                 <p className="text-[10px] text-green-600 dark:text-green-400">Efetivado em: {new Date(`${tx.paymentDate}T12:00:00`).toLocaleDateString('pt-BR')}</p>
@@ -2198,6 +2402,13 @@ export default function FinanceApp() {
               </div>
               <form onSubmit={handleConfirmPayInvoice} className="space-y-4">
                 <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Conta bancária usada para pagar</label>
+                  <select value={invoicePaymentAccountId} onChange={e => setInvoicePaymentAccountId(e.target.value)} required className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg">
+                    <option value="">Selecione uma conta</option>
+                    {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Data do pagamento</label>
                   <input type="date" value={invoicePaymentDate} onChange={e => setInvoicePaymentDate(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
                 </div>
@@ -2205,7 +2416,22 @@ export default function FinanceApp() {
                   <input type="checkbox" checked={markThirdPartiesReceived} onChange={e => setMarkThirdPartiesReceived(e.target.checked)} className="mt-0.5 text-blue-600 rounded" />
                   <span>Também marcar todos os valores de terceiros desta fatura como recebidos.</span>
                 </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Esta opção atualiza as cobranças individuais sem alterar a data nem o status de outras faturas.</p>
+                {markThirdPartiesReceived && (
+                  <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Conta onde os valores de terceiros foram recebidos</label>
+                    <select required value={invoiceReceivedAccountId} onChange={e => setInvoiceReceivedAccountId(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg">
+                      <option value="">Selecione uma conta</option>
+                      {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Data em que os valores foram recebidos</label>
+                    <input type="date" required value={thirdPartyReceivedDate} onChange={e => setThirdPartyReceivedDate(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" />
+                  </div>
+                  </>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">Quando marcar recebimentos, escolha também a conta e a data em que os valores entraram. A conta pode ser diferente da usada para pagar a fatura.</p>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setPayingInvoice(null)} className="flex-1 py-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg font-medium">Cancelar</button>
                   <button type="submit" disabled={isPayingInvoice} className="flex-1 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg font-medium disabled:opacity-50">
@@ -2217,14 +2443,52 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {editingTx && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 border border-gray-100 dark:border-gray-700">
+        {settlementTx && createPortal(
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[10000] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+            <form onSubmit={handleConfirmSettlement} role="dialog" aria-modal="true" className="w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain space-y-4 rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">{settlementTx.type === 'income' ? 'Efetivar receita' : 'Efetivar despesa'}</h3>
+                <button type="button" onClick={() => setSettlementTx(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{settlementTx.desc}</p>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Conta bancária</label>
+                <select required value={settlementAccountId} onChange={e => setSettlementAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                  <option value="">Selecione uma conta</option>
+                  {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data da efetivação</label>
+                <input type="date" required value={settlementDate} onChange={e => setSettlementDate(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setSettlementTx(null)} className="flex-1 rounded-lg bg-gray-100 py-2 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button>
+                <button type="submit" className="flex-1 rounded-lg bg-green-600 py-2 font-medium text-white">Confirmar</button>
+              </div>
+            </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {editingTx && createPortal(
+          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
+            <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain shadow-xl space-y-4 border border-gray-100 dark:border-gray-700">
               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Editar Lançamento</h3>
               <form onSubmit={handleSaveEdit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
                   <input type="text" value={editForm.desc} onChange={e => setEditForm({...editForm, desc: e.target.value})} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
+                  <select value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg">
+                    <option value="">Sem categoria</option>
+                    {categoryOptions.map(category => <option key={category} value={category}>{category}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Total (R$)</label>
@@ -2261,7 +2525,9 @@ export default function FinanceApp() {
                 </div>
               </form>
             </div>
-          </div>
+            </div>
+          </div>,
+          document.body
         )}
       </div>
     );
