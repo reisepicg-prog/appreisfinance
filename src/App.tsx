@@ -1218,7 +1218,7 @@ export default function FinanceApp() {
         const updatedSplits = [...(tx.splits || [])];
         if (currentStatus) {
           updatedSplits[splitIndex] = { ...updatedSplits[splitIndex], paid: false, receivedAccountId: '', receivedDate: '' };
-          await updateDoc(doc(db, 'users', 'transactions', txId), { splits: updatedSplits });
+          await updateDoc(doc(db, 'users', user.uid, 'transactions', txId), { splits: updatedSplits });
           return;
         }
         const split = updatedSplits[splitIndex];
@@ -2008,6 +2008,7 @@ export default function FinanceApp() {
       : editCategoryOptions;
     const [payingInvoice, setPayingInvoice] = useState<any>(null);
     const [invoicePaymentAccountId, setInvoicePaymentAccountId] = useState('');
+    const [invoiceReceivedAccountId, setInvoiceReceivedAccountId] = useState('');
     const [settlementTx, setSettlementTx] = useState<any>(null);
     const [settlementAccountId, setSettlementAccountId] = useState('');
     const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
@@ -2101,13 +2102,15 @@ export default function FinanceApp() {
     const handlePayInvoice = (invoice: any) => {
       setInvoicePaymentDate(getLocalDateString());
       setMarkThirdPartiesReceived(false);
-      setInvoicePaymentAccountId(cards.find((card: any) => card.isDefaultAccount && !(parseFloat(card.limit) > 0))?.id || '');
+      const defaultAccountId = cards.find((card: any) => card.isDefaultAccount && card.brand === 'Conta/Pix')?.id || '';
+      setInvoicePaymentAccountId(defaultAccountId);
+      setInvoiceReceivedAccountId(defaultAccountId);
       setPayingInvoice(invoice);
     };
 
     const handleConfirmPayInvoice = async (e: any) => {
       e.preventDefault();
-      if (!user || !payingInvoice || !invoicePaymentDate || !invoicePaymentAccountId) return;
+      if (!user || !payingInvoice || !invoicePaymentDate || !invoicePaymentAccountId || (markThirdPartiesReceived && !invoiceReceivedAccountId)) return;
       setIsPayingInvoice(true);
       try {
         const updatePromises = payingInvoice.transactions.map((tx: any) => {
@@ -2118,7 +2121,15 @@ export default function FinanceApp() {
             changes.settlementAccountId = invoicePaymentAccountId;
           }
           if (markThirdPartiesReceived && tx.splits?.length) {
-            changes.splits = tx.splits.map((split: any) => split?.name ? { ...split, paid: true } : split);
+            changes.splits = tx.splits.map((split: any) => {
+              if (!split?.name) return split;
+              return {
+                ...split,
+                paid: true,
+                receivedAccountId: split.receivedAccountId || invoiceReceivedAccountId,
+                receivedDate: split.receivedDate || invoicePaymentDate
+              };
+            });
           }
           return Object.keys(changes).length
             ? updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), changes)
@@ -2396,7 +2407,16 @@ export default function FinanceApp() {
                   <input type="checkbox" checked={markThirdPartiesReceived} onChange={e => setMarkThirdPartiesReceived(e.target.checked)} className="mt-0.5 text-blue-600 rounded" />
                   <span>Também marcar todos os valores de terceiros desta fatura como recebidos.</span>
                 </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Esta opção atualiza as cobranças individuais sem alterar a data nem o status de outras faturas.</p>
+                {markThirdPartiesReceived && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Conta onde os valores de terceiros foram recebidos</label>
+                    <select required value={invoiceReceivedAccountId} onChange={e => setInvoiceReceivedAccountId(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg">
+                      <option value="">Selecione uma conta</option>
+                      {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                    </select>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">Quando marcar recebimentos, escolha também a conta que recebeu esses valores. Ela pode ser diferente da conta usada para pagar a fatura.</p>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setPayingInvoice(null)} className="flex-1 py-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg font-medium">Cancelar</button>
                   <button type="submit" disabled={isPayingInvoice} className="flex-1 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg font-medium disabled:opacity-50">
