@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc, addDoc, writeBatch } from 'firebase/firestore';
 
 // --- Auto-Injeção do Tailwind CSS e Configuração do Modo Escuro ---
 if (typeof document !== 'undefined' && !document.getElementById('tailwind-script')) {
@@ -371,7 +371,7 @@ export default function FinanceApp() {
         : (transactions || []).filter(tx => String(tx?.date || '').startsWith(selectedMonth));
 
     const incomes = filteredTxs.filter(tx => String(tx?.type) === 'income');
-    const expenses = filteredTxs.filter(tx => String(tx?.type) !== 'income');
+    const expenses = filteredTxs.filter(tx => String(tx?.type) !== 'income' && !tx?.isCardPaymentEntry);
 
     // Cálculos de Planejado e Executado
     const plannedIncomes = incomes.reduce((acc, curr) => acc + (parseFloat(curr?.totalAmount) || 0), 0);
@@ -906,6 +906,7 @@ export default function FinanceApp() {
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
     const [firstInstallmentDate, setFirstInstallmentDate] = useState(new Date().toISOString().split('T')[0]);
     const [methodId, setMethodId] = useState('pix');
+    const [billCreditCardId, setBillCreditCardId] = useState('');
     const [installments, setInstallments] = useState(1);
     const [expenseType, setExpenseType] = useState('installment');
     
@@ -920,17 +921,28 @@ export default function FinanceApp() {
     const categoryOptions = txType === 'income' ? ['Salário', 'Renda extra', 'Investimentos', 'Vendas', 'Reembolso', 'Outros'] : ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Contas e serviços', 'Compras', 'Impostos', 'Outros'];
     const isSaleCategory = txType === 'income' && category === 'Vendas';
     const isSaleReceivable = isSaleCategory && (salePending || purchaseDate > new Date().toISOString().split('T')[0]);
+    const isPayingBillWithCard = txType === 'expense' && methodId === 'bill-credit';
+    const creditCards = cards.filter((card: any) => (parseFloat(card.limit) || 0) > 0);
+    const selectedExpenseCardId = isPayingBillWithCard ? billCreditCardId : methodId;
+    const selectedExpenseCard = cards.find((card: any) => card.id === selectedExpenseCardId) || null;
+    const defaultCreditCardId = creditCards[0]?.id || '';
 
     useEffect(() => {
       if (!incomeAccountId && defaultBankAccountId) setIncomeAccountId(defaultBankAccountId);
     }, [defaultBankAccountId, incomeAccountId]);
 
     useEffect(() => {
+      if (isPayingBillWithCard && !billCreditCardId && defaultCreditCardId) setBillCreditCardId(defaultCreditCardId);
+    }, [isPayingBillWithCard, billCreditCardId, defaultCreditCardId]);
+
+    useEffect(() => {
       if (txType === 'income' || methodId === 'pix' || cards.length === 0) {
         setFirstInstallmentDate(purchaseDate);
         return;
       }
-      const card = cards.find(c => c.id === methodId);
+      const cardId = methodId === 'bill-credit' ? billCreditCardId : methodId;
+      if (!cardId) { setFirstInstallmentDate(purchaseDate); return; }
+      const card = cards.find(c => c.id === cardId);
       if (card && (card.limit || 0) > 0) {
         const pDate = new Date(purchaseDate + 'T12:00:00'); 
         let targetMonth = pDate.getMonth();
@@ -945,7 +957,7 @@ export default function FinanceApp() {
       } else {
         setFirstInstallmentDate(purchaseDate);
       }
-    }, [methodId, purchaseDate, cards, txType]);
+    }, [methodId, billCreditCardId, purchaseDate, cards, txType]);
 
     useEffect(() => {
       if (isSplit && autoSplit && amount) {
@@ -1022,6 +1034,10 @@ export default function FinanceApp() {
           return;
         }
       }
+      if (isPayingBillWithCard && (!selectedExpenseCard || (parseFloat(selectedExpenseCard.limit) || 0) <= 0)) {
+        setErrorMsg('Selecione um cartão de crédito para lançar o pagamento da conta.');
+        return;
+      }
       if (txType === 'income' && !isSaleReceivable && purchaseDate <= new Date().toISOString().split('T')[0] && !incomeAccountId) {
         setErrorMsg('Selecione a conta bancária onde a receita foi recebida.');
         return;
@@ -1040,14 +1056,86 @@ export default function FinanceApp() {
         const groupId = Date.now().toString();
         const numPeriods = installments;
         const isRecurring = txType === 'income' || expenseType === 'fixed';
-        const selectedCard = cards.find(c => c.id === methodId);
+        const selectedCard = selectedExpenseCard;
         
         let cardName = 'Pix/Débito';
         if (txType === 'income') cardName = 'Conta / Pix';
+        else if (isPayingBillWithCard && selectedCard) cardName = `Pix/Boleto via ${selectedCard.name}`;
         else if (selectedCard) cardName = selectedCard.name;
         
-        const finalMethodId = txType === 'income' ? 'pix' : methodId;
+        const finalMethodId = txType === 'income' ? 'pix' : (isPayingBillWithCard ? 'pix' : methodId);
 
+        if (isPayingBillWithCard && selectedCard) {
+          const sourceExpenseRef = doc(collection(db, 'users', user.uid, 'transactions'));
+          const cardPaymentRefs = Array.from({ length: numPeriods }, () => doc(collection(db, 'users', user.uid, 'transactions')));
+          const cardPaymentGroupId = `card-payment-${groupId}`;
+          const batch = writeBatch(db);
+          const sourceSplits = isSplit
+            ? splits.filter(split => String(split.name || '').trim()).map(split => ({
+                name: String(split.name || '').trim(),
+                amount: parseFloat(split.amount) || 0,
+                paid: split.paid || false
+              }))
+            : [];
+
+          batch.set(sourceExpenseRef, {
+            type: 'expense',
+            desc,
+            category,
+            observation: observation.trim(),
+            totalAmount: parsedTotalAmount,
+            myAmount: isSplit ? myShare : parsedTotalAmount,
+            purchaseDate,
+            date: purchaseDate,
+            method: cardName,
+            methodId: 'pix',
+            splits: sourceSplits,
+            groupId,
+            status: 'paid',
+            myPaid: true,
+            paymentDate: purchaseDate,
+            settlementAccountId: '',
+            isCardPaidExpense: true,
+            linkedCardTransactionIds: cardPaymentRefs.map(ref => ref.id),
+            createdAt: new Date().toISOString()
+          });
+
+          const totalCents = Math.round(parsedTotalAmount * 100);
+          const baseChargeCents = expenseType === 'fixed' ? totalCents : Math.floor(totalCents / numPeriods);
+          const remainingCents = expenseType === 'fixed' ? 0 : totalCents - baseChargeCents * numPeriods;
+
+          for (let i = 0; i < numPeriods; i++) {
+            const cardChargeCents = expenseType === 'fixed' ? totalCents : baseChargeCents + (i < remainingCents ? 1 : 0);
+            const cardChargeAmount = cardChargeCents / 100;
+            const cardStatementDate = new Date(firstInstallmentDate + 'T12:00:00');
+            cardStatementDate.setMonth(cardStatementDate.getMonth() + i);
+            const cardDate = cardStatementDate.toISOString().split('T')[0];
+            const suffix = numPeriods > 1 ? ` (${i + 1}/${numPeriods})` : '';
+
+            batch.set(cardPaymentRefs[i], {
+              type: 'expense',
+              desc: `Pagamento de Pix/Boleto: ${desc}${suffix}`,
+              category,
+              observation: observation.trim(),
+              totalAmount: cardChargeAmount,
+              myAmount: 0,
+              purchaseDate,
+              date: cardDate,
+              method: selectedCard.name,
+              methodId: selectedCard.id,
+              splits: [],
+              groupId: cardPaymentGroupId,
+              status: 'pending',
+              myPaid: true,
+              paymentDate: '',
+              settlementAccountId: '',
+              isCardPaymentEntry: true,
+              sourceExpenseId: sourceExpenseRef.id,
+              createdAt: new Date().toISOString()
+            });
+          }
+          await batch.commit();
+        } else {
         for (let i = 0; i < numPeriods; i++) {
             let formattedDate;
             if (txType === 'income' || methodId === 'pix' || (selectedCard && !(selectedCard.limit > 0))) {
@@ -1081,8 +1169,9 @@ export default function FinanceApp() {
             };
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
+        }
         
-        setDesc(''); setCategory(''); setObservation(''); setIncomeAccountId(defaultBankAccountId); setSaleBuyers([{ name: '', amount: 0, displayAmount: '' }]); setSaleAutoSplit(true); setSalePending(false); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setCategory(''); setObservation(''); setIncomeAccountId(defaultBankAccountId); setBillCreditCardId(''); setSaleBuyers([{ name: '', amount: 0, displayAmount: '' }]); setSaleAutoSplit(true); setSalePending(false); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
       } catch (err) { console.error(err); setErrorMsg("Erro ao salvar."); } finally { setIsSaving(false); }
     };
@@ -1201,12 +1290,23 @@ export default function FinanceApp() {
             {txType === 'expense' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Forma de Pagamento / Conta</label>
-                <select value={methodId} onChange={e => setMethodId(e.target.value)} className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <select value={methodId} onChange={e => { setMethodId(e.target.value); if (e.target.value === 'bill-credit') setExpenseType('installment'); }} className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                   <option value="pix">Pix / Débito / Dinheiro</option>
+                  <option value="bill-credit">Pix/Boleto pago com cartão de crédito</option>
                   <optgroup label="Minhas Contas e Cartões">
                     {cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </optgroup>
                 </select>
+                {isPayingBillWithCard && (
+                  <div className="mt-3">
+                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Cartão usado para pagar</label>
+                    <select required value={billCreditCardId} onChange={e => setBillCreditCardId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                      <option value="">Selecione o cartão de crédito</option>
+                      {creditCards.map((card: any) => <option key={card.id} value={card.id}>{card.name}</option>)}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">A despesa será efetivada agora; o valor será lançado na fatura do cartão.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1222,7 +1322,7 @@ export default function FinanceApp() {
               </select>
             </div>
             
-            {txType === 'expense' && installments > 1 && (
+            {txType === 'expense' && installments > 1 && !isPayingBillWithCard && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Comportamento do Valor</label>
                 <select value={expenseType} onChange={e => setExpenseType(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm">
@@ -1232,7 +1332,7 @@ export default function FinanceApp() {
               </div>
             )}
 
-            {txType === 'expense' && methodId !== 'pix' && (cards.find(c => c.id === methodId)?.limit || 0) > 0 && (
+            {txType === 'expense' && selectedExpenseCard && (parseFloat(selectedExpenseCard.limit) || 0) > 0 && (
               <div className={installments > 1 ? "md:col-span-2" : ""}>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vencimento (1ª Parcela)</label>
                 <input type="date" value={firstInstallmentDate} onChange={e => setFirstInstallmentDate(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm" />
@@ -1388,6 +1488,7 @@ export default function FinanceApp() {
     const debtsByPerson: any = {};
     
     const filteredTransactions = (transactions || []).filter(tx => {
+        if (tx?.isCardPaymentEntry) return false;
         if (!tx?.date) return false;
         const d = parseLocalDate(tx.date);
         if (isNaN(d.getTime())) return false;
