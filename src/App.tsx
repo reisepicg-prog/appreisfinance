@@ -375,7 +375,13 @@ export default function FinanceApp() {
 
     // Cálculos de Planejado e Executado
     const plannedIncomes = incomes.reduce((acc, curr) => acc + (parseFloat(curr?.totalAmount) || 0), 0);
-    const paidIncomes = incomes.filter(tx => tx?.status === 'paid').reduce((acc, curr) => acc + (parseFloat(curr?.totalAmount) || 0), 0);
+    const paidIncomes = incomes.reduce((acc, tx: any) => {
+      const saleSplits = (tx.splits || []).filter((split: any) => split?.isSaleReceivable);
+      if (tx.isSaleReceivable || saleSplits.length > 0) {
+        return acc + saleSplits.filter((split: any) => split.paid).reduce((sum: number, split: any) => sum + (parseFloat(split.amount) || 0), 0);
+      }
+      return acc + (tx.status === 'paid' ? (parseFloat(tx.totalAmount) || 0) : 0);
+    }, 0);
     const incomeProgress = plannedIncomes > 0 ? (paidIncomes / plannedIncomes) * 100 : 0;
 
     const plannedExpenses = expenses.reduce((acc, curr) => acc + (parseFloat(curr?.myAmount) || 0), 0);
@@ -388,8 +394,13 @@ export default function FinanceApp() {
     const totalReceivables = expenses.reduce((acc, curr) => {
       const splitTotal = (curr?.splits || []).reduce((sAcc: number, sCurr: any) => sAcc + (sCurr?.paid ? 0 : (parseFloat(sCurr?.amount) || 0)), 0);
       return acc + splitTotal;
-    }, 0) + incomes.filter(tx => tx.category === 'Vendas' && tx.status !== 'paid')
-      .reduce((acc, tx) => acc + (parseFloat(tx.totalAmount) || 0), 0);
+    }, 0) + incomes.filter(tx => tx.category === 'Vendas' && (tx.isSaleReceivable || tx.status !== 'paid'))
+      .reduce((acc, tx: any) => {
+        const saleSplits = (tx.splits || []).filter((split: any) => split?.isSaleReceivable);
+        return acc + (saleSplits.length
+          ? saleSplits.filter((split: any) => !split.paid).reduce((sum: number, split: any) => sum + (parseFloat(split.amount) || 0), 0)
+          : (tx.status !== 'paid' ? (parseFloat(tx.totalAmount) || 0) : 0));
+      }, 0);
 
     return (
       <div className="space-y-6 animate-fadeIn pb-10">
@@ -609,7 +620,7 @@ export default function FinanceApp() {
             }))
         : [
             ...transactions
-              .filter((tx: any) => tx.status === 'paid' && tx.settlementAccountId === selectedCard.id && String(tx.paymentDate || tx.date || '').startsWith(selectedCardMonth))
+              .filter((tx: any) => tx.status === 'paid' && !tx.isSaleReceivable && !(tx.splits || []).some((split: any) => split?.isSaleReceivable) && tx.settlementAccountId === selectedCard.id && String(tx.paymentDate || tx.date || '').startsWith(selectedCardMonth))
               .map((tx: any) => ({
                 id: `settlement-${tx.id}`,
                 description: tx.desc || 'Lançamento',
@@ -623,12 +634,12 @@ export default function FinanceApp() {
               .filter((split: any) => split?.paid && split?.receivedAccountId === selectedCard.id && String(split.receivedDate || '').startsWith(selectedCardMonth))
               .map((split: any, index: number) => ({
                 id: `reimbursement-${tx.id}-${index}`,
-                description: `${tx.desc || 'Lançamento'} • Reembolso de ${split.name}`,
+                description: `${tx.desc || 'Lançamento'} • ${split.isSaleReceivable ? 'Venda recebida de' : 'Reembolso de'} ${split.name}`,
                 date: split.receivedDate,
                 amount: parseFloat(split.amount) || 0,
                 type: 'income',
                 status: 'Recebido',
-                detail: 'Reembolso'
+                detail: split.isSaleReceivable ? 'Venda' : 'Reembolso'
               })))
           ]
       : [];
@@ -726,7 +737,7 @@ export default function FinanceApp() {
             const isCard = cardLimit > 0;
             const availableLimit = cardLimit - usedLimit;
             const settlementBalance = transactions
-              .filter((tx: any) => tx.status === 'paid' && tx.settlementAccountId === c.id)
+              .filter((tx: any) => tx.status === 'paid' && !tx.isSaleReceivable && !(tx.splits || []).some((split: any) => split?.isSaleReceivable) && tx.settlementAccountId === c.id)
               .reduce((sum: number, tx: any) => sum + (tx.type === 'income' ? 1 : -1) * (parseFloat(tx.totalAmount) || 0), 0);
             const receivedReimbursements = transactions.reduce((sum: number, tx: any) =>
               sum + (tx.splits || []).filter((split: any) => split?.paid && split?.receivedAccountId === c.id)
@@ -845,7 +856,8 @@ export default function FinanceApp() {
     const [desc, setDesc] = useState('');
     const [category, setCategory] = useState('');
     const [incomeAccountId, setIncomeAccountId] = useState('');
-    const [saleBuyerName, setSaleBuyerName] = useState('');
+    const [saleBuyers, setSaleBuyers] = useState<any[]>([{ name: '', amount: 0, displayAmount: '' }]);
+    const [saleAutoSplit, setSaleAutoSplit] = useState(true);
     const [salePending, setSalePending] = useState(false);
     const [observation, setObservation] = useState('');
     const [amount, setAmount] = useState<number | ''>(''); 
@@ -911,8 +923,32 @@ export default function FinanceApp() {
       }
     }, [amount, splits.length, isSplit, autoSplit, includeMe]);
 
+    useEffect(() => {
+      if (!isSaleCategory || !saleAutoSplit || !saleBuyers.length) return;
+      const totalCents = Math.round((Number(amount) || 0) * 100);
+      const baseCents = Math.floor(totalCents / saleBuyers.length);
+      const remainingCents = totalCents - baseCents * saleBuyers.length;
+      setSaleBuyers(prev => prev.map((buyer, index) => {
+        const share = (baseCents + (index < remainingCents ? 1 : 0)) / 100;
+        return { ...buyer, amount: share, displayAmount: formatCurrencyValueForEntry(share, currencyMaskEnabled) };
+      }));
+    }, [amount, saleBuyers.length, isSaleCategory, saleAutoSplit, currencyMaskEnabled]);
+
     const handleAddSplit = () => setSplits([...splits, { name: '', amount: 0, displayAmount: '', paid: false }]);
     const handleRemoveSplit = (index: number) => setSplits(splits.filter((_, i) => i !== index));
+    const handleAddSaleBuyer = () => setSaleBuyers(prev => [...prev, { name: '', amount: 0, displayAmount: '' }]);
+    const handleRemoveSaleBuyer = (index: number) => setSaleBuyers(prev => prev.filter((_, i) => i !== index));
+    const handleSaleBuyerChange = (index: number, field: string, value: any) => {
+      setSaleBuyers(prev => prev.map((buyer, i) => {
+        if (i !== index) return buyer;
+        if (field === 'displayAmount') {
+          const formatted = formatCurrencyEntry(value, currencyMaskEnabled);
+          setSaleAutoSplit(false);
+          return { ...buyer, displayAmount: formatted, amount: parseCurrencyToNumber(formatted, currencyMaskEnabled) };
+        }
+        return { ...buyer, [field]: value };
+      }));
+    };
     
     const handleSplitChange = (index: number, field: string, value: any) => {
       const newSplits = [...splits];
@@ -930,15 +966,22 @@ export default function FinanceApp() {
     const totalSplits = splits.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
     const parsedTotalAmount = typeof amount === 'number' ? amount : parseFloat(amount as string) || 0;
     const myShare = includeMe ? parsedTotalAmount - totalSplits : 0;
+    const totalSaleBuyerShares = saleBuyers.reduce((sum, buyer) => sum + (parseFloat(buyer.amount) || 0), 0);
 
     const handleSubmit = async (e: any) => {
       e.preventDefault();
       if (!user) return;
       if (!desc || !amount) { setErrorMsg("Preencha descrição e valor total."); return; }
       
-      if (txType === 'income' && isSaleCategory && !saleBuyerName.trim()) {
-        setErrorMsg('Informe o nome da pessoa que comprou.');
-        return;
+      if (txType === 'income' && isSaleCategory) {
+        if (!saleBuyers.length || saleBuyers.some(buyer => !String(buyer.name || '').trim())) {
+          setErrorMsg('Informe o nome de todos os compradores.');
+          return;
+        }
+        if (saleBuyers.some(buyer => (parseFloat(buyer.amount) || 0) <= 0) || Math.abs(totalSaleBuyerShares - parsedTotalAmount) > 0.05) {
+          setErrorMsg('A soma dos valores dos compradores deve ser igual ao valor total da venda.');
+          return;
+        }
       }
       if (txType === 'income' && !isSaleReceivable && purchaseDate <= new Date().toISOString().split('T')[0] && !incomeAccountId) {
         setErrorMsg('Selecione a conta bancária onde a receita foi recebida.');
@@ -982,7 +1025,7 @@ export default function FinanceApp() {
             const initialStatus = installmentIsReceivable ? 'pending' : (txType === 'income' ? (isFuture ? 'pending' : 'paid') : 'pending');
 
             const instSplits = installmentIsReceivable
-              ? [{ name: saleBuyerName.trim(), amount: instTotalAmt, paid: false, isSaleReceivable: true }]
+              ? saleBuyers.map(buyer => ({ name: String(buyer.name || '').trim(), amount: buyer.amount, paid: false, isSaleReceivable: true }))
               : isSplit
                 ? splits.filter(s => s.name).map(s => ({
                     name: String(s.name || ''),
@@ -992,7 +1035,7 @@ export default function FinanceApp() {
                 : [];
 
             const newTx = {
-              type: txType, desc: desc + suffix, category, buyerName: isSaleCategory ? saleBuyerName.trim() : '', observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
+              type: txType, desc: desc + suffix, category, buyerName: isSaleCategory ? saleBuyers.map(buyer => String(buyer.name || '').trim()).join(', ') : '', saleBuyers: isSaleCategory ? saleBuyers.map(buyer => ({ name: String(buyer.name || '').trim(), amount: parseFloat(buyer.amount) || 0 })) : [], isSaleReceivable: installmentIsReceivable, observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
               date: formattedDate, method: cardName, methodId: finalMethodId, splits: instSplits, groupId, status: initialStatus,
               settlementAccountId: initialStatus === 'paid' && txType === 'income' ? incomeAccountId : '',
               createdAt: new Date().toISOString()
@@ -1000,7 +1043,7 @@ export default function FinanceApp() {
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
         
-        setDesc(''); setCategory(''); setObservation(''); setIncomeAccountId(defaultBankAccountId); setSaleBuyerName(''); setSalePending(false); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setCategory(''); setObservation(''); setIncomeAccountId(defaultBankAccountId); setSaleBuyers([{ name: '', amount: 0, displayAmount: '' }]); setSaleAutoSplit(true); setSalePending(false); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
       } catch (err) { console.error(err); setErrorMsg("Erro ao salvar."); } finally { setIsSaving(false); }
     };
@@ -1054,16 +1097,36 @@ export default function FinanceApp() {
 
           {isSaleCategory && (
             <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-800/50 dark:bg-emerald-900/20">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Pessoa que comprou</label>
-                <input required type="text" value={saleBuyerName} onChange={e => setSaleBuyerName(e.target.value)} list="split-names-suggestions" placeholder="Nome do comprador" className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Compradores</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">O valor é dividido igualmente; você pode ajustar cada parte.</p>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" checked={saleAutoSplit} onChange={e => setSaleAutoSplit(e.target.checked)} className="h-4 w-4 rounded text-emerald-600" />
+                  Dividir igualmente
+                </label>
+              </div>
+              <div className="space-y-2">
+                {saleBuyers.map((buyer, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input required type="text" value={buyer.name} onChange={e => handleSaleBuyerChange(index, 'name', e.target.value)} placeholder={`Comprador ${index + 1}`} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                    <input required type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={buyer.displayAmount || ''} onChange={e => handleSaleBuyerChange(index, 'displayAmount', e.target.value)} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} aria-label={`Valor devido pelo comprador ${index + 1}`} className="w-32 rounded-lg border border-gray-300 bg-white p-2.5 text-right text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                    {saleBuyers.length > 1 && <button type="button" onClick={() => handleRemoveSaleBuyer(index)} aria-label={`Remover comprador ${index + 1}`} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"><Icons.Trash size={16} /></button>}
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={handleAddSaleBuyer} className="flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-300"><Icons.Plus size={18} /> Adicionar comprador</button>
+              <div className="flex justify-between border-t border-emerald-200 pt-2 text-xs dark:border-emerald-800">
+                <span className="text-gray-600 dark:text-gray-400">Total distribuído</span>
+                <strong className={Math.abs(totalSaleBuyerShares - parsedTotalAmount) <= 0.05 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>R$ {formatBRL(totalSaleBuyerShares)} de R$ {formatBRL(parsedTotalAmount)}</strong>
               </div>
               {purchaseDate <= new Date().toISOString().split('T')[0] ? (
                 <label className="flex cursor-pointer items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <input type="checkbox" checked={salePending} onChange={e => setSalePending(e.target.checked)} className="mt-0.5 h-4 w-4 rounded text-emerald-600" />
-                  <span><strong className="block">Ainda não recebi esta venda</strong><span className="text-xs text-gray-500 dark:text-gray-400">A pessoa e o valor aparecerão na aba Cobrar.</span></span>
+                  <span><strong className="block">Ainda não recebi esta venda</strong><span className="text-xs text-gray-500 dark:text-gray-400">Cada comprador e sua parte aparecerão na aba Cobrar.</span></span>
                 </label>
-              ) : <p className="text-xs text-amber-700 dark:text-amber-300">Como a data é futura, esta venda ficará pendente e aparecerá na aba Cobrar.</p>}
+              ) : <p className="text-xs text-amber-700 dark:text-amber-300">Como a data é futura, os compradores e suas partes aparecerão na aba Cobrar.</p>}
             </div>
           )}
 
@@ -1349,7 +1412,13 @@ export default function FinanceApp() {
         const updatedSplits = [...(tx.splits || [])];
         if (currentStatus) {
           updatedSplits[splitIndex] = { ...updatedSplits[splitIndex], paid: false, receivedAccountId: '', receivedDate: '' };
-          await updateDoc(doc(db, 'users', user.uid, 'transactions', txId), { splits: updatedSplits });
+          const changes: any = { splits: updatedSplits };
+          if (updatedSplits[splitIndex]?.isSaleReceivable) {
+            changes.status = 'pending';
+            changes.settlementAccountId = '';
+            changes.paymentDate = '';
+          }
+          await updateDoc(doc(db, 'users', user.uid, 'transactions', txId), changes);
           return;
         }
         const split = updatedSplits[splitIndex];
@@ -1403,9 +1472,10 @@ export default function FinanceApp() {
               receivedDate: collectionPaymentDate
             };
             if (split.isSaleReceivable) {
-              changes.status = 'paid';
-              changes.settlementAccountId = collectionPaymentAccountId;
-              changes.paymentDate = collectionPaymentDate;
+              const saleSplits = changes.splits.filter((saleSplit: any) => saleSplit?.isSaleReceivable);
+              changes.status = saleSplits.length > 0 && saleSplits.every((saleSplit: any) => saleSplit.paid) ? 'paid' : 'pending';
+              changes.settlementAccountId = '';
+              changes.paymentDate = '';
             }
             updatesByTransaction.set(tx.id, changes);
           }
