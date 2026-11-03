@@ -97,10 +97,29 @@ const formatCurrencyInput = (value: number | string): string => {
   return numberValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
 };
 
-const parseCurrencyToNumber = (formattedValue: string): number => {
-  const digits = String(formattedValue || '').replace(/\D/g, '');
-  if (!digits) return 0;
-  return Number(digits) / 100;
+const formatCurrencyEntry = (value: number | string, maskEnabled: boolean): string => {
+  if (maskEnabled) return formatCurrencyEntry(value, currencyMaskEnabled);
+  return String(value || '').replace(/[^\d,.-]/g, '');
+};
+
+const formatCurrencyValueForEntry = (value: number | string, maskEnabled: boolean): string => {
+  const amount = Number(value) || 0;
+  if (maskEnabled) return formatCurrencyInput(Math.round(amount * 100));
+  return amount === 0 ? '' : amount.toFixed(2).replace('.', ',');
+};
+
+const parseCurrencyToNumber = (formattedValue: string, maskEnabled = true): number => {
+  const text = String(formattedValue || '').trim();
+  if (maskEnabled) {
+    const digits = text.replace(/\D/g, '');
+    return digits ? Number(digits) / 100 : 0;
+  }
+  let normalized = text.replace(/[^\d,.-]/g, '');
+  if (normalized.includes(',')) {
+    normalized = normalized.replace(/\./g, '').replace(',', '.');
+  }
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount : 0;
 };
 
 const formatBRL = (value: number | string): string => {
@@ -208,6 +227,7 @@ export default function FinanceApp() {
   const [salesHistory, setSalesHistory] = useState<any[]>([]);
 
   const [user, setUser] = useState<any>(null);
+  const [currencyMaskEnabled, setCurrencyMaskEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [loginError, setLoginError] = useState('');
@@ -267,6 +287,28 @@ export default function FinanceApp() {
   };
 
   const handleLogout = () => signOut(auth);
+
+  useEffect(() => {
+    if (!user) {
+      setCurrencyMaskEnabled(true);
+      return;
+    }
+    const preferencesRef = doc(db, 'users', user.uid, 'settings', 'preferences');
+    return onSnapshot(preferencesRef, snapshot => {
+      const preference = snapshot.data()?.currencyMaskEnabled;
+      if (typeof preference === 'boolean') setCurrencyMaskEnabled(preference);
+    }, console.error);
+  }, [user]);
+
+  const saveCurrencyMaskPreference = async (enabled: boolean) => {
+    setCurrencyMaskEnabled(enabled);
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'settings', 'preferences'), { currencyMaskEnabled: enabled }, { merge: true });
+    } catch (err) {
+      console.error('Erro ao salvar preferência de máscara monetária', err);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -492,10 +534,10 @@ export default function FinanceApp() {
       try {
         const cardData = {
           name: cardForm.name, brand: cardForm.brand, closingDay: cardForm.closingDay || '', dueDay: cardForm.dueDay || '',
-          limit: cardForm.brand === 'Conta/Pix' ? 0 : (parseCurrencyToNumber(displayLimit) || 0), cashbackPct: parseFloat(cardForm.cashbackPct as any) || 0,
+          limit: cardForm.brand === 'Conta/Pix' ? 0 : (parseCurrencyToNumber(displayLimit, currencyMaskEnabled) || 0), cashbackPct: parseFloat(cardForm.cashbackPct as any) || 0,
           obs: cardForm.obs || '', pixKey: cardForm.pixKey || '', isDefaultPix: cardForm.isDefaultPix,
           isDefaultAccount: cardForm.brand === 'Conta/Pix' && cardForm.isDefaultAccount,
-          openingBalance: cardForm.brand === 'Conta/Pix' ? parseCurrencyToNumber(displayOpeningBalance) : 0
+          openingBalance: cardForm.brand === 'Conta/Pix' ? parseCurrencyToNumber(displayOpeningBalance, currencyMaskEnabled) : 0
         };
 
         if (cardData.isDefaultAccount) {
@@ -535,8 +577,8 @@ export default function FinanceApp() {
           name: c.name || '', brand: c.brand || 'Conta/Pix', closingDay: c.closingDay || '', dueDay: c.dueDay || '',
           limit: c.limit || 0, cashbackPct: c.cashbackPct || 0, obs: c.obs || '', pixKey: c.pixKey || '', isDefaultPix: c.isDefaultPix || false, isDefaultAccount: c.isDefaultAccount || false, openingBalance: c.openingBalance || 0
        });
-       setDisplayLimit(formatCurrencyInput(Math.round((c.limit || 0) * 100)));
-       setDisplayOpeningBalance(formatCurrencyInput(Math.round((c.openingBalance || 0) * 100)));
+       setDisplayLimit(formatCurrencyValueForEntry(c.limit || 0, currencyMaskEnabled));
+       setDisplayOpeningBalance(formatCurrencyValueForEntry(c.openingBalance || 0, currencyMaskEnabled));
        setIsAdding(true);
        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -621,7 +663,7 @@ export default function FinanceApp() {
               {cardForm.brand !== 'Conta/Pix' && (
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Limite do cartão</label>
-                  <input type="text" inputMode="numeric" value={displayLimit} onChange={e => setDisplayLimit(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
+                  <input type="text" inputMode="numeric" value={displayLimit} onChange={e => setDisplayLimit(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
                 </div>
               )}
               <div>
@@ -637,7 +679,7 @@ export default function FinanceApp() {
               {cardForm.brand === 'Conta/Pix' && (
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Saldo inicial da conta</label>
-                  <input type="text" inputMode="numeric" value={displayOpeningBalance} onChange={e => setDisplayOpeningBalance(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
+                  <input type="text" inputMode="numeric" value={displayOpeningBalance} onChange={e => setDisplayOpeningBalance(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
                   <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Informe o saldo atual no início do controle.</p>
                   <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="checkbox" checked={cardForm.isDefaultAccount} onChange={e => setCardForm({...cardForm, isDefaultAccount: e.target.checked})} className="h-4 w-4 rounded text-blue-600" />
@@ -858,7 +900,7 @@ export default function FinanceApp() {
             setSplits(prev => prev.map(s => ({ 
               ...s, 
               amount: equalShare, 
-              displayAmount: formatCurrencyInput(Math.round(equalShare * 100)) 
+              displayAmount: formatCurrencyValueForEntry(equalShare, currencyMaskEnabled) 
             })));
         }
       }
@@ -872,7 +914,7 @@ export default function FinanceApp() {
       if (field === 'displayAmount') {
          const fmt = formatCurrencyInput(value);
          newSplits[index].displayAmount = fmt;
-         newSplits[index].amount = parseCurrencyToNumber(fmt);
+         newSplits[index].amount = parseCurrencyToNumber(fmt, currencyMaskEnabled);
          setAutoSplit(false);
       } else {
          newSplits[index][field] = value;
@@ -1168,7 +1210,7 @@ export default function FinanceApp() {
           isOpen={calcTarget !== null} 
           onClose={() => setCalcTarget(null)} 
           onApply={(val) => {
-            const fmt = formatCurrencyInput(Math.round(val * 100));
+            const fmt = formatCurrencyValueForEntry(val, currencyMaskEnabled);
             if (calcTarget === 'main') {
               setDisplayAmount(fmt);
               setAmount(val);
@@ -1673,7 +1715,7 @@ export default function FinanceApp() {
 
       const tickerClean = tickerInput.trim().toUpperCase();
       const qty = parseFloat(quantityInput);
-      const price = parseCurrencyToNumber(displayUnitPrice);
+      const price = parseCurrencyToNumber(displayUnitPrice, currencyMaskEnabled);
 
       if (!tickerClean || qty <= 0 || price <= 0) {
          setAssetError('Preencha todos os campos corretamente.');
@@ -1716,7 +1758,7 @@ export default function FinanceApp() {
       setEditingAsset(lot);
       setTickerInput(lot.ticker);
       setQuantityInput(lot.quantity.toString());
-      setDisplayUnitPrice(formatCurrencyInput(Math.round(lot.unitPrice * 100)));
+      setDisplayUnitPrice(formatCurrencyValueForEntry(lot.unitPrice, currencyMaskEnabled));
       setBrokerInput(lot.broker || '');
       setBuyDateInput(lot.buyDate || '');
     };
@@ -1744,8 +1786,8 @@ export default function FinanceApp() {
       if (!user || !sellingAsset) return;
 
       const qtyToSell = parseFloat(sellQuantity);
-      const price = parseCurrencyToNumber(displaySellUnitPrice);
-      const fees = parseCurrencyToNumber(displaySellFees);
+      const price = parseCurrencyToNumber(displaySellUnitPrice, currencyMaskEnabled);
+      const fees = parseCurrencyToNumber(displaySellFees, currencyMaskEnabled);
 
       if (qtyToSell <= 0 || qtyToSell > sellingAsset.totalQuantity || price <= 0) return;
 
