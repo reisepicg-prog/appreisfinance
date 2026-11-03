@@ -2355,7 +2355,7 @@ export default function FinanceApp() {
     };
 
     const handleToggleStatus = async (tx: any) => {
-      if (!user) return;
+      if (!user || tx.isSaleReceivable || (tx.splits || []).some((split: any) => split?.isSaleReceivable)) return;
       try {
         if (tx.status !== 'paid') {
           setSettlementTx(tx);
@@ -2573,7 +2573,7 @@ export default function FinanceApp() {
                           )}
                           
                           <div className="absolute top-2 right-2 flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 bg-white/90 dark:bg-gray-800/90 p-1 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
-                            <button onClick={() => handleToggleStatus(tx)} title="Marcar como Efetivado/Pendente" className={`p-1.5 rounded-md transition-colors ${tx.status === 'paid' ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30' : 'text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30'}`}>
+                            <button onClick={() => handleToggleStatus(tx)} disabled={Boolean(tx.isSaleReceivable || (tx.splits || []).some((split: any) => split?.isSaleReceivable))} title={tx.isSaleReceivable || (tx.splits || []).some((split: any) => split?.isSaleReceivable) ? 'Registre os pagamentos dos compradores pela aba Cobrar' : 'Marcar como Efetivado/Pendente'} className={`p-1.5 rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${tx.status === 'paid' ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30' : 'text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30'}`}>
                               <Icons.CheckCircle size={16} />
                             </button>
                             <button onClick={() => openEditModal(tx)} disabled={tx.status === 'paid'} title="Editar Lançamento (Apenas Pendentes)" className="p-1.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md disabled:opacity-30 disabled:hover:bg-transparent">
