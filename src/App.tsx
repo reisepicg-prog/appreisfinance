@@ -939,15 +939,15 @@ export default function FinanceApp() {
     const handleAddSaleBuyer = () => setSaleBuyers(prev => [...prev, { name: '', amount: 0, displayAmount: '' }]);
     const handleRemoveSaleBuyer = (index: number) => setSaleBuyers(prev => prev.filter((_, i) => i !== index));
     const handleSaleBuyerChange = (index: number, field: string, value: any) => {
-      setSaleBuyers(prev => prev.map((buyer, i) => {
-        if (i !== index) return buyer;
-        if (field === 'displayAmount') {
-          const formatted = formatCurrencyEntry(value, currencyMaskEnabled);
-          setSaleAutoSplit(false);
-          return { ...buyer, displayAmount: formatted, amount: parseCurrencyToNumber(formatted, currencyMaskEnabled) };
-        }
-        return { ...buyer, [field]: value };
-      }));
+      if (field === 'displayAmount') {
+        const formatted = formatCurrencyEntry(value, currencyMaskEnabled);
+        setSaleAutoSplit(false);
+        setSaleBuyers(prev => prev.map((buyer, i) => i === index
+          ? { ...buyer, displayAmount: formatted, amount: parseCurrencyToNumber(formatted, currencyMaskEnabled) }
+          : buyer));
+        return;
+      }
+      setSaleBuyers(prev => prev.map((buyer, i) => i === index ? { ...buyer, [field]: value } : buyer));
     };
     
     const handleSplitChange = (index: number, field: string, value: any) => {
