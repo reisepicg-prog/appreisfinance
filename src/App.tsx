@@ -590,6 +590,10 @@ export default function FinanceApp() {
           ]
       : [];
     selectedCardMovements.sort((a: any, b: any) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
+    const selectedCardInvoiceTotal = selectedCardIsCredit
+      ? selectedCardMovements.filter((movement: any) => movement.type === 'expense')
+          .reduce((sum: number, movement: any) => sum + (parseFloat(movement.amount) || 0), 0)
+      : 0;
 
     const changeSelectedCardMonth = (amount: number) => {
       const [year, month] = selectedCardMonth.split('-').map(Number);
@@ -670,7 +674,7 @@ export default function FinanceApp() {
           </form>
         )}
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-4 cursor-grab active:cursor-grabbing select-none" style={{ msOverflowStyle: 'auto', scrollbarWidth: 'thin', touchAction: 'pan-x' }}>
           {sortedCards.map(c => {
             const usedLimit = (transactions || [])
               .filter(tx => tx?.methodId === c.id && tx?.status !== 'paid')
@@ -687,7 +691,7 @@ export default function FinanceApp() {
             const currentAccountBalance = (parseFloat(c.openingBalance) || 0) + settlementBalance + receivedReimbursements;
 
             return (
-              <div key={c.id} className={`bg-white dark:bg-gray-800 p-5 rounded-xl border shadow-sm flex flex-col group transition-colors ${c.isDefaultPix || c.isDefaultAccount ? 'border-blue-400 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700'}`}>
+              <div key={c.id} className={`w-[280px] min-w-[280px] flex-shrink-0 snap-start bg-white dark:bg-gray-800 p-4 rounded-2xl border shadow-sm flex flex-col group transition-colors ${selectedCardId === c.id ? 'border-blue-400 dark:border-blue-500 ring-1 ring-blue-200 dark:ring-blue-900' : c.isDefaultPix || c.isDefaultAccount ? 'border-emerald-300 dark:border-emerald-700' : 'border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isCard ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
@@ -775,6 +779,12 @@ export default function FinanceApp() {
                 <button type="button" onClick={() => setSelectedCardId(null)} aria-label="Fechar lançamentos" className="ml-1 px-2 py-1 font-bold text-gray-400">✕</button>
               </div>
             </div>
+            {selectedCardIsCredit && (
+              <div className="flex items-center justify-between border-b border-gray-100 bg-blue-50 px-4 py-3 dark:border-gray-700 dark:bg-blue-900/20">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Total da fatura no mês selecionado</span>
+                <strong className="text-lg text-gray-900 dark:text-gray-100">R$ {formatBRL(selectedCardInvoiceTotal)}</strong>
+              </div>
+            )}
             {selectedCardMovements.length === 0 ? (
               <p className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum lançamento neste mês.</p>
             ) : (
