@@ -676,88 +676,48 @@ export default function FinanceApp() {
 
         <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-4 cursor-grab active:cursor-grabbing select-none" style={{ msOverflowStyle: 'auto', scrollbarWidth: 'thin', touchAction: 'pan-x' }}>
           {sortedCards.map(c => {
-            const usedLimit = (transactions || [])
-              .filter(tx => tx?.methodId === c.id && tx?.status !== 'paid')
-              .reduce((acc, tx) => acc + (parseFloat(tx?.totalAmount) || 0), 0);
+            const usedLimit = transactions
+              .filter((tx: any) => tx?.methodId === c.id && tx?.status !== 'paid')
+              .reduce((sum: number, tx: any) => sum + (parseFloat(tx?.totalAmount) || 0), 0);
             const cardLimit = parseFloat(c.limit) || 0;
-            const availableLimit = cardLimit - usedLimit;
-            const availablePct = cardLimit > 0 ? (availableLimit / cardLimit) * 100 : 0;
             const isCard = cardLimit > 0;
-            const settlementBalance = transactions.filter((tx: any) => tx.status === 'paid' && tx.settlementAccountId === c.id)
+            const availableLimit = cardLimit - usedLimit;
+            const settlementBalance = transactions
+              .filter((tx: any) => tx.status === 'paid' && tx.settlementAccountId === c.id)
               .reduce((sum: number, tx: any) => sum + (tx.type === 'income' ? 1 : -1) * (parseFloat(tx.totalAmount) || 0), 0);
             const receivedReimbursements = transactions.reduce((sum: number, tx: any) =>
               sum + (tx.splits || []).filter((split: any) => split?.paid && split?.receivedAccountId === c.id)
                 .reduce((splitSum: number, split: any) => splitSum + (parseFloat(split.amount) || 0), 0), 0);
             const currentAccountBalance = (parseFloat(c.openingBalance) || 0) + settlementBalance + receivedReimbursements;
+            const isSelected = selectedCardId === c.id;
 
             return (
-              <div key={c.id} className={`w-[280px] min-w-[280px] flex-shrink-0 snap-start bg-white dark:bg-gray-800 p-4 rounded-2xl border shadow-sm flex flex-col group transition-colors ${selectedCardId === c.id ? 'border-blue-400 dark:border-blue-500 ring-1 ring-blue-200 dark:ring-blue-900' : c.isDefaultPix || c.isDefaultAccount ? 'border-emerald-300 dark:border-emerald-700' : 'border-gray-200 dark:border-gray-700'}`}>
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isCard ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
-                      {isCard ? <Icons.CreditCard size={20} /> : <Icons.Wallet size={20} />}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                         {c.name} 
-                         {c.isDefaultPix && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Check size={16} /> Pix Padrão</span>}{c.isDefaultAccount && c.brand === 'Conta/Pix' && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Check size={14} /> Conta Padrão</span>}
-                      </h3>
-                      {isCard ? (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Fecha {c.closingDay} • Vence {c.dueDay} {c.brand !== 'Conta/Pix' && `(${c.brand})`}</p>
-                      ) : (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Conta Bancária / Corretora</p>
-                      )}
-                      {(parseFloat(c.cashbackPct) || 0) > 0 && <p className="text-xs text-green-600 dark:text-green-400 font-medium">{c.cashbackPct}% de Cashback</p>}
-                    </div>
-                  </div>
-                  <div className="flex min-w-0 items-center justify-end gap-2">
-                    {c.pixKey && (
-                      <div className="flex min-w-0 items-center gap-2 text-xs">
-                        <span className="font-bold text-gray-500 dark:text-gray-400">Pix:</span>
-                        <span title={c.pixKey} className="max-w-[180px] truncate text-gray-800 dark:text-gray-200">{c.pixKey}</span>
-                        <button type="button" title="Mostrar QR Code Pix" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); setSelectedPixCard({ ...c, payload }); }} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 font-semibold text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">
-                          <Icons.QrCode size={16} /><span className="hidden sm:inline">QR Code</span>
-                        </button>
+              <div key={c.id} className={`w-[240px] min-w-[240px] flex-shrink-0 snap-start overflow-hidden rounded-2xl border shadow-sm transition-colors ${isSelected ? 'border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20' : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'}`}>
+                <button type="button" onClick={() => setSelectedCardId(c.id)} aria-pressed={isSelected} className="block w-full p-4 text-left">
+                  <div className="mb-4 flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isCard ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>
+                        {isCard ? <Icons.CreditCard size={17} /> : <Icons.Wallet size={17} />}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-gray-800 dark:text-gray-100">{c.name}</p>
+                        <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">{isCard ? (c.brand || 'Cartão de crédito') : 'Conta bancária'}</p>
                       </div>
-                    )}
-                    <div className="flex shrink-0 gap-1">
-                      <button onClick={() => openEditCard(c)} className="p-2 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"><Icons.Edit size={16} /></button>
-                      <button onClick={() => handleDeleteCard(c.id)} className="p-2 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><Icons.Trash size={16} /></button>
                     </div>
+                    {isSelected && <Icons.CheckCircle size={17} className="shrink-0 text-blue-600 dark:text-blue-400" />}
                   </div>
-                </div>
-
-
-                {!(parseFloat(c.limit) > 0) && (
-                  <div className="mb-3 flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-800 dark:bg-blue-900/20">
-                    <span className="text-gray-600 dark:text-gray-300">Saldo atual{c.isDefaultAccount ? ' • Conta Padrão' : ''}</span>
-                    <strong className="text-blue-700 dark:text-blue-300">R$ {formatBRL(currentAccountBalance)}</strong>
+                  <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">{isCard ? 'Limite disponível' : 'Saldo atual'}</p>
+                  <p className="mt-0.5 text-xl font-extrabold text-gray-900 dark:text-gray-100">R$ {formatBRL(isCard ? availableLimit : currentAccountBalance)}</p>
+                  <div className="mt-3 flex min-h-5 flex-wrap gap-1.5">
+                    {c.isDefaultAccount && c.brand === 'Conta/Pix' && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">Conta Padrão</span>}
+                    {c.isDefaultPix && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">Pix Padrão</span>}
                   </div>
-                )}
-                {c.obs && (
-                  <div className="text-[11px] text-gray-500 dark:text-gray-400 italic border-l-2 border-gray-200 dark:border-gray-600 pl-2 mb-3">
-                     {c.obs}
-                  </div>
-                )}
-
-                {isCard && (
-                  <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700 mt-auto">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-500 dark:text-gray-400">Limite Disponível</span>
-                      <span className={`font-bold ${availableLimit < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>R$ {formatBRL(availableLimit)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-2">
-                      <div className={`h-1.5 rounded-full ${availableLimit < (cardLimit*0.2) ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${Math.min(100, Math.max(0, availablePct))}%` }}></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
-                      <span>Utilizado: R$ {formatBRL(usedLimit)}</span>
-                      <span>Total: R$ {formatBRL(cardLimit)}</span>
-                    </div>
-                  </div>
-                )}
-                <button type="button" onClick={() => setSelectedCardId(selectedCardId === c.id ? null : c.id)} aria-expanded={selectedCardId === c.id} className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40">
-                  <Icons.Calendar size={16} /> {selectedCardId === c.id ? 'Ocultar lançamentos' : 'Ver lançamentos'}
                 </button>
+                <div className="flex items-center justify-between border-t border-gray-200 px-3 py-2 dark:border-gray-700">
+                  <button type="button" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); setSelectedPixCard({ ...c, payload }); }} disabled={!c.pixKey} title={c.pixKey ? 'Mostrar QR Code Pix' : 'Esta conta não tem chave Pix cadastrada'} className="rounded-lg p-2 text-blue-500 hover:bg-blue-100 disabled:opacity-30 dark:hover:bg-blue-900/30"><Icons.QrCode size={16} /></button>
+                  <button type="button" onClick={() => openEditCard(c)} title="Editar conta/cartão" className="rounded-lg p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30"><Icons.Edit size={16} /></button>
+                  <button type="button" onClick={() => handleDeleteCard(c.id)} title="Excluir conta/cartão" className="rounded-lg p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30"><Icons.Trash size={16} /></button>
+                </div>
               </div>
             );
           })}
