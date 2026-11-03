@@ -739,6 +739,14 @@ export default function FinanceApp() {
                 <button type="button" onClick={() => setSelectedCardId(null)} aria-label="Fechar lançamentos" className="ml-1 px-2 py-1 font-bold text-gray-400">✕</button>
               </div>
             </div>
+            {(selectedCard.pixKey || selectedCard.obs || selectedCard.cashbackPct || selectedCardIsCredit) && (
+              <div className="space-y-1 border-b border-gray-100 px-4 py-3 text-xs dark:border-gray-700">
+                {selectedCardIsCredit && <p className="text-gray-500 dark:text-gray-400">{selectedCard.brand} • Fecha {selectedCard.closingDay || '—'} • Vence {selectedCard.dueDay || '—'}</p>}
+                {(parseFloat(selectedCard.cashbackPct) || 0) > 0 && <p className="text-green-600 dark:text-green-400">Cashback: {selectedCard.cashbackPct}%</p>}
+                {selectedCard.pixKey && <p className="break-all text-gray-600 dark:text-gray-300"><strong>Pix:</strong> {selectedCard.pixKey}</p>}
+                {selectedCard.obs && <p className="whitespace-pre-wrap text-gray-500 dark:text-gray-400">{selectedCard.obs}</p>}
+              </div>
+            )}
             {selectedCardIsCredit && (
               <div className="flex items-center justify-between border-b border-gray-100 bg-blue-50 px-4 py-3 dark:border-gray-700 dark:bg-blue-900/20">
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Total da fatura no mês selecionado</span>
