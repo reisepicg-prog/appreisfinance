@@ -993,7 +993,7 @@ export default function FinanceApp() {
             const initialStatus = installmentIsReceivable ? 'pending' : (txType === 'income' ? (isFuture ? 'pending' : 'paid') : 'pending');
 
             const newTx = {
-              type: txType, desc: desc + suffix, category, observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
+              type: txType, desc: desc + suffix, category, buyerName: isSaleCategory ? saleBuyerName.trim() : '', observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
               date: formattedDate, method: cardName, methodId: finalMethodId, splits: instSplits, groupId, status: initialStatus,
               settlementAccountId: initialStatus === 'paid' && txType === 'income' ? incomeAccountId : '',
               createdAt: new Date().toISOString()
@@ -2465,6 +2465,7 @@ export default function FinanceApp() {
                                 {tx.type === 'income' ? 'Recebido em: ' : 'Compra: '} 
                                 {tx.purchaseDate ? formatLocalDate(tx.purchaseDate) : tx.date ? parseLocalDate(tx.date).toLocaleDateString('pt-BR') : '-'}
                               </p>
+                              {tx.buyerName && <p className="text-[10px] text-gray-500 dark:text-gray-400">Comprador: {tx.buyerName}</p>}
                               {tx.status === 'paid' && tx.paymentDate && (
                                 <p className="text-[10px] text-green-600 dark:text-green-400">Efetivado em: {new Date(`${tx.paymentDate}T12:00:00`).toLocaleDateString('pt-BR')}</p>
                               )}
