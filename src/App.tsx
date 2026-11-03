@@ -98,7 +98,7 @@ const formatCurrencyInput = (value: number | string): string => {
 };
 
 const formatCurrencyEntry = (value: number | string, maskEnabled: boolean): string => {
-  if (maskEnabled) return formatCurrencyEntry(value, currencyMaskEnabled);
+  if (maskEnabled) return formatCurrencyInput(value);
   return String(value || '').replace(/[^\d,.-]/g, '');
 };
 
@@ -663,7 +663,7 @@ export default function FinanceApp() {
               {cardForm.brand !== 'Conta/Pix' && (
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Limite do cartão</label>
-                  <input type="text" inputMode="numeric" value={displayLimit} onChange={e => setDisplayLimit(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
+                  <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={displayLimit} onChange={e => setDisplayLimit(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
                 </div>
               )}
               <div>
@@ -679,7 +679,7 @@ export default function FinanceApp() {
               {cardForm.brand === 'Conta/Pix' && (
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Saldo inicial da conta</label>
-                  <input type="text" inputMode="numeric" value={displayOpeningBalance} onChange={e => setDisplayOpeningBalance(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} placeholder="R$ 0,00" className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
+                  <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={displayOpeningBalance} onChange={e => setDisplayOpeningBalance(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
                   <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Informe o saldo atual no início do controle.</p>
                   <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="checkbox" checked={cardForm.isDefaultAccount} onChange={e => setCardForm({...cardForm, isDefaultAccount: e.target.checked})} className="h-4 w-4 rounded text-blue-600" />
@@ -912,7 +912,7 @@ export default function FinanceApp() {
     const handleSplitChange = (index: number, field: string, value: any) => {
       const newSplits = [...splits];
       if (field === 'displayAmount') {
-         const fmt = formatCurrencyInput(value);
+         const fmt = formatCurrencyEntry(value, currencyMaskEnabled);
          newSplits[index].displayAmount = fmt;
          newSplits[index].amount = parseCurrencyToNumber(fmt, currencyMaskEnabled);
          setAutoSplit(false);
@@ -1026,14 +1026,14 @@ export default function FinanceApp() {
               <div className="flex gap-2 relative">
                 <input 
                   type="text" 
-                  inputMode="numeric" 
+                  inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} 
                   value={displayAmount} 
                   onChange={e => {
-                    const fmt = formatCurrencyInput(e.target.value);
+                    const fmt = formatCurrencyEntry(e.target.value, currencyMaskEnabled);
                     setDisplayAmount(fmt);
-                    setAmount(parseCurrencyToNumber(fmt));
+                    setAmount(parseCurrencyToNumber(fmt, currencyMaskEnabled));
                   }} 
-                  placeholder="R$ 0,00" 
+                  placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} 
                   className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold" 
                 />
                 <button type="button" onClick={() => setCalcTarget('main')} className="px-4 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors text-xl" title="Calculadora">🧮</button>
@@ -2026,7 +2026,7 @@ export default function FinanceApp() {
                   </div>
                   <div>
                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Preço Unitário</label>
-                     <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required />
+                     <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} value={displayUnitPrice} onChange={(e) => setDisplayUnitPrice(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" required />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -2074,13 +2074,13 @@ export default function FinanceApp() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Preço Unitário</label>
-                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-800 dark:text-gray-100" required />
+                    <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} value={displaySellUnitPrice} onChange={(e) => setDisplaySellUnitPrice(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-800 dark:text-gray-100" required />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Taxas B3 / Custos</label>
-                    <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyInput(e.target.value))} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
+                    <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} value={displaySellFees} onChange={(e) => setDisplaySellFees(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Data da Venda</label>
@@ -2287,7 +2287,7 @@ export default function FinanceApp() {
       const editAmount = Number(tx.totalAmount);
       setEditForm({
         desc: tx.desc || '',
-        totalAmount: Number.isFinite(editAmount) ? editAmount.toFixed(2) : '',
+        totalAmount: Number.isFinite(editAmount) ? formatCurrencyValueForEntry(editAmount, currencyMaskEnabled) : '',
         date: tx.date || '',
         category: tx.category || ''
       });
@@ -2309,7 +2309,7 @@ export default function FinanceApp() {
       if (!user || !editingTx) return;
       setIsUpdating(true);
       try {
-        const parsedTotal = parseFloat(editForm.totalAmount) || 0;
+        const parsedTotal = parseCurrencyToNumber(editForm.totalAmount, currencyMaskEnabled) || 0;
         const newTotal = Math.round((parsedTotal + Number.EPSILON) * 100) / 100;
         let targets = [editingTx];
         
@@ -2597,7 +2597,7 @@ export default function FinanceApp() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Total (R$)</label>
-                  <input type="number" step="0.01" value={editForm.totalAmount} onChange={e => setEditForm({...editForm, totalAmount: e.target.value})} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
+                  <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={editForm.totalAmount} onChange={e => setEditForm({...editForm, totalAmount: formatCurrencyEntry(e.target.value, currencyMaskEnabled)})} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
                 </div>
                 {updateScope === 'single' && (
                   <div>
