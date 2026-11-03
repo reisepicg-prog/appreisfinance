@@ -391,16 +391,54 @@ export default function FinanceApp() {
     const saldoAtual = paidIncomes - paidExpenses;
     const saldoProjetado = plannedIncomes - plannedExpenses;
 
-    const totalReceivables = expenses.reduce((acc, curr) => {
-      const splitTotal = (curr?.splits || []).reduce((sAcc: number, sCurr: any) => sAcc + (sCurr?.paid ? 0 : (parseFloat(sCurr?.amount) || 0)), 0);
-      return acc + splitTotal;
-    }, 0) + incomes.filter(tx => tx.category === 'Vendas' && (tx.isSaleReceivable || tx.status !== 'paid'))
-      .reduce((acc, tx: any) => {
+    const receivableItems: any[] = [
+      ...expenses.flatMap((tx: any) => (tx.splits || []).flatMap((split: any, splitIndex: number) =>
+        split?.paid ? [] : [{
+          id: `expense-${tx.id}-${splitIndex}`,
+          desc: tx.desc || 'Despesa compartilhada',
+          person: split?.name || 'Pessoa não informada',
+          amount: parseFloat(split?.amount) || 0,
+          date: tx.date || '',
+          source: 'Despesa compartilhada'
+        }]
+      )),
+      ...incomes.flatMap((tx: any) => {
+        if (tx.category !== 'Vendas' || (!tx.isSaleReceivable && tx.status === 'paid')) return [];
         const saleSplits = (tx.splits || []).filter((split: any) => split?.isSaleReceivable);
-        return acc + (saleSplits.length
-          ? saleSplits.filter((split: any) => !split.paid).reduce((sum: number, split: any) => sum + (parseFloat(split.amount) || 0), 0)
-          : (tx.status !== 'paid' ? (parseFloat(tx.totalAmount) || 0) : 0));
-      }, 0);
+        if (saleSplits.length) {
+          return saleSplits.flatMap((split: any, splitIndex: number) => split?.paid ? [] : [{
+            id: `sale-${tx.id}-${splitIndex}`,
+            desc: tx.desc || 'Venda',
+            person: split?.name || 'Comprador não informado',
+            amount: parseFloat(split?.amount) || 0,
+            date: tx.date || '',
+            source: 'Venda'
+          }]);
+        }
+        return tx.status !== 'paid' ? [{
+          id: `sale-${tx.id}`,
+          desc: tx.desc || 'Venda',
+          person: tx.buyerName || 'Comprador não informado',
+          amount: parseFloat(tx.totalAmount) || 0,
+          date: tx.date || '',
+          source: 'Venda'
+        }] : [];
+      })
+    ];
+    const totalReceivables = receivableItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    const detailRows = detailType === 'receivables'
+      ? receivableItems.map(item => ({ ...item, category: item.source, isReceivable: true, status: 'pending' }))
+      : (detailType === 'income' ? incomes : expenses).map((tx: any) => ({
+          id: tx.id,
+          desc: tx.desc || 'Lançamento',
+          person: detailType === 'income' ? (tx.buyerName || '') : '',
+          category: tx.category || 'Sem categoria',
+          amount: parseFloat(detailType === 'income' ? tx.totalAmount : tx.myAmount) || 0,
+          date: tx.date || '',
+          observation: tx.observation || '',
+          status: tx.status || 'pending',
+          isReceivable: false
+        }));
 
     return (
       <div className="space-y-6 animate-fadeIn pb-10">
@@ -488,7 +526,7 @@ export default function FinanceApp() {
         </div>
 
         {/* Divisões a Receber */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-xl border border-blue-100 dark:border-blue-800/50 shadow-sm flex justify-between items-center">
+        <div role="button" tabIndex={0} onClick={() => setDetailType('receivables')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setDetailType('receivables'); }} className="cursor-pointer bg-blue-50 dark:bg-blue-900/20 p-5 rounded-xl border border-blue-100 dark:border-blue-800/50 shadow-sm flex justify-between items-center hover:border-blue-400 transition-colors">
            <div>
               <h3 className="text-blue-800 dark:text-blue-300 text-sm font-bold mb-1">A Receber de Terceiros e Vendas</h3>
               <p className="text-xs text-blue-600 dark:text-blue-400">Aguardando pagamento / Pix</p>
@@ -500,24 +538,25 @@ export default function FinanceApp() {
           <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
             <div role="dialog" aria-modal="true" className="my-auto max-h-full w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{detailType === 'income' ? 'Receitas do período' : 'Despesas do período'}</h3>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{detailType === 'income' ? 'Receitas do período' : detailType === 'expense' ? 'Despesas do período' : 'Valores a receber'}</h3>
                 <button type="button" onClick={() => setDetailType(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
               </div>
               <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">{viewMode === 'all' ? 'Todos os períodos' : `Período: ${selectedMonth}`}</p>
               <div className="space-y-2">
-                {(detailType === 'income' ? incomes : expenses).length === 0 ? (
-                  <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum lançamento neste período.</p>
-                ) : (detailType === 'income' ? incomes : expenses).map((tx: any) => (
-                  <div key={tx.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">
+                {detailRows.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">{detailType === 'receivables' ? 'Nenhum valor pendente neste período.' : 'Nenhum lançamento neste período.'}</p>
+                ) : detailRows.map((item: any) => (
+                  <div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">
                     <div className="flex justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-800 dark:text-gray-100">{tx.desc}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{tx.category || 'Sem categoria'} • {tx.date ? new Date(`${tx.date}T12:00:00`).toLocaleDateString('pt-BR') : 'Sem data'}</p>
+                        <p className="truncate text-sm font-semibold text-gray-800 dark:text-gray-100">{item.desc}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{item.category} • {item.date ? formatLocalDate(item.date) : 'Sem data'}</p>
+                        {item.person && <p className="mt-1 text-xs font-medium text-blue-700 dark:text-blue-300">{item.isReceivable ? 'Devedor: ' : 'Comprador: '}{item.person}</p>}
                       </div>
-                      <p className="shrink-0 text-sm font-bold text-gray-800 dark:text-gray-100">R$ {formatBRL(detailType === 'income' ? tx.totalAmount : tx.myAmount)}</p>
+                      <p className="shrink-0 text-sm font-bold text-gray-800 dark:text-gray-100">R$ {formatBRL(item.amount)}</p>
                     </div>
-                    {tx.observation && <p className="mt-2 whitespace-pre-wrap text-xs text-gray-600 dark:text-gray-300">{tx.observation}</p>}
-                    <p className={`mt-1 text-[10px] font-medium ${tx.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{tx.status === 'paid' ? (detailType === 'income' ? 'Recebido' : 'Pago') : 'Pendente'}</p>
+                    {item.observation && <p className="mt-2 whitespace-pre-wrap text-xs text-gray-600 dark:text-gray-300">{item.observation}</p>}
+                    <p className={`mt-1 text-[10px] font-medium ${item.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{item.status === 'paid' ? (detailType === 'income' ? 'Recebido' : 'Pago') : 'Pendente'}</p>
                   </div>
                 ))}
               </div>
