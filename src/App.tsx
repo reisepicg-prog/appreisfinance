@@ -977,7 +977,10 @@ export default function FinanceApp() {
             const suffix = numPeriods > 1 ? ` (${i + 1}/${numPeriods})` : '';
             const instTotalAmt = isRecurring ? parsedTotalAmount : (parsedTotalAmount / numPeriods);
             const instMyAmt = isRecurring ? (isSplit ? myShare : parsedTotalAmount) : ((isSplit ? myShare : parsedTotalAmount) / numPeriods);
-            
+            const isFuture = formattedDate > new Date().toISOString().split('T')[0];
+            const installmentIsReceivable = txType === 'income' && isSaleCategory && (salePending || isFuture);
+            const initialStatus = installmentIsReceivable ? 'pending' : (txType === 'income' ? (isFuture ? 'pending' : 'paid') : 'pending');
+
             const instSplits = installmentIsReceivable
               ? [{ name: saleBuyerName.trim(), amount: instTotalAmt, paid: false, isSaleReceivable: true }]
               : isSplit
@@ -987,10 +990,6 @@ export default function FinanceApp() {
                     paid: s.paid || false
                   }))
                 : [];
-
-            const isFuture = formattedDate > new Date().toISOString().split('T')[0];
-            const installmentIsReceivable = txType === 'income' && isSaleCategory && (salePending || isFuture);
-            const initialStatus = installmentIsReceivable ? 'pending' : (txType === 'income' ? (isFuture ? 'pending' : 'paid') : 'pending');
 
             const newTx = {
               type: txType, desc: desc + suffix, category, buyerName: isSaleCategory ? saleBuyerName.trim() : '', observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
