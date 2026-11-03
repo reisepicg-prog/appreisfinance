@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc, addDoc, writeBatch } from 'firebase/firestore';
 
 // --- Auto-Injeção do Tailwind CSS e Configuração do Modo Escuro ---
 if (typeof document !== 'undefined' && !document.getElementById('tailwind-script')) {
@@ -1069,6 +1069,7 @@ export default function FinanceApp() {
           const sourceExpenseRef = doc(collection(db, 'users', user.uid, 'transactions'));
           const cardPaymentRefs = Array.from({ length: numPeriods }, () => doc(collection(db, 'users', user.uid, 'transactions')));
           const cardPaymentGroupId = `card-payment-${groupId}`;
+          const batch = writeBatch(db);
           const sourceSplits = isSplit
             ? splits.filter(split => String(split.name || '').trim()).map(split => ({
                 name: String(split.name || '').trim(),
@@ -1077,7 +1078,7 @@ export default function FinanceApp() {
               }))
             : [];
 
-          await setDoc(sourceExpenseRef, {
+          batch.set(sourceExpenseRef, {
             type: 'expense',
             desc,
             category,
@@ -1111,7 +1112,7 @@ export default function FinanceApp() {
             const cardDate = cardStatementDate.toISOString().split('T')[0];
             const suffix = numPeriods > 1 ? ` (${i + 1}/${numPeriods})` : '';
 
-            await setDoc(cardPaymentRefs[i], {
+            batch.set(cardPaymentRefs[i], {
               type: 'expense',
               desc: `Pagamento de Pix/Boleto: ${desc}${suffix}`,
               category,
@@ -1133,6 +1134,7 @@ export default function FinanceApp() {
               createdAt: new Date().toISOString()
             });
           }
+          await batch.commit();
         } else {
         for (let i = 0; i < numPeriods; i++) {
             let formattedDate;
@@ -1288,7 +1290,7 @@ export default function FinanceApp() {
             {txType === 'expense' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Forma de Pagamento / Conta</label>
-                <select value={methodId} onChange={e => setMethodId(e.target.value)} className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <select value={methodId} onChange={e => { setMethodId(e.target.value); if (e.target.value === 'bill-credit') setExpenseType('installment'); }} className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                   <option value="pix">Pix / Débito / Dinheiro</option>
                   <option value="bill-credit">Pix/Boleto pago com cartão de crédito</option>
                   <optgroup label="Minhas Contas e Cartões">
@@ -1320,7 +1322,7 @@ export default function FinanceApp() {
               </select>
             </div>
             
-            {txType === 'expense' && installments > 1 && (
+            {txType === 'expense' && installments > 1 && !isPayingBillWithCard && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Comportamento do Valor</label>
                 <select value={expenseType} onChange={e => setExpenseType(e.target.value)} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm">
