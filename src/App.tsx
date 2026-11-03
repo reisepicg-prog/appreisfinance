@@ -1148,8 +1148,8 @@ export default function FinanceApp() {
                           <div className="flex-1 flex gap-1 relative">
                             <input 
                               type="text" 
-                              inputMode="numeric" 
-                              placeholder="R$ 0,00" 
+                              inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} 
+                              placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} 
                               value={split.displayAmount || ''} 
                               onChange={e => handleSplitChange(index, 'displayAmount', e.target.value)} 
                               className="w-full p-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm outline-none font-medium" 
@@ -1768,7 +1768,7 @@ export default function FinanceApp() {
       if (!user || !editingAsset) return;
       setIsSavingAsset(true);
       try {
-        const price = parseCurrencyToNumber(displayUnitPrice);
+        const price = parseCurrencyToNumber(displayUnitPrice, currencyMaskEnabled);
         await updateDoc(doc(db, 'users', user.uid, 'investments', editingAsset.id), {
           ticker: tickerInput.toUpperCase(),
           quantity: parseFloat(quantityInput),
@@ -2737,6 +2737,27 @@ export default function FinanceApp() {
                 </div>
                 <button onClick={handleLogout} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/50 px-4 py-2 rounded-lg font-medium transition-colors">Sair</button>
              </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Entrada de valores</h3>
+            <div className="space-y-3">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                <input type="radio" name="currency-mask" checked={currencyMaskEnabled} onChange={() => saveCurrencyMaskPreference(true)} className="mt-1 h-4 w-4 text-blue-600" />
+                <span>
+                  <strong className="block text-sm text-gray-800 dark:text-gray-100">Máscara automática</strong>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">A digitação é em centavos: 5 vira R$ 0,05.</span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                <input type="radio" name="currency-mask" checked={!currencyMaskEnabled} onChange={() => saveCurrencyMaskPreference(false)} className="mt-1 h-4 w-4 text-blue-600" />
+                <span>
+                  <strong className="block text-sm text-gray-800 dark:text-gray-100">Sem máscara</strong>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Digite o valor normalmente: 5 representa R$ 5,00.</span>
+                </span>
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">A preferência fica salva na sua conta e vale para os campos monetários de lançamentos, contas, cartões e ativos.</p>
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
