@@ -2359,7 +2359,10 @@ export default function FinanceApp() {
     const [thirdPartyReceivedDate, setThirdPartyReceivedDate] = useState('');
     const [settlementTx, setSettlementTx] = useState<any>(null);
     const [settlementAccountId, setSettlementAccountId] = useState('');
+    const [settlementPaymentMode, setSettlementPaymentMode] = useState('account');
+    const [settlementCreditCardId, setSettlementCreditCardId] = useState('');
     const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
+    const creditCards = cards.filter((card: any) => (parseFloat(card.limit) || 0) > 0);
 
     const getLocalDateString = () => {
       const date = new Date();
@@ -2500,27 +2503,94 @@ export default function FinanceApp() {
         if (tx.status !== 'paid') {
           setSettlementTx(tx);
           setSettlementDate(getLocalDateString());
+          setSettlementPaymentMode('account');
+          setSettlementCreditCardId(creditCards[0]?.id || '');
           setSettlementAccountId(tx.settlementAccountId || cards.find((card: any) => card.isDefaultAccount && card.brand === 'Conta/Pix')?.id || '');
           return;
         }
+        if (tx.isCardPaidExpense && Array.isArray(tx.linkedCardTransactionIds)) {
+          const batch = writeBatch(db);
+          batch.update(doc(db, 'users', user.uid, 'transactions', tx.id), {
+            status: 'pending', paymentDate: '', settlementAccountId: '', myPaid: false,
+            isCardPaidExpense: false, settlementMethod: '', settlementCardId: '', linkedCardTransactionIds: []
+          });
+          tx.linkedCardTransactionIds.forEach((linkedId: string) => batch.delete(doc(db, 'users', user.uid, 'transactions', linkedId)));
+          await batch.commit();
+          return;
+        }
         await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), {
-          status: 'pending',
-          paymentDate: '',
-          settlementAccountId: ''
+          status: 'pending', paymentDate: '', settlementAccountId: ''
         });
       } catch (err) { console.error(err); }
     };
 
     const handleConfirmSettlement = async (e: any) => {
       e.preventDefault();
-      if (!user || !settlementTx || !settlementAccountId || !settlementDate) return;
+      if (!user || !settlementTx || !settlementDate) return;
+      const payingWithCreditCard = settlementTx.type === 'expense' && settlementPaymentMode === 'credit-card';
+      if (payingWithCreditCard && !settlementCreditCardId) return;
+      if (!payingWithCreditCard && !settlementAccountId) return;
       try {
-        await updateDoc(doc(db, 'users', user.uid, 'transactions', settlementTx.id), {
-          status: 'paid',
-          paymentDate: settlementDate,
-          settlementAccountId
-        });
+        if (payingWithCreditCard) {
+          const creditCard = creditCards.find((card: any) => card.id === settlementCreditCardId);
+          if (!creditCard) return;
+          const sourceRef = doc(db, 'users', user.uid, 'transactions', settlementTx.id);
+          const cardChargeRef = doc(collection(db, 'users', user.uid, 'transactions'));
+          const batch = writeBatch(db);
+          let statementDate = settlementDate;
+          const closingDay = parseInt(creditCard.closingDay, 10);
+          const dueDay = parseInt(creditCard.dueDay, 10);
+          if (Number.isInteger(closingDay) && Number.isInteger(dueDay) && closingDay > 0 && dueDay > 0) {
+            const paidDate = new Date(settlementDate + 'T12:00:00');
+            let targetMonth = paidDate.getMonth();
+            let targetYear = paidDate.getFullYear();
+            if (paidDate.getDate() >= closingDay) targetMonth += 1;
+            if (dueDay < closingDay) targetMonth += 1;
+            const dueDate = new Date(targetYear, targetMonth, dueDay, 12);
+            if (!isNaN(dueDate.getTime())) statementDate = dueDate.toISOString().split('T')[0];
+          }
+
+          batch.update(sourceRef, {
+            status: 'paid',
+            paymentDate: settlementDate,
+            settlementAccountId: '',
+            myPaid: true,
+            isCardPaidExpense: true,
+            settlementMethod: 'credit-card',
+            settlementCardId: creditCard.id,
+            linkedCardTransactionIds: [cardChargeRef.id]
+          });
+          batch.set(cardChargeRef, {
+            type: 'expense',
+            desc: `Pagamento via cartão: ${settlementTx.desc || 'Despesa'}`,
+            category: settlementTx.category || '',
+            observation: settlementTx.observation || '',
+            totalAmount: parseFloat(settlementTx.totalAmount) || 0,
+            myAmount: 0,
+            purchaseDate: settlementDate,
+            date: statementDate,
+            method: creditCard.name,
+            methodId: creditCard.id,
+            splits: [],
+            groupId: `card-settlement-${settlementTx.id}`,
+            status: 'pending',
+            myPaid: true,
+            paymentDate: '',
+            settlementAccountId: '',
+            isCardPaymentEntry: true,
+            sourceExpenseId: settlementTx.id,
+            createdAt: new Date().toISOString()
+          });
+          await batch.commit();
+        } else {
+          await updateDoc(doc(db, 'users', user.uid, 'transactions', settlementTx.id), {
+            status: 'paid',
+            paymentDate: settlementDate,
+            settlementAccountId
+          });
+        }
         setSettlementTx(null);
+        setSettlementPaymentMode('account');
       } catch (err) { console.error('Erro ao efetivar lançamento', err); }
     };
 
@@ -2676,7 +2746,7 @@ export default function FinanceApp() {
                               </p>
                               {tx.buyerName && <p className="text-[10px] text-gray-500 dark:text-gray-400">Comprador: {tx.buyerName}</p>}
                               {tx.status === 'paid' && tx.paymentDate && (
-                                <p className="text-[10px] text-green-600 dark:text-green-400">Efetivado em: {new Date(`${tx.paymentDate}T12:00:00`).toLocaleDateString('pt-BR')}</p>
+                                <p className="text-[10px] text-green-600 dark:text-green-400">Efetivado em: {new Date(`${tx.paymentDate}T12:00:00`).toLocaleDateString('pt-BR')}{tx.settlementCardId ? ` • via ${cards.find((card: any) => card.id === tx.settlementCardId)?.name || 'cartão de crédito'}` : ''}</p>
                               )}
                             </div>
                             <div className="text-right">
@@ -2800,13 +2870,53 @@ export default function FinanceApp() {
                 <button type="button" onClick={() => setSettlementTx(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300">{settlementTx.desc}</p>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Conta bancária</label>
-                <select required value={settlementAccountId} onChange={e => setSettlementAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                  <option value="">Selecione uma conta</option>
-                  {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
-                </select>
-              </div>
+              {settlementTx.type === 'expense' && !settlementTx.isCardPaymentEntry && !settlementTx.isCardPaidExpense && !creditCards.some((card: any) => card.id === settlementTx.methodId) && (
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Forma de efetivação</label>
+                    <select value={settlementPaymentMode} onChange={e => setSettlementPaymentMode(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                      <option value="account">Conta bancária</option>
+                      <option value="credit-card">Pix/Boleto pago com cartão de crédito</option>
+                    </select>
+                  </div>
+                  {settlementPaymentMode === 'credit-card' ? (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Cartão de crédito</label>
+                      <select required value={settlementCreditCardId} onChange={e => setSettlementCreditCardId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                        <option value="">Selecione um cartão</option>
+                        {creditCards.map((card: any) => <option key={card.id} value={card.id}>{card.name}</option>)}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">A despesa será efetivada agora; o lançamento entrará na fatura do cartão.</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Conta bancária</label>
+                      <select required value={settlementAccountId} onChange={e => setSettlementAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                        <option value="">Selecione uma conta</option>
+                        {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+              {settlementTx.type === 'income' && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Conta bancária</label>
+                  <select required value={settlementAccountId} onChange={e => setSettlementAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">Selecione uma conta</option>
+                    {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                  </select>
+                </div>
+              )}
+              {settlementTx.type === 'expense' && (settlementTx.isCardPaymentEntry || settlementTx.isCardPaidExpense || creditCards.some((card: any) => card.id === settlementTx.methodId)) && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Conta bancária</label>
+                  <select required value={settlementAccountId} onChange={e => setSettlementAccountId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">Selecione uma conta</option>
+                    {bankAccounts.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data da efetivação</label>
                 <input type="date" required value={settlementDate} onChange={e => setSettlementDate(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
