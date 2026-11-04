@@ -2746,7 +2746,7 @@ export default function FinanceApp() {
                               </p>
                               {tx.buyerName && <p className="text-[10px] text-gray-500 dark:text-gray-400">Comprador: {tx.buyerName}</p>}
                               {tx.status === 'paid' && tx.paymentDate && (
-                                <p className="text-[10px] text-green-600 dark:text-green-400">Efetivado em: {new Date(`${tx.paymentDate}T12:00:00`).toLocaleDateString('pt-BR')}</p>
+                                <p className="text-[10px] text-green-600 dark:text-green-400">Efetivado em: {new Date(`${tx.paymentDate}T12:00:00`).toLocaleDateString('pt-BR')}{tx.settlementCardId ? ` • via ${cards.find((card: any) => card.id === tx.settlementCardId)?.name || 'cartão de crédito'}` : ''}</p>
                               )}
                             </div>
                             <div className="text-right">
