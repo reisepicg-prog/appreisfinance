@@ -361,6 +361,7 @@ export default function FinanceApp() {
 
     const [viewMode, setViewMode] = useState('month'); 
     const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
+    const [analyticsMonth, setAnalyticsMonth] = useState(currentMonthStr);
     const [calendarYear, setCalendarYear] = useState(() => Number(currentMonthStr.slice(0, 4)) || new Date().getFullYear());
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const selectedMonthLabel = new Date(`${selectedMonth}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -426,6 +427,117 @@ export default function FinanceApp() {
       })
     ];
     const totalReceivables = receivableItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    const analyticsTransactions = (transactions || []).filter(tx => String(tx?.date || '').startsWith(analyticsMonth));
+    const analyticsExpenses = analyticsTransactions.filter(tx => tx?.type !== 'income' && !tx?.isCardPaymentEntry);
+    const analyticsIncomes = analyticsTransactions.filter(tx => tx?.type === 'income');
+    const createBreakdown = (entries: any[], getLabel: (entry: any) => string, getAmount: (entry: any) => number) => {
+      const totals = entries.reduce((result: Record<string, number>, entry: any) => {
+        const label = String(getLabel(entry) || '').trim() || 'Sem categoria';
+        const amount = getAmount(entry);
+        if (amount > 0) result[label] = (result[label] || 0) + amount;
+        return result;
+      }, {});
+      return (Object.entries(totals) as [string, number][]).map(([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
+    };
+    const expenseCategoryItems = createBreakdown(analyticsExpenses, tx => tx.category || 'Sem categoria', tx => parseFloat(tx.myAmount) || 0);
+    const incomeCategoryItems = createBreakdown(analyticsIncomes, tx => tx.category || 'Sem categoria', tx => parseFloat(tx.totalAmount) || 0);
+    const expenseAccountItems = createBreakdown(analyticsExpenses, tx => {
+      const account = cards.find((card: any) => card.id === tx.methodId);
+      return account?.name || tx.method || 'Pix / Débito / Dinheiro';
+    }, tx => parseFloat(tx.myAmount) || 0);
+    const getAccountName = (accountId: string) => cards.find((card: any) => card.id === accountId)?.name || 'Conta não informada';
+    const incomeAccountTotals: Record<string, number> = {};
+    const addIncomeForAccount = (label: string, amount: number) => {
+      if (amount > 0) incomeAccountTotals[label] = (incomeAccountTotals[label] || 0) + amount;
+    };
+    analyticsIncomes.forEach((tx: any) => {
+      const saleSplits = (tx.splits || []).filter((split: any) => split?.isSaleReceivable);
+      if (tx.isSaleReceivable || saleSplits.length > 0) {
+        if (saleSplits.length > 0) {
+          saleSplits.forEach((split: any) => addIncomeForAccount(
+            split.paid ? getAccountName(String(split.receivedAccountId || '')) : 'A receber',
+            parseFloat(split.amount) || 0
+          ));
+        } else {
+          addIncomeForAccount('A receber', parseFloat(tx.totalAmount) || 0);
+        }
+      } else {
+        const label = tx.status === 'paid' ? getAccountName(String(tx.settlementAccountId || '')) : 'A receber';
+        addIncomeForAccount(label, parseFloat(tx.totalAmount) || 0);
+      }
+    });
+    const incomeAccountItems = Object.entries(incomeAccountTotals).map(([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
+
+    const [analyticsYear, analyticsMonthNumber] = analyticsMonth.split('-').map(Number);
+    const monthlyBalanceItems = Array.from({ length: 3 }, (_, index) => {
+      const date = new Date(analyticsYear, analyticsMonthNumber + index - 3, 1, 12);
+      const key = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+      const monthTransactions = (transactions || []).filter(tx => String(tx?.date || '').startsWith(key));
+      const income = monthTransactions.filter(tx => tx?.type === 'income')
+        .reduce((sum: number, tx: any) => sum + (parseFloat(tx?.totalAmount) || 0), 0);
+      const expenses = monthTransactions.filter(tx => tx?.type !== 'income' && !tx?.isCardPaymentEntry)
+        .reduce((sum: number, tx: any) => sum + (parseFloat(tx?.myAmount) || 0), 0);
+      return { key, year: date.getFullYear(), month: monthNames[date.getMonth()], income, expenses };
+    });
+    const firstBalanceMonth = monthlyBalanceItems[0];
+    const lastBalanceMonth = monthlyBalanceItems[2];
+    const balanceRangeLabel = firstBalanceMonth.year === lastBalanceMonth.year
+      ? firstBalanceMonth.month + ' - ' + lastBalanceMonth.month + ' ' + lastBalanceMonth.year
+      : firstBalanceMonth.month + ' ' + firstBalanceMonth.year + ' - ' + lastBalanceMonth.month + ' ' + lastBalanceMonth.year;
+    const maxBalanceAmount = Math.max(0, ...monthlyBalanceItems.flatMap(month => [month.income, month.expenses]));
+    const shiftAnalyticsMonth = (offset: number) => {
+      const date = new Date(analyticsYear, analyticsMonthNumber - 1 + offset, 1, 12);
+      setAnalyticsMonth(date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0'));
+    };
+    const analyticsMonthLabel = new Date(analyticsMonth + '-01T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const renderPieChart = (title: string, items: Array<{ label: string; amount: number }>) => {
+      const total = items.reduce((sum, item) => sum + item.amount, 0);
+      const colors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#64748b'];
+      const circumference = 2 * Math.PI * 52;
+      let offset = 0;
+      const segments = items.map((item, index) => {
+        const length = total > 0 ? item.amount / total * circumference : 0;
+        const segment = { ...item, color: colors[index % colors.length], length, offset };
+        offset += length;
+        return segment;
+      });
+      return (
+        <section key={title} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <h3 className="font-bold text-gray-800 dark:text-gray-100">{title}</h3>
+          {items.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Sem lançamentos neste mês.</p>
+          ) : (
+            <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+              <svg viewBox="0 0 144 144" role="img" aria-label={title + ', total de R$ ' + formatBRL(total)} className="h-40 w-40 shrink-0">
+                <circle cx="72" cy="72" r="52" fill="none" stroke="#e5e7eb" strokeWidth="24" />
+                {segments.map(segment => (
+                  <circle key={segment.label} cx="72" cy="72" r="52" fill="none" stroke={segment.color} strokeWidth="24"
+                    strokeDasharray={segment.length + ' ' + (circumference - segment.length)}
+                    strokeDashoffset={-segment.offset} transform="rotate(-90 72 72)" />
+                ))}
+                <text x="72" y="68" textAnchor="middle" className="fill-gray-500 dark:fill-gray-400" fontSize="10">Total</text>
+                <text x="72" y="84" textAnchor="middle" className="fill-gray-800 dark:fill-gray-100" fontSize="10" fontWeight="700">R$ {formatBRL(total)}</text>
+              </svg>
+              <div className="max-h-56 w-full space-y-2 overflow-y-auto pr-1">
+                {segments.map(segment => (
+                  <div key={segment.label} className="flex items-center justify-between gap-3 text-xs">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
+                      <span className="truncate text-gray-700 dark:text-gray-300">{segment.label}</span>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <span className="font-semibold text-gray-800 dark:text-gray-100">R$ {formatBRL(segment.amount)}</span>
+                      <span className="ml-2 text-gray-500 dark:text-gray-400">{(segment.amount / total * 100).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      );
+    };
+
     const detailRows = detailType === 'receivables'
       ? receivableItems.map(item => ({ ...item, category: item.source, isReceivable: true, status: 'pending' }))
       : (detailType === 'income' ? incomes : expenses).map((tx: any) => ({
@@ -533,6 +645,55 @@ export default function FinanceApp() {
            </div>
            <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">R$ {formatBRL(totalReceivables)}</p>
         </div>
+
+        <div className="mt-5 flex items-center justify-between rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+          <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Análises do mês</h3>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => shiftAnalyticsMonth(-1)} aria-label="Mês anterior" className="rounded-lg bg-gray-100 px-2.5 py-1 text-lg text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">‹</button>
+            <span className="min-w-36 text-center text-xs font-bold uppercase text-gray-700 dark:text-gray-200">{analyticsMonthLabel}</span>
+            <button type="button" onClick={() => shiftAnalyticsMonth(1)} disabled={analyticsMonth >= currentMonthStr} aria-label="Próximo mês" className="rounded-lg bg-gray-100 px-2.5 py-1 text-lg text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">›</button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {renderPieChart('Despesas por categoria', expenseCategoryItems)}
+          {renderPieChart('Receitas por categoria', incomeCategoryItems)}
+          {renderPieChart('Despesas por conta', expenseAccountItems)}
+          {renderPieChart('Receitas por conta', incomeAccountItems)}
+        </div>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-gray-800 dark:text-gray-100">Balanço mensal</h3>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Receitas e despesas dos três meses encerrados no mês selecionado</p>
+            </div>
+            <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">{balanceRangeLabel}</span>
+          </div>
+          <div className="mb-4 flex flex-wrap gap-4 text-xs">
+            <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" />Receitas</span>
+            <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300"><span className="h-2.5 w-2.5 rounded-sm bg-rose-500" />Despesas</span>
+            <div className="ml-auto flex items-center gap-2">
+              <button type="button" onClick={() => shiftAnalyticsMonth(-1)} aria-label="Janela de três meses anterior" className="rounded-lg bg-gray-100 px-2 py-0.5 text-lg text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">‹</button>
+              <button type="button" onClick={() => shiftAnalyticsMonth(1)} disabled={analyticsMonth >= currentMonthStr} aria-label="Janela de três meses seguinte" className="rounded-lg bg-gray-100 px-2 py-0.5 text-lg text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">›</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 border-b border-gray-100 pb-4 dark:border-gray-700">
+            {monthlyBalanceItems.map(month => (
+              <div key={month.key} className="min-w-0 text-center">
+                <div className="flex h-36 items-end justify-center gap-2 border-b border-gray-200 px-1 dark:border-gray-600">
+                  <div title={'Receitas: R$ ' + formatBRL(month.income)} className="w-7 rounded-t bg-emerald-500 transition-all" style={{ height: month.income > 0 && maxBalanceAmount > 0 ? Math.max(3, month.income / maxBalanceAmount * 100) + '%' : '0%' }} />
+                  <div title={'Despesas: R$ ' + formatBRL(month.expenses)} className="w-7 rounded-t bg-rose-500 transition-all" style={{ height: month.expenses > 0 && maxBalanceAmount > 0 ? Math.max(3, month.expenses / maxBalanceAmount * 100) + '%' : '0%' }} />
+                </div>
+                <p className="mt-2 text-xs font-bold text-gray-700 dark:text-gray-200">{month.month}</p>
+                <div className="mt-1 space-y-0.5 text-[9px] leading-tight text-gray-500 dark:text-gray-400">
+                  <p className="truncate">+ R$ {formatBRL(month.income)}</p>
+                  <p className="truncate">− R$ {formatBRL(month.expenses)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       {detailType && createPortal(
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
           <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
