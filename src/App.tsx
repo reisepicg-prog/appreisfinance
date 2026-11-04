@@ -267,6 +267,10 @@ export default function FinanceApp() {
   }))).filter(Boolean).sort() as string[];
   
   const allSplitNames = Array.from(new Set((transactions || []).flatMap(t => t?.splits?.map((s: any) => String(s?.name || '')) || []))).filter(Boolean).sort() as string[];
+  const allBuyerNames = Array.from(new Set([
+    ...allSplitNames,
+    ...(transactions || []).flatMap(t => t?.saleBuyers?.map((buyer: any) => String(buyer?.name || '').trim()) || [])
+  ])).filter(Boolean).sort() as string[];
   const allBrokers = Array.from(new Set((investments || []).map((i: any) => String(i?.broker || '')))).filter(Boolean).sort() as string[];
   const allOwnedTickers = Array.from(new Set((investments || []).map((i: any) => String(i?.ticker || '').toUpperCase()))).filter(Boolean) as string[];
   const mergedTickersForSearch = Array.from(new Set([...allOwnedTickers, ...POPULAR_TICKERS])).sort() as string[];
@@ -1397,9 +1401,12 @@ export default function FinanceApp() {
                 </label>
               </div>
               <div className="space-y-2">
+                <datalist id="sale-buyer-names-suggestions">
+                  {allBuyerNames.map(name => <option key={name} value={name} />)}
+                </datalist>
                 {saleBuyers.map((buyer, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <input required type="text" value={buyer.name} onChange={e => handleSaleBuyerChange(index, 'name', e.target.value)} placeholder={`Comprador ${index + 1}`} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                    <input required type="text" value={buyer.name} onChange={e => handleSaleBuyerChange(index, 'name', e.target.value)} placeholder={`Comprador ${index + 1}`} list="sale-buyer-names-suggestions" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
                     <input required type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={buyer.displayAmount || ''} onChange={e => handleSaleBuyerChange(index, 'displayAmount', e.target.value)} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} aria-label={`Valor devido pelo comprador ${index + 1}`} className="w-32 rounded-lg border border-gray-300 bg-white p-2.5 text-right text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
                     {saleBuyers.length > 1 && <button type="button" onClick={() => handleRemoveSaleBuyer(index)} aria-label={`Remover comprador ${index + 1}`} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"><Icons.Trash size={16} /></button>}
                   </div>
