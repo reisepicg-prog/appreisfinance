@@ -437,7 +437,7 @@ export default function FinanceApp() {
         if (amount > 0) result[label] = (result[label] || 0) + amount;
         return result;
       }, {});
-      return Object.entries(totals).map(([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
+      return (Object.entries(totals) as [string, number][]).map(([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
     };
     const expenseCategoryItems = createBreakdown(analyticsExpenses, tx => tx.category || 'Sem categoria', tx => parseFloat(tx.myAmount) || 0);
     const incomeCategoryItems = createBreakdown(analyticsIncomes, tx => tx.category || 'Sem categoria', tx => parseFloat(tx.totalAmount) || 0);
