@@ -2368,18 +2368,32 @@ export default function FinanceApp() {
                   {isExpanded && (
                     <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 -mx-4 px-4 pb-2 rounded-b-2xl space-y-2">
                       <h4 className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-wide">Histórico de Compras ({group.lots.length})</h4>
-                      {group.lots.map((lot: any) => (
-                        <div key={lot.id} className="flex justify-between items-center bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 text-xs shadow-sm">
-                          <div>
-                            <p className="font-bold text-gray-700 dark:text-gray-200">{lot.quantity} cotas <span className="text-gray-400 dark:text-gray-500 font-normal ml-1">({lot.broker})</span></p>
-                            <p className="text-gray-500 dark:text-gray-400">{formatLocalDate(lot.buyDate)} • PM: R$ {formatBRL(lot.unitPrice)}</p>
+                      {group.lots.map((lot: any) => {
+                        const lotCurrentValue = lot.quantity * currentPrice;
+                        const lotProfit = (currentPrice - lot.unitPrice) * lot.quantity;
+                        const lotProfitPct = lot.unitPrice > 0 ? ((currentPrice - lot.unitPrice) / lot.unitPrice) * 100 : 0;
+
+                        return (
+                          <div key={lot.id} className="flex flex-wrap justify-between items-center gap-2 bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 text-xs shadow-sm">
+                            <div className="min-w-0">
+                              <p className="font-bold text-gray-700 dark:text-gray-200">{lot.quantity} cotas <span className="text-gray-400 dark:text-gray-500 font-normal ml-1">({lot.broker})</span></p>
+                              <p className="text-gray-500 dark:text-gray-400">{formatLocalDate(lot.buyDate)} • PM: R$ {formatBRL(lot.unitPrice)}</p>
+                            </div>
+                            <div className="ml-auto flex items-center gap-2">
+                              <div className="shrink-0 text-right" title="Valor atual e variação desde o preço de compra">
+                                <p className="font-bold text-gray-900 dark:text-gray-100">R$ {formatBRL(lotCurrentValue)}</p>
+                                <p className={`text-[10px] font-bold ${lotProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  {lotProfitPct >= 0 ? '+' : ''}{formatBRL(lotProfitPct)}% (R$ {lotProfit >= 0 ? '+' : ''}{formatBRL(lotProfit)})
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 gap-1">
+                                <button onClick={() => openEditAsset(lot)} className="p-1.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"><Icons.Edit size={16} /></button>
+                                <button onClick={() => handleDeleteAsset(lot.id)} className="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"><Icons.Trash size={16}/></button>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex gap-1">
-                             <button onClick={() => openEditAsset(lot)} className="p-1.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"><Icons.Edit size={16} /></button>
-                             <button onClick={() => handleDeleteAsset(lot.id)} className="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"><Icons.Trash size={16}/></button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
