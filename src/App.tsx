@@ -215,7 +215,7 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
 
   const btnClass = "h-11 rounded-xl font-semibold text-lg flex items-center justify-center active:scale-95 transition-all select-none";
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-y-auto flex items-center justify-center p-4">
       <div className="bg-white dark:bg-gray-800 w-full max-w-xs rounded-2xl p-5 shadow-2xl border border-gray-100 dark:border-gray-700">
         <div className="flex justify-between items-center mb-3">
@@ -249,7 +249,8 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
         </div>
         <button type="button" onClick={handleApply} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold shadow-md text-sm">Aplicar Valor</button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
