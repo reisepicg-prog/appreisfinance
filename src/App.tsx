@@ -2953,9 +2953,9 @@ export default function FinanceApp() {
                             </div>
                             <div className="text-right">
                               <p className={`text-sm ${tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-gray-800 dark:text-gray-200'}`}>
-                                R$ {formatBRL(filterPerson === '__mine__' ? tx.myAmount : tx.totalAmount)}
+                                R$ {formatBRL(filtersHist.person === '__mine__' ? tx.myAmount : tx.totalAmount)}
                               </p>
-                              {filterPerson !== '__mine__' && tx.type !== 'income' && tx.myAmount !== tx.totalAmount && (
+                              {filtersHist.person !== '__mine__' && tx.type !== 'income' && tx.myAmount !== tx.totalAmount && (
                                 <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Sua parte: R$ {formatBRL(tx.myAmount)}</p>
                               )}
                             </div>
