@@ -185,8 +185,14 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
   };
 
   useEffect(() => {
+    if (isOpen) {
+      setDisplay('0');
+      setHistory('');
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) return;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
     const handleKeyboardInput = (event: KeyboardEvent) => {
       const key = event.key;
       if (/^[0-9]$/.test(key)) handleNum(key);
@@ -217,8 +223,8 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-bold px-2 py-1">✕</button>
         </div>
         <div className="bg-gray-100 dark:bg-gray-900/50 rounded-xl p-3 mb-4 text-right">
-          <div className="text-xs text-gray-400 h-4 font-mono">{history}</div>
-          <div className="text-2xl font-bold text-gray-800 dark:text-gray-100 font-mono overflow-x-auto">{display}</div>
+          <div className="text-xs text-gray-400 h-4 font-mono overflow-x-auto whitespace-nowrap">{history}</div>
+          <div className="text-2xl font-bold text-gray-800 dark:text-gray-100 font-mono overflow-x-auto whitespace-nowrap">{display}</div>
           <div className="mt-1 text-[10px] text-gray-400">Teclado: números, + − * /, Enter, Backspace, Esc</div>
         </div>
         <div className="grid grid-cols-4 gap-2 mb-4">
