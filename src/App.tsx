@@ -255,8 +255,10 @@ export default function FinanceApp() {
 
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-  const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all' });
-  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true });
+  const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all', description: '' });
+  const [filtersCollDraft, setFiltersCollDraft] = useState({ month: currentMonthStr, person: 'all', status: 'all', description: '' });
+  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' });
+  const [filtersHistDraft, setFiltersHistDraft] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' });
 
   // --- Listas Inteligentes de Memória (Autocomplete) ---
   const allDescriptions = Array.from(new Set((transactions || []).map(t => {
@@ -1640,16 +1642,17 @@ export default function FinanceApp() {
       ? currentMonthStr
       : (availableMonths[availableMonths.length - 1] || currentMonthStr);
 
-    const selectedMonth = filtersColl.month;
-    const setSelectedMonth = (month: string) => setFiltersColl(prev => ({ ...prev, month }));
-    const filterPerson = filtersColl.person;
-    const setFilterPerson = (person: string) => setFiltersColl(prev => ({ ...prev, person }));
-    const filterStatus = filtersColl.status;
-    const setFilterStatus = (status: string) => setFiltersColl(prev => ({ ...prev, status }));
+    const selectedMonth = filtersCollDraft.month;
+    const setSelectedMonth = (month: string) => setFiltersCollDraft(prev => ({ ...prev, month }));
+    const filterPerson = filtersCollDraft.person;
+    const setFilterPerson = (person: string) => setFiltersCollDraft(prev => ({ ...prev, person }));
+    const filterStatus = filtersCollDraft.status;
+    const setFilterStatus = (status: string) => setFiltersCollDraft(prev => ({ ...prev, status }));
 
     useEffect(() => {
       if (filtersColl.month === currentMonthStr && defaultCollectionsMonth !== currentMonthStr) {
         setFiltersColl(prev => prev.month === currentMonthStr ? { ...prev, month: defaultCollectionsMonth } : prev);
+        setFiltersCollDraft(prev => prev.month === currentMonthStr ? { ...prev, month: defaultCollectionsMonth } : prev);
       }
     }, [filtersColl.month, currentMonthStr, defaultCollectionsMonth]);
 
@@ -1661,7 +1664,9 @@ export default function FinanceApp() {
         const d = parseLocalDate(tx.date);
         if (isNaN(d.getTime())) return false;
         const txMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        if (selectedMonth !== 'all' && txMonthStr !== selectedMonth) return false;
+        if (filtersColl.month !== 'all' && txMonthStr !== filtersColl.month) return false;
+        const descriptionQuery = filtersColl.description.trim().toLocaleLowerCase('pt-BR');
+        if (descriptionQuery && !String(tx.desc || '').toLocaleLowerCase('pt-BR').includes(descriptionQuery)) return false;
         return true;
     });
 
@@ -1699,7 +1704,7 @@ export default function FinanceApp() {
     });
 
     const allPeopleNames = Object.keys(debtsByPerson).sort();
-    const peopleToRender = allPeopleNames.filter(name => filterPerson === 'all' || name === filterPerson);
+    const peopleToRender = allPeopleNames.filter(name => filtersColl.person === 'all' || name === filtersColl.person);
 
     const openCollectionPayment = (name: string, items: any[]) => {
       const today = new Date();
@@ -1834,8 +1839,8 @@ export default function FinanceApp() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Fechamento e Cobranças</h2>
           <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
-          {(filtersColl.month !== defaultCollectionsMonth || filtersColl.person !== 'all' || filtersColl.status !== 'all') && (
-            <button onClick={() => setFiltersColl({ month: defaultCollectionsMonth, person: 'all', status: 'all' })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          {(filtersCollDraft.month !== defaultCollectionsMonth || filtersCollDraft.person !== 'all' || filtersCollDraft.status !== 'all' || filtersCollDraft.description !== '' || filtersColl.month !== defaultCollectionsMonth || filtersColl.person !== 'all' || filtersColl.status !== 'all' || filtersColl.description !== '') && (
+            <button onClick={() => { const reset = { month: defaultCollectionsMonth, person: 'all', status: 'all', description: '' }; setFiltersColl(reset); setFiltersCollDraft(reset); }} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
@@ -1864,6 +1869,12 @@ export default function FinanceApp() {
               <option value="pending">Só Pendentes</option>
               <option value="paid">Só Pagos</option>
             </select>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Descrição</label>
+            <input type="search" value={filtersCollDraft.description} onChange={e => setFiltersCollDraft(prev => ({ ...prev, description: e.target.value }))} placeholder="Buscar: Tablet, Mercado..." className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div className="col-span-full flex justify-end">
+            <button type="button" onClick={() => setFiltersColl(filtersCollDraft)} className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700">Aplicar</button>
           </div>
         </div>}
         
@@ -1876,8 +1887,8 @@ export default function FinanceApp() {
             {peopleToRender.map(name => {
               const items = debtsByPerson[name];
               const filteredItems = items.filter((i: any) => {
-                if (filterStatus === 'pending') return !i.paid;
-                if (filterStatus === 'paid') return i.paid;
+                if (filtersColl.status === 'pending') return !i.paid;
+                if (filtersColl.status === 'paid') return i.paid;
                 return true;
               });
 
@@ -2556,14 +2567,14 @@ export default function FinanceApp() {
     const [isPayingInvoice, setIsPayingInvoice] = useState(false);
     const [filtersExpanded, setFiltersExpanded] = useState(false);
 
-    const filterMonth = filtersHist.month;
-    const setFilterMonth = (month: string) => setFiltersHist(prev => ({ ...prev, month }));
-    const filterType = filtersHist.type;
-    const setFilterType = (type: string) => setFiltersHist(prev => ({ ...prev, type }));
-    const filterPerson = filtersHist.person;
-    const filterMethodId = filtersHist.methodId;
-    const setFilterMethodId = (methodId: string) => setFiltersHist(prev => ({ ...prev, methodId }));
-    const setFilterPerson = (person: string) => setFiltersHist(prev => ({ ...prev, person }));
+    const filterMonth = filtersHistDraft.month;
+    const setFilterMonth = (month: string) => setFiltersHistDraft(prev => ({ ...prev, month }));
+    const filterType = filtersHistDraft.type;
+    const setFilterType = (type: string) => setFiltersHistDraft(prev => ({ ...prev, type }));
+    const filterPerson = filtersHistDraft.person;
+    const filterMethodId = filtersHistDraft.methodId;
+    const setFilterMethodId = (methodId: string) => setFiltersHistDraft(prev => ({ ...prev, methodId }));
+    const setFilterPerson = (person: string) => setFiltersHistDraft(prev => ({ ...prev, person }));
 
     const availableMonths = Array.from(new Set((transactions || []).map(t => {
       if (!t?.date) return '';
@@ -2579,13 +2590,15 @@ export default function FinanceApp() {
     
     const filteredTxsForHistory = (transactions || []).filter(tx => {
       if (!tx?.date) return false;
-      if (filterMonth !== 'all' && filterMonth !== '' && !String(tx.date).startsWith(filterMonth)) return false;
-      if (filterType !== 'all' && String(tx.type) !== filterType) return false;
-      if (filterMethodId !== 'all' && String(tx.methodId || 'pix') !== filterMethodId) return false;
-      if (filterPerson === '__mine__') {
+      if (filtersHist.month !== 'all' && filtersHist.month !== '' && !String(tx.date).startsWith(filtersHist.month)) return false;
+      if (filtersHist.type !== 'all' && String(tx.type) !== filtersHist.type) return false;
+      if (filtersHist.methodId !== 'all' && String(tx.methodId || 'pix') !== filtersHist.methodId) return false;
+      const descriptionQuery = filtersHist.description.trim().toLocaleLowerCase('pt-BR');
+      if (descriptionQuery && !String(tx.desc || '').toLocaleLowerCase('pt-BR').includes(descriptionQuery)) return false;
+      if (filtersHist.person === '__mine__') {
         if ((parseFloat(tx.myAmount) || 0) <= 0) return false;
-      } else if (filterPerson !== 'all') {
-        const hasPerson = tx.splits?.some((s: any) => String(s?.name) === filterPerson);
+      } else if (filtersHist.person !== 'all') {
+        const hasPerson = tx.splits?.some((s: any) => String(s?.name) === filtersHist.person);
         if (!hasPerson) return false;
       }
       return true;
@@ -2837,8 +2850,8 @@ export default function FinanceApp() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
           <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
-          {(filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || !filtersHist.unpaidOnly) && (
-            <button onClick={() => setFiltersHist({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true })} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          {(filtersHistDraft.month !== 'all' || filtersHistDraft.type !== 'all' || filtersHistDraft.person !== 'all' || filtersHistDraft.methodId !== 'all' || !filtersHistDraft.unpaidOnly || filtersHistDraft.description !== '' || filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || !filtersHist.unpaidOnly || filtersHist.description !== '') && (
+            <button onClick={() => { const reset = { month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' }; setFiltersHist(reset); setFiltersHistDraft(reset); }} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
@@ -2877,10 +2890,17 @@ export default function FinanceApp() {
               {availableMethods.map(([id, name]: any) => <option key={id} value={id}>{name}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Descrição</label>
+            <input type="search" value={filtersHistDraft.description} onChange={e => setFiltersHistDraft(prev => ({ ...prev, description: e.target.value }))} placeholder="Buscar: Tablet, Mercado..." className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
           <label className="flex items-center gap-2 self-end rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-            <input type="checkbox" checked={filtersHist.unpaidOnly} onChange={e => setFiltersHist(prev => ({ ...prev, unpaidOnly: e.target.checked }))} className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500" />
+            <input type="checkbox" checked={filtersHistDraft.unpaidOnly} onChange={e => setFiltersHistDraft(prev => ({ ...prev, unpaidOnly: e.target.checked }))} className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500" />
             Mostrar apenas faturas não pagas
           </label>
+          <div className="col-span-full flex justify-end">
+            <button type="button" onClick={() => setFiltersHist(filtersHistDraft)} className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700">Aplicar</button>
+          </div>
         </div>}
 
         {isLoading ? (
@@ -2892,7 +2912,7 @@ export default function FinanceApp() {
             ) : (
               invoicesArray.map((invoice: any) => {
                 const cashbackPct = invoice.card ? parseFloat(invoice.card.cashbackPct) || 0 : 0;
-                const invoiceVisibleAmount = filterPerson === '__mine__' ? invoice.myAmount : invoice.totalAmount;
+                const invoiceVisibleAmount = filtersHist.person === '__mine__' ? invoice.myAmount : invoice.totalAmount;
                 const cashbackAmount = (invoiceVisibleAmount * (cashbackPct / 100));
 
                 return (
