@@ -158,7 +158,14 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
     if (display === '0' || display === 'Erro') setDisplay(num);
     else setDisplay(display + num);
   };
-  const handleOp = (op: string) => { setHistory(`${display} ${op} `); setDisplay('0'); };
+  const handleOp = (op: string) => {
+    setHistory(previous => {
+      const trimmed = previous.trimEnd();
+      if (display === '0' && /[+\\-×÷]$/.test(trimmed)) return `${trimmed.slice(0, -1)}${op} `;
+      return `${previous}${display} ${op} `;
+    });
+    setDisplay('0');
+  };
   const handleClear = () => { setDisplay('0'); setHistory(''); };
   const handleBackspace = () => setDisplay(display === 'Erro' ? '0' : display.length > 1 ? display.slice(0, -1) : '0');
   const handleCalculate = () => {
