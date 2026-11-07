@@ -196,7 +196,7 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
     };
     window.addEventListener('keydown', handleKeyboardInput);
     return () => window.removeEventListener('keydown', handleKeyboardInput);
-  }, [isOpen, display, history, onClose]);
+  }, [isOpen, display, history, onClose, handleNum, handleOp, handleCalculate, handleBackspace, handleClear]);
 
   if (!isOpen) return null;
 
