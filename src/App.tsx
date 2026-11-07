@@ -1913,7 +1913,7 @@ export default function FinanceApp() {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Descrição</label>
-            <input type="search" value={filtersCollDraft.description} onChange={e => setFiltersCollDraft(prev => ({ ...prev, description: e.target.value }))} placeholder="Buscar: Tablet, Mercado..." className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="search" value={filtersCollDraft.description} onChange={e => setFiltersCollDraft(prev => ({ ...prev, description: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setFiltersColl(filtersCollDraftRef.current); } }} placeholder="Buscar: Tablet, Mercado..." className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="col-span-full flex justify-end">
             <button type="button" onClick={() => setFiltersColl(filtersCollDraft)} className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700">Aplicar</button>
@@ -2940,7 +2940,7 @@ export default function FinanceApp() {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Descrição</label>
-            <input type="search" value={filtersHistDraft.description} onChange={e => setFiltersHistDraft(prev => ({ ...prev, description: e.target.value }))} placeholder="Buscar: Tablet, Mercado..." className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="search" value={filtersHistDraft.description} onChange={e => setFiltersHistDraft(prev => ({ ...prev, description: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setFiltersHist(filtersHistDraftRef.current); } }} placeholder="Buscar: Tablet, Mercado..." className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <label className="flex items-center gap-2 self-end rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
             <input type="checkbox" checked={filtersHistDraft.unpaidOnly} onChange={e => setFiltersHistDraft(prev => ({ ...prev, unpaidOnly: e.target.checked }))} className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500" />
