@@ -161,7 +161,7 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
   const handleOp = (op: string) => {
     setHistory(previous => {
       const trimmed = previous.trimEnd();
-      if (display === '0' && /[+\\-×÷]$/.test(trimmed)) return `${trimmed.slice(0, -1)}${op} `;
+      if (display === '0' && ['+', '-', '×', '÷'].some(symbol => trimmed.endsWith(symbol))) return `${trimmed.slice(0, -1)}${op} `;
       return `${previous}${display} ${op} `;
     });
     setDisplay('0');
