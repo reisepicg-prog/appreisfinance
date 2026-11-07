@@ -149,21 +149,18 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
   const [display, setDisplay] = useState('0');
   const [history, setHistory] = useState('');
 
-  useEffect(() => {
-    if (isOpen) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
   const handleNum = (num: string) => {
+    if (num === ',') {
+      if (display === 'Erro') setDisplay('0,');
+      else if (!display.includes(',')) setDisplay(display === '0' ? '0,' : display + ',');
+      return;
+    }
     if (display === '0' || display === 'Erro') setDisplay(num);
     else setDisplay(display + num);
   };
   const handleOp = (op: string) => { setHistory(`${display} ${op} `); setDisplay('0'); };
   const handleClear = () => { setDisplay('0'); setHistory(''); };
-  const handleBackspace = () => setDisplay(display.length > 1 ? display.slice(0, -1) : '0');
+  const handleBackspace = () => setDisplay(display === 'Erro' ? '0' : display.length > 1 ? display.slice(0, -1) : '0');
   const handleCalculate = () => {
     try {
       const fullExpression = (history + display).replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
@@ -180,6 +177,29 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
     onClose();
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const handleKeyboardInput = (event: KeyboardEvent) => {
+      const key = event.key;
+      if (/^\\d$/.test(key)) handleNum(key);
+      else if (key === ',' || key === '.') handleNum(',');
+      else if (key === '+' || key === '-') handleOp(key);
+      else if (key === '*' || key.toLowerCase() === 'x') handleOp('×');
+      else if (key === '/') handleOp('÷');
+      else if (key === 'Enter' || key === '=') handleCalculate();
+      else if (key === 'Backspace') handleBackspace();
+      else if (key === 'Delete') handleClear();
+      else if (key === 'Escape') onClose();
+      else return;
+      event.preventDefault();
+    };
+    window.addEventListener('keydown', handleKeyboardInput);
+    return () => window.removeEventListener('keydown', handleKeyboardInput);
+  }, [isOpen, display, history, onClose]);
+
+  if (!isOpen) return null;
+
   const btnClass = "h-11 rounded-xl font-semibold text-lg flex items-center justify-center active:scale-95 transition-all select-none";
 
   return (
@@ -192,6 +212,7 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
         <div className="bg-gray-100 dark:bg-gray-900/50 rounded-xl p-3 mb-4 text-right">
           <div className="text-xs text-gray-400 h-4 font-mono">{history}</div>
           <div className="text-2xl font-bold text-gray-800 dark:text-gray-100 font-mono overflow-x-auto">{display}</div>
+          <div className="mt-1 text-[10px] text-gray-400">Teclado: números, + − * /, Enter, Backspace, Esc</div>
         </div>
         <div className="grid grid-cols-4 gap-2 mb-4">
           <button type="button" onClick={handleClear} className={`${btnClass} bg-red-100 dark:bg-red-900/30 text-red-600 hover:bg-red-200 dark:hover:bg-red-800/50`}>C</button>
