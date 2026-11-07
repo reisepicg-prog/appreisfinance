@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
@@ -284,9 +284,9 @@ export default function FinanceApp() {
   // --- Estados de Memória (Persistência dos Filtros nas Abas) ---
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all', description: '' });
-  const [filtersCollDraft, setFiltersCollDraft] = useState({ month: currentMonthStr, person: 'all', status: 'all', description: '' });
+  const filtersCollDraftRef = useRef({ month: currentMonthStr, person: 'all', status: 'all', description: '' });
   const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' });
-  const [filtersHistDraft, setFiltersHistDraft] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' });
+  const filtersHistDraftRef = useRef({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' });
 
   // --- Listas Inteligentes de Memória (Autocomplete) ---
   const allDescriptions = Array.from(new Set((transactions || []).map(t => {
@@ -1655,6 +1655,12 @@ export default function FinanceApp() {
     const [collectionPaymentAccountId, setCollectionPaymentAccountId] = useState('');
     const [collectionPaymentDate, setCollectionPaymentDate] = useState('');
     const [filtersExpanded, setFiltersExpanded] = useState(false);
+    const [, forceDraftRender] = useState(0);
+    const filtersCollDraft = filtersCollDraftRef.current;
+    const setFiltersCollDraft = (updater: any) => {
+      filtersCollDraftRef.current = typeof updater === 'function' ? updater(filtersCollDraftRef.current) : updater;
+      forceDraftRender(version => version + 1);
+    };
     const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
     const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
@@ -2595,6 +2601,12 @@ export default function FinanceApp() {
     const [markThirdPartiesReceived, setMarkThirdPartiesReceived] = useState(false);
     const [isPayingInvoice, setIsPayingInvoice] = useState(false);
     const [filtersExpanded, setFiltersExpanded] = useState(false);
+    const [, forceDraftRender] = useState(0);
+    const filtersHistDraft = filtersHistDraftRef.current;
+    const setFiltersHistDraft = (updater: any) => {
+      filtersHistDraftRef.current = typeof updater === 'function' ? updater(filtersHistDraftRef.current) : updater;
+      forceDraftRender(version => version + 1);
+    };
 
     const filterMonth = filtersHistDraft.month;
     const setFilterMonth = (month: string) => setFiltersHistDraft(prev => ({ ...prev, month }));
