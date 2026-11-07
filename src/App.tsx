@@ -182,7 +182,7 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
     window.scrollTo({ top: 0, behavior: 'smooth' });
     const handleKeyboardInput = (event: KeyboardEvent) => {
       const key = event.key;
-      if (/^\\d$/.test(key)) handleNum(key);
+      if (/^[0-9]$/.test(key)) handleNum(key);
       else if (key === ',' || key === '.') handleNum(',');
       else if (key === '+' || key === '-') handleOp(key);
       else if (key === '*' || key.toLowerCase() === 'x') handleOp('×');
