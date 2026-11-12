@@ -1661,6 +1661,7 @@ export default function FinanceApp() {
     const [collectionPayment, setCollectionPayment] = useState<any>(null);
     const [collectionPaymentAccountId, setCollectionPaymentAccountId] = useState('');
     const [collectionPaymentDate, setCollectionPaymentDate] = useState('');
+    const [selectedCollectionItems, setSelectedCollectionItems] = useState<Record<string, boolean>>({});
     const [filtersExpanded, setFiltersExpanded] = useState(false);
     const [, forceDraftRender] = useState(0);
     const filtersCollDraft = filtersCollDraftRef.current;
@@ -1788,6 +1789,30 @@ export default function FinanceApp() {
       } catch (err) { console.error(err); }
     };
 
+    const collectionItemKey = (name: string, item: any) => `${name}|${item.txId}|${item.splitIndex}`;
+    const clearCollectionSelection = (name: string, items: any[]) => {
+      setSelectedCollectionItems(previous => {
+        const next = { ...previous };
+        items.forEach(item => { delete next[collectionItemKey(name, item)]; });
+        return next;
+      });
+    };
+    const toggleCollectionItemSelection = (name: string, item: any) => {
+      const key = collectionItemKey(name, item);
+      setSelectedCollectionItems(previous => ({ ...previous, [key]: !previous[key] }));
+    };
+    const setAllCollectionItemsSelected = (name: string, items: any[], selected: boolean) => {
+      setSelectedCollectionItems(previous => {
+        const next = { ...previous };
+        items.forEach(item => {
+          const key = collectionItemKey(name, item);
+          if (selected) next[key] = true;
+          else delete next[key];
+        });
+        return next;
+      });
+    };
+
     const handleMarkPersonPaid = async (name: string, items: any[]) => {
       if (!user) return;
       const unpaidItems = items.filter(item => !item.paid);
@@ -1805,6 +1830,7 @@ export default function FinanceApp() {
         await Promise.all(Array.from(updatesByTransaction.entries()).map(([txId, changes]) =>
           updateDoc(doc(db, 'users', user.uid, 'transactions', txId), changes)
         ));
+        clearCollectionSelection(name, unpaidItems);
       } catch (err) { console.error(err); }
     };
 
@@ -1837,6 +1863,7 @@ export default function FinanceApp() {
         await Promise.all(Array.from(updatesByTransaction.entries()).map(([txId, changes]) =>
           updateDoc(doc(db, 'users', user.uid, 'transactions', txId), changes)
         ));
+        clearCollectionSelection(collectionPayment.name, collectionPayment.items);
         setCollectionPayment(null);
       } catch (err) { console.error('Erro ao registrar recebimento', err); }
     };
@@ -1846,12 +1873,22 @@ export default function FinanceApp() {
       if (unpaidItems.length === 0) return;
 
       const total = unpaidItems.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+      const itemsByDueDate = unpaidItems.reduce<Record<string, any[]>>((groups, item: any) => {
+        const dueDate = String(item.date || '');
+        if (!groups[dueDate]) groups[dueDate] = [];
+        groups[dueDate].push(item);
+        return groups;
+      }, {});
       let text = `Olá, aqui é o resumo das suas contas comigo:\n\n`;
-      unpaidItems.forEach(item => {
-        const dateFormatted = formatLocalDate(item.date);
-        text += `- ${item.desc} (Venc: ${dateFormatted}): R$ ${formatBRL(item.amount)}\n`;
-      });
-      text += `\n*Total a pagar: R$ ${formatBRL(total)}*`;
+      (Object.entries(itemsByDueDate) as [string, any[]][])
+        .sort(([dateA], [dateB]) => parseLocalDate(dateA).getTime() - parseLocalDate(dateB).getTime())
+        .forEach(([dueDate, dueItems]) => {
+          const dueTotal = dueItems.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0);
+          const itemSummary = dueItems.map((item: any) => `${item.desc}: R$ ${formatBRL(item.amount)}`).join(' | ');
+          text += `*Venc: ${formatLocalDate(dueDate)} - Total: R$ ${formatBRL(dueTotal)}*\n`;
+          text += `-- ${itemSummary}\n\n`;
+        });
+      text += `*Total a pagar: R$ ${formatBRL(total)}*`;
 
       if (myPixKey) {
          text += `\n\n*Minha chave Pix:* ${myPixKey}`;
@@ -1937,6 +1974,9 @@ export default function FinanceApp() {
               if (filteredItems.length === 0) return null;
 
               const unpaidItems = filteredItems.filter((i: any) => !i.paid);
+              const selectedItems = unpaidItems.filter((item: any) => selectedCollectionItems[collectionItemKey(name, item)]);
+              const totalSelected = selectedItems.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0);
+              const allUnpaidSelected = unpaidItems.length > 0 && selectedItems.length === unpaidItems.length;
               const totalOwed = unpaidItems.reduce((acc: number, curr: any) => acc + (parseFloat(curr.amount) || 0), 0);
               const isAllPaid = filteredItems.length > 0 && unpaidItems.length === 0;
 
@@ -1950,16 +1990,26 @@ export default function FinanceApp() {
                       <span className="font-bold text-blue-600 dark:text-blue-400">Restante: R$ {formatBRL(totalOwed)}</span>
                     )}
                   </div>
+                  {unpaidItems.length > 0 && (
+                    <div className="mb-2 flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-2 py-1.5 text-xs dark:bg-gray-900/40">
+                      <label className="flex cursor-pointer items-center gap-2 font-medium text-gray-700 dark:text-gray-300">
+                        <input type="checkbox" checked={allUnpaidSelected} onChange={e => setAllCollectionItemsSelected(name, unpaidItems, e.target.checked)} className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500" />
+                        Selecionar todos os lançamentos em aberto
+                      </label>
+                      <span className="shrink-0 font-bold text-blue-700 dark:text-blue-300">Selecionado: R$ {formatBRL(totalSelected)}</span>
+                    </div>
+                  )}
                   <div className="space-y-2 mb-4">
-                    {filteredItems.map((item: any, idx: number) => (
-                      <div key={idx} className={`flex justify-between items-center text-sm p-2 rounded-lg ${item.paid ? 'bg-gray-50 dark:bg-gray-900/50 opacity-60' : 'bg-blue-50/30 dark:bg-blue-900/20'}`}>
+                    {filteredItems.map((item: any) => (
+                      <div key={collectionItemKey(name, item)} className={`flex justify-between items-center text-sm p-2 rounded-lg ${item.paid ? 'bg-gray-50 dark:bg-gray-900/50 opacity-60' : 'bg-blue-50/30 dark:bg-blue-900/20'}`}>
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <input 
-                            type="checkbox" 
-                            checked={item.paid} 
-                            onChange={() => toggleSplitPaid(item.txId, item.splitIndex, item.paid)}
-                            className="w-4 h-4 text-green-600 dark:text-green-500 rounded border-gray-300 dark:border-gray-600 focus:ring-green-500 cursor-pointer flex-shrink-0"
-                          />
+                          {item.paid ? (
+                            <button type="button" onClick={() => toggleSplitPaid(item.txId, item.splitIndex, true)} title="Desfazer pagamento" aria-label={`Desfazer pagamento de ${item.desc}`} className="flex shrink-0 items-center gap-1 rounded px-1.5 py-1 text-[10px] font-semibold text-green-700 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/30">
+                              <Icons.Check size={14} /> Pago
+                            </button>
+                          ) : (
+                            <input type="checkbox" checked={!!selectedCollectionItems[collectionItemKey(name, item)]} onChange={() => toggleCollectionItemSelection(name, item)} aria-label={`Selecionar ${item.desc}`} className="w-4 h-4 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 cursor-pointer flex-shrink-0" />
+                          )}
                           <span className={`truncate ${item.paid ? 'line-through text-gray-500 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200 font-medium'}`}>
                             {item.desc}
                           </span>
@@ -1972,14 +2022,14 @@ export default function FinanceApp() {
                   </div>
                   {!isAllPaid && (
                     <div className="flex gap-2">
-                       <button onClick={() => handleWhatsApp(name, filteredItems)} className="flex-1 bg-[#25D366] hover:bg-[#20b858] text-white py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors">
+                       <button type="button" onClick={() => handleWhatsApp(name, selectedItems.length > 0 ? selectedItems : filteredItems)} className="flex-1 bg-[#25D366] hover:bg-[#20b858] text-white py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors">
                          <Icons.Message size={20} /> Cobrar
                        </button>
-                       <button onClick={() => openQrCode(name, filteredItems)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors">
+                       <button type="button" onClick={() => openQrCode(name, selectedItems.length > 0 ? selectedItems : filteredItems)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors">
                           <Icons.QrCode size={20} />
                        </button>
-                       <button onClick={() => handleMarkPersonPaid(name, filteredItems)} className="bg-green-600 hover:bg-green-700 text-white px-3 py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors text-xs">
-                          <Icons.Check size={18} /> Marcar tudo como pago
+                       <button type="button" disabled={selectedItems.length === 0} onClick={() => handleMarkPersonPaid(name, selectedItems)} className="bg-green-600 hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 text-white px-3 py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors text-xs">
+                          <Icons.Check size={18} /> Efetivar
                        </button>
                     </div>
                   )}
