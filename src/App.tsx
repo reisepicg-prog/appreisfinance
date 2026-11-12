@@ -1885,8 +1885,8 @@ export default function FinanceApp() {
         .forEach(([dueDate, dueItems]) => {
           const dueTotal = dueItems.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0);
           const itemSummary = dueItems.map((item: any) => `${item.desc}: R$ ${formatBRL(item.amount)}`).join(' | ');
-          text += `*Venc: ${formatLocalDate(dueDate)} - Total: R$ ${formatBRL(dueTotal)}*\\n`;
-          text += `-- ${itemSummary}\\n\\n`;
+          text += `*Venc: ${formatLocalDate(dueDate)} - Total: R$ ${formatBRL(dueTotal)}*\n`;
+          text += `-- ${itemSummary}\n\n`;
         });
       text += `*Total a pagar: R$ ${formatBRL(total)}*`;
 
