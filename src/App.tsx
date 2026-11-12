@@ -1873,14 +1873,14 @@ export default function FinanceApp() {
       if (unpaidItems.length === 0) return;
 
       const total = unpaidItems.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-      const itemsByDueDate = unpaidItems.reduce((groups: Record<string, any[]>, item: any) => {
+      const itemsByDueDate = unpaidItems.reduce<Record<string, any[]>>((groups, item: any) => {
         const dueDate = String(item.date || '');
         if (!groups[dueDate]) groups[dueDate] = [];
         groups[dueDate].push(item);
         return groups;
       }, {});
       let text = `Olá, aqui é o resumo das suas contas comigo:\n\n`;
-      Object.entries(itemsByDueDate)
+      (Object.entries(itemsByDueDate) as [string, any[]][])
         .sort(([dateA], [dateB]) => parseLocalDate(dateA).getTime() - parseLocalDate(dateB).getTime())
         .forEach(([dueDate, dueItems]) => {
           const dueTotal = dueItems.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0);
