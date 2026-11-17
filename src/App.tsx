@@ -2117,6 +2117,28 @@ export default function FinanceApp() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastSync, setLastSync] = useState('');
     const [filterBroker, setFilterBroker] = useState('Geral');
+    const [portfolioManagerOpen, setPortfolioManagerOpen] = useState(false);
+    const [portfolioManagerSection, setPortfolioManagerSection] = useState('portfolio');
+    const [portfolioMetric, setPortfolioMetric] = useState('market');
+    const [assetMetadata, setAssetMetadata] = useState<any>({});
+    const [dividendStatus, setDividendStatus] = useState('');
+    const [isRefreshingDividends, setIsRefreshingDividends] = useState(false);
+    const [isSavingProceed, setIsSavingProceed] = useState(false);
+    const [confirmProceed, setConfirmProceed] = useState<any>(null);
+    const [confirmProceedAmount, setConfirmProceedAmount] = useState('');
+    const [confirmProceedDate, setConfirmProceedDate] = useState('');
+    const [confirmProceedAccount, setConfirmProceedAccount] = useState('');
+    const [manualProceedOpen, setManualProceedOpen] = useState(false);
+    const [manualProceedTicker, setManualProceedTicker] = useState('');
+    const [manualProceedLabel, setManualProceedLabel] = useState('Rendimento');
+    const [manualProceedAmount, setManualProceedAmount] = useState('');
+    const [manualProceedDate, setManualProceedDate] = useState('');
+    const [manualProceedAccount, setManualProceedAccount] = useState('');
+    const [selectedProceedsMonth, setSelectedProceedsMonth] = useState(() => {
+      const today = new Date();
+      return String(today.getFullYear()) + '-' + String(today.getMonth() + 1).padStart(2, '0');
+    });
+
     
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [sellingAsset, setSellingAsset] = useState<any>(null);
@@ -2147,6 +2169,294 @@ export default function FinanceApp() {
       return () => { document.body.style.overflow = 'auto'; };
     }, [isAddOpen, editingAsset, sellingAsset]);
 
+
+    const bankAccountsForProceeds = cards.filter((card: any) => card.brand === 'Conta/Pix');
+    const todayLocalString = () => {
+      const today = new Date();
+      return String(today.getFullYear()) + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    };
+    const getProductTypeLabel = (ticker: string, savedType?: string, metadata: any = assetMetadata) => {
+      const raw = String(metadata?.[ticker]?.assetType || '').toLowerCase();
+      if (raw === 'fii' || raw.includes('fii')) return 'FII';
+      if (raw === 'etf') return 'ETF';
+      if (raw === 'unit') return 'Unit';
+      if (raw === 'bdr') return 'BDR';
+      if (raw === 'fi-infra') return 'FI-Infra';
+      if (raw === 'fi-agro') return 'FIAGRO';
+      if (raw === 'fip') return 'FIP';
+      if (raw === 'fidc') return 'FIDC';
+      if (raw === 'stock') return 'Ação';
+      const saved = String(savedType || '').toLowerCase();
+      if (saved.includes('fii')) return 'FII';
+      if (saved.includes('etf')) return 'ETF';
+      if (saved.includes('unit')) return 'Unit';
+      if (saved.includes('bdr')) return 'BDR';
+      if (saved.includes('infra')) return 'FI-Infra';
+      if (saved.includes('fiagro')) return 'FIAGRO';
+      if (saved.includes('ação') || saved.includes('acao') || saved.includes('stock')) return 'Ação';
+      return 'Não classificado';
+    };
+    const getAssetClassLabel = (productType: string) => {
+      if (['Ação', 'ETF', 'BDR', 'Unit'].includes(productType)) return 'Renda variável';
+      if (['FII', 'FI-Infra', 'FIAGRO', 'FIP', 'FIDC'].includes(productType)) return 'Fundos';
+      return 'Outros';
+    };
+    const buildBreakdown = (items: any[], labelFor: (item: any) => string, valueFor: (item: any) => number) => {
+      const totals: any = {};
+      items.forEach(item => {
+        const label = labelFor(item) || 'Não classificado';
+        totals[label] = (totals[label] || 0) + (Number(valueFor(item)) || 0);
+      });
+      return Object.keys(totals).map(label => ({ label, value: Number(totals[label]) }))
+        .filter(item => item.value > 0)
+        .sort((a, b) => b.value - a.value);
+    };
+    const portfolioMetricValue = (lot: any) => {
+      if (portfolioMetric === 'quantity') return Number(lot.quantity) || 0;
+      if (portfolioMetric === 'invested') return (Number(lot.quantity) || 0) * (Number(lot.unitPrice) || 0);
+      return (Number(lot.quantity) || 0) * (Number(prices[lot.ticker]) || Number(lot.unitPrice) || 0);
+    };
+    const loadAssetMetadata = async (force = false) => {
+      const symbols = Array.from(new Set(investments.map((item: any) => String(item.ticker || '').toUpperCase()).filter(Boolean))) as string[];
+      if (!symbols.length) return {};
+      const cacheKey = 'brapi_asset_info_' + symbols.slice().sort().join('_');
+      let cached: any = {};
+      try { cached = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch { cached = {}; }
+      if (!force && cached.timestamp && Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
+        setAssetMetadata(cached.assets || {});
+        return cached.assets || {};
+      }
+      try {
+        const result: any = {};
+        for (let i = 0; i < symbols.length; i += 30) {
+          const chunk = symbols.slice(i, i + 30);
+          const response = await fetch('/api/asset-info?symbols=' + encodeURIComponent(chunk.join(',')));
+          const data = await response.json();
+          if (!response.ok) {
+            if (response.status === 401) throw new Error('Token BRAPI_TOKEN inválido');
+            if (response.status === 403) throw new Error('Plano da BrAPI sem acesso ao catálogo detalhado');
+            if (response.status === 429) throw new Error('Limite de consultas BrAPI atingido');
+            throw new Error('Não foi possível classificar alguns ativos');
+          }
+          Object.assign(result, data.assets || {});
+        }
+        setAssetMetadata(result);
+        localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), assets: result }));
+        return result;
+      } catch (error: any) {
+        setDividendStatus(error.message || 'Não foi possível atualizar a classificação dos ativos.');
+        return cached.assets || {};
+      }
+    };
+    const refreshDividendCalendar = async (force = false) => {
+      if (!user || !investments.length) {
+        setDividendStatus('Cadastre ativos para consultar o calendário.');
+        return false;
+      }
+      setIsRefreshingDividends(true);
+      setDividendStatus('Consultando proventos de ações...');
+      try {
+        let metadata = assetMetadata;
+        if (!Object.keys(metadata).length) metadata = await loadAssetMetadata(false);
+        const eligibleTypes = ['Ação', 'Unit', 'BDR'];
+        const symbols = Array.from(new Set(investments
+          .filter((item: any) => eligibleTypes.includes(getProductTypeLabel(String(item.ticker || '').toUpperCase(), item.type, metadata)))
+          .map((item: any) => String(item.ticker || '').toUpperCase())
+          .filter(Boolean))) as string[];
+        if (!symbols.length) {
+          setDividendStatus('Não há ações, Units ou BDRs classificados para consulta automática. Proventos de FIIs podem ser cadastrados manualmente.');
+          return false;
+        }
+        const today = todayLocalString();
+        const end = new Date();
+        end.setDate(end.getDate() + 365);
+        const endDate = String(end.getFullYear()) + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0');
+        const incoming: any[] = [];
+        for (let i = 0; i < symbols.length; i += 10) {
+          const chunk = symbols.slice(i, i + 10);
+          const query = '/api/dividends?symbols=' + encodeURIComponent(chunk.join(',')) + '&startDate=' + today + '&endDate=' + endDate;
+          const response = await fetch(query);
+          const data = await response.json();
+          if (!response.ok) {
+            if (response.status === 401) throw new Error('Token BRAPI_TOKEN inválido.');
+            if (response.status === 403) throw new Error('O plano atual da BrAPI não inclui dividendos de ações. A atualização do calendário automático requer um plano com esse endpoint. Proventos de FIIs podem ser registrados manualmente.');
+            if (response.status === 429) throw new Error('Limite de consultas da BrAPI atingido. Tente novamente mais tarde.');
+            if (response.status === 404) continue;
+            throw new Error('Não foi possível consultar os proventos agora.');
+          }
+          incoming.push(...(Array.isArray(data.events) ? data.events : []));
+        }
+        const saves: Promise<any>[] = [];
+        incoming.forEach((event: any) => {
+          const ticker = String(event.ticker || '').toUpperCase();
+          const eventKey = ticker + '_' + String(event.approvedOn || event.paymentDate || event.lastDatePrior || 'evento') + '_' + String(event.label || 'provento') + '_' + String(event.rate || 0);
+          const eventId = eventKey.replace(/[^A-Za-z0-9_-]/g, '_');
+          const existing = investmentProceeds.find((item: any) => item.id === eventId);
+          if (existing?.status === 'received') return;
+          const quantity = investments.filter((item: any) => String(item.ticker || '').toUpperCase() === ticker)
+            .reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
+          const estimatedAmount = (Number(event.rate) || 0) * quantity;
+          const eventRef = doc(db, 'users', user.uid, 'investmentProceeds', eventId);
+          saves.push(setDoc(eventRef, {
+            id: eventId,
+            ticker,
+            label: event.label || 'Provento',
+            rate: Number(event.rate) || 0,
+            quantitySnapshot: quantity,
+            estimatedAmount,
+            paymentDate: event.paymentDate || '',
+            lastDatePrior: event.lastDatePrior || '',
+            exDate: event.exDate || '',
+            approvedOn: event.approvedOn || '',
+            relatedTo: event.relatedTo || '',
+            verified: event.verified === true,
+            paymentDateIsDeadline: event.paymentDateIsDeadline === true,
+            remarks: event.remarks || '',
+            source: 'brapi',
+            status: 'pending',
+            updatedAt: new Date().toISOString()
+          }, { merge: true }));
+        });
+        await Promise.all(saves);
+        setDividendStatus(incoming.length
+          ? 'Calendário atualizado. Os valores são estimativas; confirme o valor efetivamente recebido antes de lançar a receita.'
+          : 'Nenhum pagamento de ações encontrado para os próximos 12 meses. Proventos de FIIs podem ser cadastrados manualmente.');
+        return true;
+      } catch (error: any) {
+        setDividendStatus(error.message || 'Erro ao consultar o calendário de proventos.');
+        return false;
+      } finally {
+        setIsRefreshingDividends(false);
+      }
+    };
+    useEffect(() => {
+      if (!portfolioManagerOpen || portfolioManagerSection !== 'proceeds' || !investments.length || isRefreshingDividends) return;
+      const cacheKey = 'brapi_dividend_sync_' + investments.map((item: any) => String(item.ticker || '').toUpperCase()).sort().join('_');
+      const lastSync = Number(localStorage.getItem(cacheKey) || 0);
+      if (lastSync && Date.now() - lastSync < 6 * 60 * 60 * 1000) return;
+      refreshDividendCalendar(false).then(success => {
+        if (success) localStorage.setItem(cacheKey, String(Date.now()));
+      });
+    }, [portfolioManagerOpen, portfolioManagerSection, investments.length, isRefreshingDividends]);
+    const startConfirmProceed = (proceed: any) => {
+      const defaultAccount = cards.find((card: any) => card.brand === 'Conta/Pix' && card.isDefaultAccount) || bankAccountsForProceeds[0];
+      setConfirmProceed(proceed);
+      setConfirmProceedAmount(formatCurrencyValueForEntry(Number(proceed.estimatedAmount) || 0, currencyMaskEnabled));
+      setConfirmProceedDate(proceed.paymentDate || todayLocalString());
+      setConfirmProceedAccount(defaultAccount?.id || '');
+    };
+    const handleConfirmInvestmentProceed = async (e: any) => {
+      e.preventDefault();
+      if (!user || !confirmProceed || !confirmProceedAccount || !confirmProceedDate) return;
+      const actualAmount = parseCurrencyToNumber(confirmProceedAmount, currencyMaskEnabled);
+      const account = bankAccountsForProceeds.find((item: any) => item.id === confirmProceedAccount);
+      if (!account || actualAmount <= 0) return;
+      setIsSavingProceed(true);
+      try {
+        const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
+        const proceedRef = doc(db, 'users', user.uid, 'investmentProceeds', confirmProceed.id);
+        const batch = writeBatch(db);
+        const description = 'Provento ' + confirmProceed.ticker + ' - ' + confirmProceed.label;
+        batch.set(transactionRef, {
+          type: 'income',
+          desc: description,
+          category: 'Investimentos',
+          observation: 'Provento confirmado pelo usuário no Gerenciar Carteira.',
+          totalAmount: actualAmount,
+          myAmount: actualAmount,
+          purchaseDate: confirmProceedDate,
+          date: confirmProceedDate,
+          method: 'Conta / Pix',
+          methodId: 'pix',
+          splits: [],
+          groupId: 'investment-proceed-' + confirmProceed.id,
+          status: 'paid',
+          settlementAccountId: account.id,
+          isInvestmentIncome: true,
+          investmentIncomeId: confirmProceed.id,
+          createdAt: new Date().toISOString()
+        });
+        batch.update(proceedRef, {
+          status: 'received',
+          amountReceived: actualAmount,
+          receivedDate: confirmProceedDate,
+          receivedAccountId: account.id,
+          transactionId: transactionRef.id,
+          confirmedAt: new Date().toISOString()
+        });
+        await batch.commit();
+        setConfirmProceed(null);
+      } catch (error) {
+        console.error('Erro ao confirmar provento', error);
+        setDividendStatus('Não foi possível efetivar o provento. Tente novamente.');
+      } finally {
+        setIsSavingProceed(false);
+      }
+    };
+    const handleSaveManualProceed = async (e: any) => {
+      e.preventDefault();
+      if (!user || !manualProceedAccount || !manualProceedDate) return;
+      const ticker = manualProceedTicker.trim().toUpperCase();
+      const amount = parseCurrencyToNumber(manualProceedAmount, currencyMaskEnabled);
+      const tickerPattern = /^[A-Z0-9]{4}[0-9]{1,2}F?$/;
+      const account = bankAccountsForProceeds.find((item: any) => item.id === manualProceedAccount);
+      if (!tickerPattern.test(ticker) || amount <= 0 || !account) {
+        setDividendStatus('Informe um ticker válido, valor recebido e conta bancária.');
+        return;
+      }
+      setIsSavingProceed(true);
+      try {
+        const proceedRef = doc(collection(db, 'users', user.uid, 'investmentProceeds'));
+        const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
+        const batch = writeBatch(db);
+        const description = 'Provento ' + ticker + ' - ' + manualProceedLabel;
+        batch.set(proceedRef, {
+          id: proceedRef.id,
+          ticker,
+          label: manualProceedLabel,
+          source: 'manual',
+          status: 'received',
+          paymentDate: manualProceedDate,
+          receivedDate: manualProceedDate,
+          amountReceived: amount,
+          receivedAccountId: account.id,
+          transactionId: transactionRef.id,
+          createdAt: new Date().toISOString(),
+          confirmedAt: new Date().toISOString()
+        });
+        batch.set(transactionRef, {
+          type: 'income',
+          desc: description,
+          category: 'Investimentos',
+          observation: 'Recebimento de provento cadastrado manualmente.',
+          totalAmount: amount,
+          myAmount: amount,
+          purchaseDate: manualProceedDate,
+          date: manualProceedDate,
+          method: 'Conta / Pix',
+          methodId: 'pix',
+          splits: [],
+          groupId: 'investment-proceed-' + proceedRef.id,
+          status: 'paid',
+          settlementAccountId: account.id,
+          isInvestmentIncome: true,
+          investmentIncomeId: proceedRef.id,
+          createdAt: new Date().toISOString()
+        });
+        await batch.commit();
+        setManualProceedOpen(false);
+        setManualProceedTicker('');
+        setManualProceedAmount('');
+        setManualProceedLabel('Rendimento');
+        setDividendStatus('Provento cadastrado e incluído nas receitas da conta selecionada.');
+      } catch (error) {
+        console.error('Erro ao cadastrar provento', error);
+        setDividendStatus('Não foi possível cadastrar o provento.');
+      } finally {
+        setIsSavingProceed(false);
+      }
+    };
+
     const investmentsToRender = filterBroker === 'Geral' ? investments : investments.filter(inv => inv.broker === filterBroker);
 
     const groupedInvestments = Object.values(investmentsToRender.reduce((acc: any, inv: any) => {
@@ -2162,6 +2472,10 @@ export default function FinanceApp() {
       return acc;
     }, {})).map((g: any) => {
       g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
+      g.productType = getProductTypeLabel(g.ticker, g.type);
+      g.assetClass = getAssetClassLabel(g.productType);
+      g.sector = assetMetadata?.[g.ticker]?.sector || '';
+      g.type = g.productType;
       g.lots.sort((a: any, b: any) => parseLocalDate(b.buyDate).getTime() - parseLocalDate(a.buyDate).getTime());
       return g;
     }).sort((a: any, b: any) =>
@@ -2389,6 +2703,65 @@ export default function FinanceApp() {
          profit: totalMkt - totalInv
       };
     });
+
+
+    const portfolioBreakdowns = {
+      broker: buildBreakdown(investments, (lot: any) => lot.broker || 'Principal', portfolioMetricValue),
+      product: buildBreakdown(investments, (lot: any) => getProductTypeLabel(String(lot.ticker || '').toUpperCase(), lot.type), portfolioMetricValue),
+      assetClass: buildBreakdown(investments, (lot: any) => getAssetClassLabel(getProductTypeLabel(String(lot.ticker || '').toUpperCase(), lot.type)), portfolioMetricValue),
+      ticker: buildBreakdown(investments, (lot: any) => String(lot.ticker || '').toUpperCase(), portfolioMetricValue)
+    };
+    const confirmedProceeds = investmentProceeds.filter((item: any) => item.status === 'received');
+    const proceedsByTicker = buildBreakdown(confirmedProceeds, (item: any) => item.ticker || 'Manual', (item: any) => Number(item.amountReceived) || 0);
+    const sixMonthKeys = Array.from({ length: 6 }, (_, index) => {
+      const month = new Date();
+      month.setDate(1);
+      month.setMonth(month.getMonth() - 5 + index);
+      return String(month.getFullYear()) + '-' + String(month.getMonth() + 1).padStart(2, '0');
+    });
+    const monthlyProceeds = sixMonthKeys.map(key => ({
+      key,
+      label: new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+      amount: confirmedProceeds.filter((item: any) => String(item.receivedDate || '').startsWith(key))
+        .reduce((sum: number, item: any) => sum + (Number(item.amountReceived) || 0), 0)
+    }));
+    const maxMonthlyProceed = Math.max(0, ...monthlyProceeds.map(item => item.amount));
+    const proceedsForSelectedMonth = investmentProceeds
+      .filter((item: any) => String(item.paymentDate || item.receivedDate || '').startsWith(selectedProceedsMonth))
+      .sort((a: any, b: any) => String(a.paymentDate || a.receivedDate || '').localeCompare(String(b.paymentDate || b.receivedDate || '')));
+    const renderBreakdownChart = (title: string, items: any[]) => {
+      const colors = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#64748b'];
+      const total = items.reduce((sum: number, item: any) => sum + (Number(item.value) || 0), 0);
+      let offset = 0;
+      const circumference = 2 * Math.PI * 38;
+      const segments = items.map((item: any, index: number) => {
+        const length = total > 0 ? (Number(item.value) / total) * circumference : 0;
+        const segment = <circle key={item.label} cx="50" cy="50" r="38" fill="transparent" stroke={colors[index % colors.length]} strokeWidth="15" strokeDasharray={length + ' ' + (circumference - length)} strokeDashoffset={-offset} />;
+        offset += length;
+        return segment;
+      });
+      return (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+          <h4 className="mb-3 text-sm font-bold text-gray-800 dark:text-gray-100">{title}</h4>
+          {!items.length ? <p className="text-xs text-gray-500 dark:text-gray-400">Sem dados para exibir.</p> : (
+            <div className="flex items-center gap-3">
+              <svg viewBox="0 0 100 100" className="h-28 w-28 shrink-0 -rotate-90">
+                <circle cx="50" cy="50" r="38" fill="transparent" stroke="currentColor" className="text-gray-100 dark:text-gray-700" strokeWidth="15" />
+                {segments}
+              </svg>
+              <div className="max-h-32 min-w-0 flex-1 space-y-1 overflow-y-auto">
+                {items.map((item: any, index: number) => (
+                  <div key={item.label} className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="flex min-w-0 items-center gap-1.5 text-gray-600 dark:text-gray-300"><i className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} /> <span className="truncate">{item.label}</span></span>
+                    <span className="shrink-0 font-semibold text-gray-800 dark:text-gray-100">{portfolioMetric === 'quantity' ? formatBRL(item.value) : 'R$ ' + formatBRL(item.value)} <span className="font-normal text-gray-400">({total ? formatBRL(item.value / total * 100) : '0'}%)</span></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
 
     return (
       <div className="p-4 space-y-4 pb-28 animate-fadeIn">
