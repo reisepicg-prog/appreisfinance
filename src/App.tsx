@@ -383,7 +383,7 @@ export default function FinanceApp() {
   }, [user]);
 
   const handleDeleteDoc = async (id: string) => {
-    if (!user) return;
+    if (!user || !window.confirm('Deseja excluir este lançamento?')) return;
     try { await deleteDoc(doc(db, 'users', user.uid, 'transactions', id)); } 
     catch(e) { console.error(e) }
   };
