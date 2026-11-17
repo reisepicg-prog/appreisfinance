@@ -1,5 +1,5 @@
 const TICKER_PATTERN = /^[A-Z0-9]{4}[0-9]{1,2}F?$/;
-const DATE_PATTERN = /^\\d{4}-\\d{2}-\\d{2}$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
