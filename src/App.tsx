@@ -260,6 +260,7 @@ export default function FinanceApp() {
   const [cards, setCards] = useState<any[]>([]);
   const [investments, setInvestments] = useState<any[]>([]);
   const [salesHistory, setSalesHistory] = useState<any[]>([]);
+  const [investmentProceeds, setInvestmentProceeds] = useState<any[]>([]);
 
   const [user, setUser] = useState<any>(null);
   const [currencyMaskEnabled, setCurrencyMaskEnabled] = useState(true);
@@ -379,7 +380,12 @@ export default function FinanceApp() {
       setSalesHistory(sales);
     }, console.error);
 
-    return () => { unsubscribeTxs(); unsubscribeCards(); unsubscribeInv(); unsubscribeSales(); };
+    const proceedsQuery = query(collection(db, 'users', user.uid, 'investmentProceeds'));
+    const unsubscribeProceeds = onSnapshot(proceedsQuery, (snapshot) => {
+      setInvestmentProceeds(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, console.error);
+
+    return () => { unsubscribeTxs(); unsubscribeCards(); unsubscribeInv(); unsubscribeSales(); unsubscribeProceeds(); };
   }, [user]);
 
   const handleDeleteDoc = async (id: string) => {
@@ -2111,6 +2117,28 @@ export default function FinanceApp() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastSync, setLastSync] = useState('');
     const [filterBroker, setFilterBroker] = useState('Geral');
+    const [portfolioManagerOpen, setPortfolioManagerOpen] = useState(false);
+    const [portfolioManagerSection, setPortfolioManagerSection] = useState('portfolio');
+    const [portfolioMetric, setPortfolioMetric] = useState('market');
+    const [assetMetadata, setAssetMetadata] = useState<any>({});
+    const [dividendStatus, setDividendStatus] = useState('');
+    const [isRefreshingDividends, setIsRefreshingDividends] = useState(false);
+    const [isSavingProceed, setIsSavingProceed] = useState(false);
+    const [confirmProceed, setConfirmProceed] = useState<any>(null);
+    const [confirmProceedAmount, setConfirmProceedAmount] = useState('');
+    const [confirmProceedDate, setConfirmProceedDate] = useState('');
+    const [confirmProceedAccount, setConfirmProceedAccount] = useState('');
+    const [manualProceedOpen, setManualProceedOpen] = useState(false);
+    const [manualProceedTicker, setManualProceedTicker] = useState('');
+    const [manualProceedLabel, setManualProceedLabel] = useState('Rendimento');
+    const [manualProceedAmount, setManualProceedAmount] = useState('');
+    const [manualProceedDate, setManualProceedDate] = useState('');
+    const [manualProceedAccount, setManualProceedAccount] = useState('');
+    const [selectedProceedsMonth, setSelectedProceedsMonth] = useState(() => {
+      const today = new Date();
+      return String(today.getFullYear()) + '-' + String(today.getMonth() + 1).padStart(2, '0');
+    });
+
     
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [sellingAsset, setSellingAsset] = useState<any>(null);
@@ -2141,6 +2169,296 @@ export default function FinanceApp() {
       return () => { document.body.style.overflow = 'auto'; };
     }, [isAddOpen, editingAsset, sellingAsset]);
 
+
+    const bankAccountsForProceeds = cards.filter((card: any) => card.brand === 'Conta/Pix');
+    const todayLocalString = () => {
+      const today = new Date();
+      return String(today.getFullYear()) + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    };
+    const getProductTypeLabel = (ticker: string, savedType?: string, metadata: any = assetMetadata) => {
+      const raw = String(metadata?.[ticker]?.assetType || '').toLowerCase();
+      if (raw === 'fii' || raw.includes('fii')) return 'FII';
+      if (raw === 'etf') return 'ETF';
+      if (raw === 'unit') return 'Unit';
+      if (raw === 'bdr') return 'BDR';
+      if (raw === 'fi-infra') return 'FI-Infra';
+      if (raw === 'fi-agro') return 'FIAGRO';
+      if (raw === 'fip') return 'FIP';
+      if (raw === 'fidc') return 'FIDC';
+      if (raw === 'stock') return 'Ação';
+      const saved = String(savedType || '').toLowerCase();
+      if (saved.includes('fii')) return 'FII';
+      if (saved.includes('etf')) return 'ETF';
+      if (saved.includes('unit')) return 'Unit';
+      if (saved.includes('bdr')) return 'BDR';
+      if (saved.includes('infra')) return 'FI-Infra';
+      if (saved.includes('fiagro')) return 'FIAGRO';
+      if (saved.includes('ação') || saved.includes('acao') || saved.includes('stock')) return 'Ação';
+      return 'Não classificado';
+    };
+    const getAssetClassLabel = (productType: string) => {
+      if (['Ação', 'ETF', 'BDR', 'Unit'].includes(productType)) return 'Renda variável';
+      if (['FII', 'FI-Infra', 'FIAGRO', 'FIP', 'FIDC'].includes(productType)) return 'Fundos';
+      return 'Outros';
+    };
+    const buildBreakdown = (items: any[], labelFor: (item: any) => string, valueFor: (item: any) => number) => {
+      const totals: any = {};
+      items.forEach(item => {
+        const label = labelFor(item) || 'Não classificado';
+        totals[label] = (totals[label] || 0) + (Number(valueFor(item)) || 0);
+      });
+      return Object.keys(totals).map(label => ({ label, value: Number(totals[label]) }))
+        .filter(item => item.value > 0)
+        .sort((a, b) => b.value - a.value);
+    };
+    const portfolioMetricValue = (lot: any) => {
+      if (portfolioMetric === 'quantity') return Number(lot.quantity) || 0;
+      if (portfolioMetric === 'invested') return (Number(lot.quantity) || 0) * (Number(lot.unitPrice) || 0);
+      return (Number(lot.quantity) || 0) * (Number(prices[lot.ticker]) || Number(lot.unitPrice) || 0);
+    };
+    const loadAssetMetadata = async (force = false) => {
+      const symbols = Array.from(new Set(investments.map((item: any) => String(item.ticker || '').toUpperCase()).filter(Boolean))) as string[];
+      if (!symbols.length) return {};
+      const cacheKey = 'brapi_asset_info_' + symbols.slice().sort().join('_');
+      let cached: any = {};
+      try { cached = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch { cached = {}; }
+      if (!force && cached.timestamp && Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
+        setAssetMetadata(cached.assets || {});
+        return cached.assets || {};
+      }
+      try {
+        const result: any = {};
+        for (let i = 0; i < symbols.length; i += 30) {
+          const chunk = symbols.slice(i, i + 30);
+          const response = await fetch('/api/asset-info?symbols=' + encodeURIComponent(chunk.join(',')));
+          const data = await response.json();
+          if (!response.ok) {
+            if (response.status === 401) throw new Error('Token BRAPI_TOKEN inválido');
+            if (response.status === 403) throw new Error('Plano da BrAPI sem acesso ao catálogo detalhado');
+            if (response.status === 429) throw new Error('Limite de consultas BrAPI atingido');
+            throw new Error('Não foi possível classificar alguns ativos');
+          }
+          Object.assign(result, data.assets || {});
+        }
+        setAssetMetadata(result);
+        localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), assets: result }));
+        return result;
+      } catch (error: any) {
+        setDividendStatus(error.message || 'Não foi possível atualizar a classificação dos ativos.');
+        return cached.assets || {};
+      }
+    };
+    const refreshDividendCalendar = async (force = false) => {
+      if (!user || !investments.length) {
+        setDividendStatus('Cadastre ativos para consultar o calendário.');
+        return false;
+      }
+      setIsRefreshingDividends(true);
+      setDividendStatus('Consultando proventos de ações...');
+      try {
+        let metadata = assetMetadata;
+        if (!Object.keys(metadata).length) metadata = await loadAssetMetadata(false);
+        const eligibleTypes = ['Ação', 'Unit', 'BDR'];
+        const symbols = Array.from(new Set(investments
+          .filter((item: any) => eligibleTypes.includes(getProductTypeLabel(String(item.ticker || '').toUpperCase(), item.type, metadata)))
+          .map((item: any) => String(item.ticker || '').toUpperCase())
+          .filter(Boolean))) as string[];
+        if (!symbols.length) {
+          setDividendStatus('Não há ações, Units ou BDRs classificados para consulta automática. Proventos de FIIs podem ser cadastrados manualmente.');
+          return false;
+        }
+        const today = todayLocalString();
+        const end = new Date();
+        end.setDate(end.getDate() + 365);
+        const endDate = String(end.getFullYear()) + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0');
+        const incoming: any[] = [];
+        for (let i = 0; i < symbols.length; i += 10) {
+          const chunk = symbols.slice(i, i + 10);
+          const query = '/api/dividends?symbols=' + encodeURIComponent(chunk.join(',')) + '&startDate=' + today + '&endDate=' + endDate;
+          const response = await fetch(query);
+          const data = await response.json();
+          if (!response.ok) {
+            if (response.status === 401) throw new Error('Token BRAPI_TOKEN inválido.');
+            if (response.status === 403) throw new Error('O plano atual da BrAPI não inclui dividendos de ações. A atualização do calendário automático requer um plano com esse endpoint. Proventos de FIIs podem ser registrados manualmente.');
+            if (response.status === 429) throw new Error('Limite de consultas da BrAPI atingido. Tente novamente mais tarde.');
+            if (response.status === 404) continue;
+            throw new Error('Não foi possível consultar os proventos agora.');
+          }
+          incoming.push(...(Array.isArray(data.events) ? data.events : []));
+        }
+        const saves: Promise<any>[] = [];
+        incoming.forEach((event: any) => {
+          const ticker = String(event.ticker || '').toUpperCase();
+          const eventKey = ticker + '_' + String(event.approvedOn || event.paymentDate || event.lastDatePrior || 'evento') + '_' + String(event.label || 'provento') + '_' + String(event.rate || 0);
+          const eventId = eventKey.replace(/[^A-Za-z0-9_-]/g, '_');
+          const existing = investmentProceeds.find((item: any) => item.id === eventId);
+          if (existing?.status === 'received') return;
+          const quantity = investments.filter((item: any) => String(item.ticker || '').toUpperCase() === ticker)
+            .reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
+          const entitlementDate = String(event.lastDatePrior || event.exDate || '');
+          const canEstimateFromCurrentPosition = Boolean(entitlementDate && entitlementDate >= today);
+          const estimatedAmount = canEstimateFromCurrentPosition ? (Number(event.rate) || 0) * quantity : 0;
+          const eventRef = doc(db, 'users', user.uid, 'investmentProceeds', eventId);
+          saves.push(setDoc(eventRef, {
+            id: eventId,
+            ticker,
+            label: event.label || 'Provento',
+            rate: Number(event.rate) || 0,
+            quantitySnapshot: quantity,
+            estimatedAmount,
+            paymentDate: event.paymentDate || '',
+            lastDatePrior: event.lastDatePrior || '',
+            exDate: event.exDate || '',
+            approvedOn: event.approvedOn || '',
+            relatedTo: event.relatedTo || '',
+            verified: event.verified === true,
+            paymentDateIsDeadline: event.paymentDateIsDeadline === true,
+            remarks: event.remarks || '',
+            source: 'brapi',
+            status: 'pending',
+            updatedAt: new Date().toISOString()
+          }, { merge: true }));
+        });
+        await Promise.all(saves);
+        setDividendStatus(incoming.length
+          ? 'Calendário atualizado. Os valores são estimativas; confirme o valor efetivamente recebido antes de lançar a receita.'
+          : 'Nenhum pagamento de ações encontrado para os próximos 12 meses. Proventos de FIIs podem ser cadastrados manualmente.');
+        return true;
+      } catch (error: any) {
+        setDividendStatus(error.message || 'Erro ao consultar o calendário de proventos.');
+        return false;
+      } finally {
+        setIsRefreshingDividends(false);
+      }
+    };
+    useEffect(() => {
+      if (!portfolioManagerOpen || portfolioManagerSection !== 'proceeds' || !investments.length || isRefreshingDividends) return;
+      const cacheKey = 'brapi_dividend_sync_' + investments.map((item: any) => String(item.ticker || '').toUpperCase()).sort().join('_');
+      const lastSync = Number(localStorage.getItem(cacheKey) || 0);
+      if (lastSync && Date.now() - lastSync < 6 * 60 * 60 * 1000) return;
+      refreshDividendCalendar(false).then(success => {
+        if (success) localStorage.setItem(cacheKey, String(Date.now()));
+      });
+    }, [portfolioManagerOpen, portfolioManagerSection, investments.length]);
+    const startConfirmProceed = (proceed: any) => {
+      const defaultAccount = cards.find((card: any) => card.brand === 'Conta/Pix' && card.isDefaultAccount) || bankAccountsForProceeds[0];
+      setConfirmProceed(proceed);
+      setConfirmProceedAmount(formatCurrencyValueForEntry(Number(proceed.estimatedAmount) || 0, currencyMaskEnabled));
+      setConfirmProceedDate(proceed.paymentDate || todayLocalString());
+      setConfirmProceedAccount(defaultAccount?.id || '');
+    };
+    const handleConfirmInvestmentProceed = async (e: any) => {
+      e.preventDefault();
+      if (!user || !confirmProceed || !confirmProceedAccount || !confirmProceedDate) return;
+      const actualAmount = parseCurrencyToNumber(confirmProceedAmount, currencyMaskEnabled);
+      const account = bankAccountsForProceeds.find((item: any) => item.id === confirmProceedAccount);
+      if (!account || actualAmount <= 0) return;
+      setIsSavingProceed(true);
+      try {
+        const transactionRef = doc(db, 'users', user.uid, 'transactions', 'investment-proceed-' + confirmProceed.id);
+        const proceedRef = doc(db, 'users', user.uid, 'investmentProceeds', confirmProceed.id);
+        const batch = writeBatch(db);
+        const description = 'Provento ' + confirmProceed.ticker + ' - ' + confirmProceed.label;
+        batch.set(transactionRef, {
+          type: 'income',
+          desc: description,
+          category: 'Investimentos',
+          observation: 'Provento confirmado pelo usuário no Gerenciar Carteira.',
+          totalAmount: actualAmount,
+          myAmount: actualAmount,
+          purchaseDate: confirmProceedDate,
+          date: confirmProceedDate,
+          method: 'Conta / Pix',
+          methodId: 'pix',
+          splits: [],
+          groupId: 'investment-proceed-' + confirmProceed.id,
+          status: 'paid',
+          settlementAccountId: account.id,
+          isInvestmentIncome: true,
+          investmentIncomeId: confirmProceed.id,
+          createdAt: new Date().toISOString()
+        });
+        batch.update(proceedRef, {
+          status: 'received',
+          amountReceived: actualAmount,
+          receivedDate: confirmProceedDate,
+          receivedAccountId: account.id,
+          transactionId: transactionRef.id,
+          confirmedAt: new Date().toISOString()
+        });
+        await batch.commit();
+        setConfirmProceed(null);
+      } catch (error) {
+        console.error('Erro ao confirmar provento', error);
+        setDividendStatus('Não foi possível efetivar o provento. Tente novamente.');
+      } finally {
+        setIsSavingProceed(false);
+      }
+    };
+    const handleSaveManualProceed = async (e: any) => {
+      e.preventDefault();
+      if (!user || !manualProceedAccount || !manualProceedDate) return;
+      const ticker = manualProceedTicker.trim().toUpperCase();
+      const amount = parseCurrencyToNumber(manualProceedAmount, currencyMaskEnabled);
+      const tickerPattern = /^[A-Z0-9]{4}[0-9]{1,2}F?$/;
+      const account = bankAccountsForProceeds.find((item: any) => item.id === manualProceedAccount);
+      if (!tickerPattern.test(ticker) || amount <= 0 || !account) {
+        setDividendStatus('Informe um ticker válido, valor recebido e conta bancária.');
+        return;
+      }
+      setIsSavingProceed(true);
+      try {
+        const proceedRef = doc(collection(db, 'users', user.uid, 'investmentProceeds'));
+        const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
+        const batch = writeBatch(db);
+        const description = 'Provento ' + ticker + ' - ' + manualProceedLabel;
+        batch.set(proceedRef, {
+          id: proceedRef.id,
+          ticker,
+          label: manualProceedLabel,
+          source: 'manual',
+          status: 'received',
+          paymentDate: manualProceedDate,
+          receivedDate: manualProceedDate,
+          amountReceived: amount,
+          receivedAccountId: account.id,
+          transactionId: transactionRef.id,
+          createdAt: new Date().toISOString(),
+          confirmedAt: new Date().toISOString()
+        });
+        batch.set(transactionRef, {
+          type: 'income',
+          desc: description,
+          category: 'Investimentos',
+          observation: 'Recebimento de provento cadastrado manualmente.',
+          totalAmount: amount,
+          myAmount: amount,
+          purchaseDate: manualProceedDate,
+          date: manualProceedDate,
+          method: 'Conta / Pix',
+          methodId: 'pix',
+          splits: [],
+          groupId: 'investment-proceed-' + proceedRef.id,
+          status: 'paid',
+          settlementAccountId: account.id,
+          isInvestmentIncome: true,
+          investmentIncomeId: proceedRef.id,
+          createdAt: new Date().toISOString()
+        });
+        await batch.commit();
+        setManualProceedOpen(false);
+        setManualProceedTicker('');
+        setManualProceedAmount('');
+        setManualProceedLabel('Rendimento');
+        setDividendStatus('Provento cadastrado e incluído nas receitas da conta selecionada.');
+      } catch (error) {
+        console.error('Erro ao cadastrar provento', error);
+        setDividendStatus('Não foi possível cadastrar o provento.');
+      } finally {
+        setIsSavingProceed(false);
+      }
+    };
+
     const investmentsToRender = filterBroker === 'Geral' ? investments : investments.filter(inv => inv.broker === filterBroker);
 
     const groupedInvestments = Object.values(investmentsToRender.reduce((acc: any, inv: any) => {
@@ -2156,6 +2474,10 @@ export default function FinanceApp() {
       return acc;
     }, {})).map((g: any) => {
       g.averagePM = g.totalQuantity > 0 ? (g.totalInvested / g.totalQuantity) : 0;
+      g.productType = getProductTypeLabel(g.ticker, g.type);
+      g.assetClass = getAssetClassLabel(g.productType);
+      g.sector = assetMetadata?.[g.ticker]?.sector || '';
+      g.type = g.productType;
       g.lots.sort((a: any, b: any) => parseLocalDate(b.buyDate).getTime() - parseLocalDate(a.buyDate).getTime());
       return g;
     }).sort((a: any, b: any) =>
@@ -2384,6 +2706,65 @@ export default function FinanceApp() {
       };
     });
 
+
+    const portfolioBreakdowns = {
+      broker: buildBreakdown(investments, (lot: any) => lot.broker || 'Principal', portfolioMetricValue),
+      product: buildBreakdown(investments, (lot: any) => getProductTypeLabel(String(lot.ticker || '').toUpperCase(), lot.type), portfolioMetricValue),
+      assetClass: buildBreakdown(investments, (lot: any) => getAssetClassLabel(getProductTypeLabel(String(lot.ticker || '').toUpperCase(), lot.type)), portfolioMetricValue),
+      ticker: buildBreakdown(investments, (lot: any) => String(lot.ticker || '').toUpperCase(), portfolioMetricValue)
+    };
+    const confirmedProceeds = investmentProceeds.filter((item: any) => item.status === 'received');
+    const proceedsByTicker = buildBreakdown(confirmedProceeds, (item: any) => item.ticker || 'Manual', (item: any) => Number(item.amountReceived) || 0);
+    const sixMonthKeys = Array.from({ length: 6 }, (_, index) => {
+      const month = new Date();
+      month.setDate(1);
+      month.setMonth(month.getMonth() - 5 + index);
+      return String(month.getFullYear()) + '-' + String(month.getMonth() + 1).padStart(2, '0');
+    });
+    const monthlyProceeds = sixMonthKeys.map(key => ({
+      key,
+      label: new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+      amount: confirmedProceeds.filter((item: any) => String(item.receivedDate || '').startsWith(key))
+        .reduce((sum: number, item: any) => sum + (Number(item.amountReceived) || 0), 0)
+    }));
+    const maxMonthlyProceed = Math.max(0, ...monthlyProceeds.map(item => item.amount));
+    const proceedsForSelectedMonth = investmentProceeds
+      .filter((item: any) => String(item.paymentDate || item.receivedDate || '').startsWith(selectedProceedsMonth))
+      .sort((a: any, b: any) => String(a.paymentDate || a.receivedDate || '').localeCompare(String(b.paymentDate || b.receivedDate || '')));
+    const renderBreakdownChart = (title: string, items: any[]) => {
+      const colors = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#64748b'];
+      const total = items.reduce((sum: number, item: any) => sum + (Number(item.value) || 0), 0);
+      let offset = 0;
+      const circumference = 2 * Math.PI * 38;
+      const segments = items.map((item: any, index: number) => {
+        const length = total > 0 ? (Number(item.value) / total) * circumference : 0;
+        const segment = <circle key={item.label} cx="50" cy="50" r="38" fill="transparent" stroke={colors[index % colors.length]} strokeWidth="15" strokeDasharray={length + ' ' + (circumference - length)} strokeDashoffset={-offset} />;
+        offset += length;
+        return segment;
+      });
+      return (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+          <h4 className="mb-3 text-sm font-bold text-gray-800 dark:text-gray-100">{title}</h4>
+          {!items.length ? <p className="text-xs text-gray-500 dark:text-gray-400">Sem dados para exibir.</p> : (
+            <div className="flex items-center gap-3">
+              <svg viewBox="0 0 100 100" className="h-28 w-28 shrink-0 -rotate-90">
+                <circle cx="50" cy="50" r="38" fill="transparent" stroke="currentColor" className="text-gray-100 dark:text-gray-700" strokeWidth="15" />
+                {segments}
+              </svg>
+              <div className="max-h-32 min-w-0 flex-1 space-y-1 overflow-y-auto">
+                {items.map((item: any, index: number) => (
+                  <div key={item.label} className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="flex min-w-0 items-center gap-1.5 text-gray-600 dark:text-gray-300"><i className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} /> <span className="truncate">{item.label}</span></span>
+                    <span className="shrink-0 font-semibold text-gray-800 dark:text-gray-100">{portfolioMetric === 'quantity' ? formatBRL(item.value) : 'R$ ' + formatBRL(item.value)} <span className="font-normal text-gray-400">({total ? formatBRL(item.value / total * 100) : '0'}%)</span></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div className="p-4 space-y-4 pb-28 animate-fadeIn">
         
@@ -2421,11 +2802,16 @@ export default function FinanceApp() {
           </p>
         </div>
 
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">Ativos em Carteira</h3>
-          <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(filterBroker !== 'Geral' ? filterBroker : ''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
-            <Icons.Plus size={16}/> Novo Ativo
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => { setPortfolioManagerSection('portfolio'); setPortfolioManagerOpen(true); loadAssetMetadata(false); }} className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-900/70 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors">
+              Gerenciar Carteira
+            </button>
+            <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(filterBroker !== 'Geral' ? filterBroker : ''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
+              <Icons.Plus size={16}/> Novo Ativo
+            </button>
+          </div>
         </div>
 
         {groupedInvestments.length === 0 ? (
@@ -2524,6 +2910,217 @@ export default function FinanceApp() {
               </div>
             ))}
           </div>
+        )}
+
+
+        {portfolioManagerOpen && createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/60 p-2 dark:bg-black/80 sm:p-4">
+            <div role="dialog" aria-modal="true" className="my-auto max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-gray-200 bg-gray-50 p-4 shadow-2xl dark:border-gray-700 dark:bg-gray-900 sm:p-6">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Gerenciar Carteira</h3>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Classificação, composição e proventos dos ativos cadastrados.</p>
+                </div>
+                <button type="button" onClick={() => setPortfolioManagerOpen(false)} aria-label="Fechar Gerenciar Carteira" className="rounded-lg px-3 py-1 text-xl font-bold text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">×</button>
+              </div>
+              <div className="mb-5 flex gap-2 border-b border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={() => setPortfolioManagerSection('portfolio')} className={'border-b-2 px-3 py-2 text-sm font-semibold ' + (portfolioManagerSection === 'portfolio' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400')}>Composição da carteira</button>
+                <button type="button" onClick={() => setPortfolioManagerSection('proceeds')} className={'border-b-2 px-3 py-2 text-sm font-semibold ' + (portfolioManagerSection === 'proceeds' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400')}>Calendário de Proventos</button>
+              </div>
+
+              {portfolioManagerSection === 'portfolio' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="font-bold text-gray-800 dark:text-gray-100">Composição atual</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">A classificação vem do catálogo da BrAPI quando disponível; dados não reconhecidos ficam como “Não classificado”.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1 rounded-xl bg-gray-200 p-1 dark:bg-gray-800">
+                      <button type="button" onClick={() => setPortfolioMetric('market')} className={'rounded-lg px-2.5 py-1.5 text-xs font-semibold ' + (portfolioMetric === 'market' ? 'bg-white text-blue-700 shadow dark:bg-gray-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300')}>Valor atual</button>
+                      <button type="button" onClick={() => setPortfolioMetric('invested')} className={'rounded-lg px-2.5 py-1.5 text-xs font-semibold ' + (portfolioMetric === 'invested' ? 'bg-white text-blue-700 shadow dark:bg-gray-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300')}>Valor investido</button>
+                      <button type="button" onClick={() => setPortfolioMetric('quantity')} className={'rounded-lg px-2.5 py-1.5 text-xs font-semibold ' + (portfolioMetric === 'quantity' ? 'bg-white text-blue-700 shadow dark:bg-gray-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300')}>Quantidade</button>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {renderBreakdownChart('Ativos por corretora', portfolioBreakdowns.broker)}
+                    {renderBreakdownChart('Ativos por tipo de produto', portfolioBreakdowns.product)}
+                    {renderBreakdownChart('Ativos por classe', portfolioBreakdowns.assetClass)}
+                    {renderBreakdownChart('Composição por ativo', portfolioBreakdowns.ticker)}
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">O valor atual usa a cotação disponível; quando não há cotação, usa o preço médio cadastrado. Corretora e quantidade vêm dos registros de compra.</p>
+                </div>
+              )}
+
+              {portfolioManagerSection === 'proceeds' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-gray-800 dark:text-gray-100">Proventos</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Previsões não alteram o saldo. Uma receita só é criada quando você confirma o recebimento.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => refreshDividendCalendar(true)} disabled={isRefreshingDividends} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                        {isRefreshingDividends ? 'Atualizando...' : 'Atualizar calendário'}
+                      </button>
+                      <button type="button" onClick={() => {
+                        const defaultAccount = cards.find((card: any) => card.brand === 'Conta/Pix' && card.isDefaultAccount) || bankAccountsForProceeds[0];
+                        setManualProceedTicker('');
+                        setManualProceedLabel('Rendimento');
+                        setManualProceedAmount('');
+                        setManualProceedDate(todayLocalString());
+                        setManualProceedAccount(defaultAccount?.id || '');
+                        setManualProceedOpen(true);
+                      }} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">
+                        Registrar recebimento manual
+                      </button>
+                    </div>
+                  </div>
+                  {dividendStatus && <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-900/30 dark:text-blue-200">{dividendStatus}</div>}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                      <h5 className="mb-3 text-sm font-bold text-gray-800 dark:text-gray-100">Proventos confirmados • últimos 6 meses</h5>
+                      {monthlyProceeds.every(item => item.amount === 0) ? <p className="text-xs text-gray-500 dark:text-gray-400">Ainda não há proventos confirmados neste período.</p> : (
+                        <div className="flex h-44 items-end justify-around gap-2">
+                          {monthlyProceeds.map(item => {
+                            const height = maxMonthlyProceed > 0 ? Math.max(item.amount > 0 ? 8 : 0, item.amount / maxMonthlyProceed * 132) : 0;
+                            return (
+                              <div key={item.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                                <span className="text-[9px] text-gray-500 dark:text-gray-400">{item.amount > 0 ? 'R$ ' + formatBRL(item.amount) : ''}</span>
+                                <div className="w-full max-w-10 rounded-t-md bg-blue-500" style={{ height: height + 'px' }} />
+                                <span className="text-[10px] uppercase text-gray-500 dark:text-gray-400">{item.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    {renderBreakdownChart('Proventos recebidos por ativo', proceedsByTicker)}
+                  </div>
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <h5 className="text-sm font-bold text-gray-800 dark:text-gray-100">Calendário de Proventos</h5>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => {
+                          const parts = selectedProceedsMonth.split('-').map(Number);
+                          const month = new Date(parts[0], parts[1] - 2, 1);
+                          setSelectedProceedsMonth(String(month.getFullYear()) + '-' + String(month.getMonth() + 1).padStart(2, '0'));
+                        }} className="rounded-lg px-2 py-1 text-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">‹</button>
+                        <span className="min-w-28 text-center text-xs font-semibold uppercase text-gray-700 dark:text-gray-200">{new Date(Number(selectedProceedsMonth.slice(0, 4)), Number(selectedProceedsMonth.slice(5, 7)) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
+                        <button type="button" onClick={() => {
+                          const parts = selectedProceedsMonth.split('-').map(Number);
+                          const month = new Date(parts[0], parts[1], 1);
+                          setSelectedProceedsMonth(String(month.getFullYear()) + '-' + String(month.getMonth() + 1).padStart(2, '0'));
+                        }} className="rounded-lg px-2 py-1 text-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">›</button>
+                      </div>
+                    </div>
+                    {!proceedsForSelectedMonth.length ? (
+                      <p className="rounded-xl bg-gray-50 p-4 text-center text-xs text-gray-500 dark:bg-gray-900 dark:text-gray-400">Nenhum provento cadastrado para este mês. FIIs podem ser adicionados pelo botão “Registrar recebimento manual”.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {proceedsForSelectedMonth.map((proceed: any) => (
+                          <div key={proceed.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 p-3 dark:border-gray-700">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-800 dark:text-gray-100">{proceed.ticker} • {proceed.label}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {proceed.status === 'received' ? 'Recebido em ' + formatLocalDate(proceed.receivedDate || proceed.paymentDate) : (proceed.paymentDate ? 'Pagamento previsto para ' + formatLocalDate(proceed.paymentDate) : 'Data de pagamento não informada')}
+                                {proceed.source === 'brapi' && proceed.paymentDateIsDeadline ? ' • prazo máximo informado' : ''}
+                              </p>
+                              {proceed.status !== 'received' && proceed.estimatedAmount > 0 && <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">Estimativa usando a posição atual: R$ {formatBRL(proceed.estimatedAmount)}. Ela considera a quantidade cadastrada até a data-com; confira o crédito real antes de confirmar.</p>}
+                              {proceed.status !== 'received' && !(proceed.estimatedAmount > 0) && <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">Sem estimativa de quantidade elegível. Informe o valor efetivamente recebido ao confirmar.</p>}
+                              {proceed.source === 'brapi' && proceed.verified === false && <p className="text-[10px] text-gray-400">Evento ainda não verificado em documento pelo provedor.</p>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={'rounded-full px-2 py-1 text-[10px] font-bold ' + (proceed.status === 'received' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300')}>
+                                {proceed.status === 'received' ? 'Confirmado' : 'Previsto'}
+                              </span>
+                              {proceed.status !== 'received' && <button type="button" onClick={() => startConfirmProceed(proceed)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Confirmar recebimento</button>}
+                              {proceed.status === 'received' && <span className="text-xs font-bold text-gray-800 dark:text-gray-100">R$ {formatBRL(proceed.amountReceived || 0)}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {confirmProceed && createPortal(
+          <div className="fixed inset-0 z-[10002] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/70 p-3">
+            <form role="dialog" aria-modal="true" onSubmit={handleConfirmInvestmentProceed} className="my-auto max-h-[90vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100">Confirmar provento recebido</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{confirmProceed.ticker} • {confirmProceed.label}. Este passo registra a receita na conta escolhida.</p>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Valor realmente recebido</label>
+                <input required type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={confirmProceedAmount} onChange={e => setConfirmProceedAmount(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Data do crédito</label>
+                <input required type="date" value={confirmProceedDate} onChange={e => setConfirmProceedDate(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Conta em que recebeu</label>
+                <select required value={confirmProceedAccount} onChange={e => setConfirmProceedAccount(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                  <option value="">Selecione uma conta</option>
+                  {bankAccountsForProceeds.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setConfirmProceed(null)} className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">Cancelar</button>
+                <button type="submit" disabled={isSavingProceed || !bankAccountsForProceeds.length} className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white disabled:opacity-50">{isSavingProceed ? 'Salvando...' : 'Confirmar e efetivar'}</button>
+              </div>
+              {!bankAccountsForProceeds.length && <p className="text-xs text-red-600">Cadastre uma conta bancária antes de efetivar o recebimento.</p>}
+            </form>
+          </div>,
+          document.body
+        )}
+
+        {manualProceedOpen && createPortal(
+          <div className="fixed inset-0 z-[10002] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/70 p-3">
+            <form role="dialog" aria-modal="true" onSubmit={handleSaveManualProceed} className="my-auto max-h-[90vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100">Registrar provento recebido</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Use esta opção para FIIs ou eventos que não apareceram no calendário. Ao salvar, a receita é efetivada na conta selecionada.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Ticker</label>
+                  <input required maxLength={8} value={manualProceedTicker} onChange={e => setManualProceedTicker(e.target.value.toUpperCase())} placeholder="Ex.: MXRF11" className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 uppercase text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Tipo</label>
+                  <select value={manualProceedLabel} onChange={e => setManualProceedLabel(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option>Rendimento</option><option>Dividendo</option><option>JCP</option><option>Amortização</option><option>Outro provento</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Valor recebido</label>
+                  <input required type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={manualProceedAmount} onChange={e => setManualProceedAmount(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Data do crédito</label>
+                  <input required type="date" value={manualProceedDate} onChange={e => setManualProceedDate(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Conta do recebimento</label>
+                  <select required value={manualProceedAccount} onChange={e => setManualProceedAccount(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">Selecione uma conta</option>
+                    {bankAccountsForProceeds.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setManualProceedOpen(false)} className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">Cancelar</button>
+                <button type="submit" disabled={isSavingProceed || !bankAccountsForProceeds.length} className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white disabled:opacity-50">{isSavingProceed ? 'Salvando...' : 'Registrar como recebido'}</button>
+              </div>
+            </form>
+          </div>,
+          document.body
         )}
 
         {(isAddOpen || editingAsset) && createPortal(
@@ -3297,7 +3894,7 @@ export default function FinanceApp() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const handleExportJSON = () => {
-      const data = { transactions, cards, investments, salesHistory };
+      const data = { transactions, cards, investments, salesHistory, investmentProceeds };
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute("href", dataStr);
@@ -3320,6 +3917,7 @@ export default function FinanceApp() {
           if (data.transactions) for (const tx of data.transactions) await setDoc(doc(db, 'users', user.uid, 'transactions', tx.id), tx);
           if (data.investments) for (const inv of data.investments) await setDoc(doc(db, 'users', user.uid, 'investments', inv.id), inv);
           if (data.salesHistory) for (const sale of data.salesHistory) await setDoc(doc(db, 'users', user.uid, 'salesHistory', sale.id), sale);
+          if (data.investmentProceeds) for (const proceed of data.investmentProceeds) await setDoc(doc(db, 'users', user.uid, 'investmentProceeds', proceed.id), proceed);
           setImportMsg({ text: 'Backup restaurado com sucesso!', type: 'success' });
         } catch (err) { setImportMsg({ text: 'Erro ao importar.', type: 'error' }); } 
         finally { setIsProcessing(false); event.target.value = ''; }
