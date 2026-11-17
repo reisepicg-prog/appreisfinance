@@ -260,6 +260,7 @@ export default function FinanceApp() {
   const [cards, setCards] = useState<any[]>([]);
   const [investments, setInvestments] = useState<any[]>([]);
   const [salesHistory, setSalesHistory] = useState<any[]>([]);
+  const [investmentProceeds, setInvestmentProceeds] = useState<any[]>([]);
 
   const [user, setUser] = useState<any>(null);
   const [currencyMaskEnabled, setCurrencyMaskEnabled] = useState(true);
@@ -379,7 +380,12 @@ export default function FinanceApp() {
       setSalesHistory(sales);
     }, console.error);
 
-    return () => { unsubscribeTxs(); unsubscribeCards(); unsubscribeInv(); unsubscribeSales(); };
+    const proceedsQuery = query(collection(db, 'users', user.uid, 'investmentProceeds'));
+    const unsubscribeProceeds = onSnapshot(proceedsQuery, (snapshot) => {
+      setInvestmentProceeds(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, console.error);
+
+    return () => { unsubscribeTxs(); unsubscribeCards(); unsubscribeInv(); unsubscribeSales(); unsubscribeProceeds(); };
   }, [user]);
 
   const handleDeleteDoc = async (id: string) => {
@@ -3296,7 +3302,7 @@ export default function FinanceApp() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const handleExportJSON = () => {
-      const data = { transactions, cards, investments, salesHistory };
+      const data = { transactions, cards, investments, salesHistory, investmentProceeds };
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute("href", dataStr);
@@ -3319,6 +3325,7 @@ export default function FinanceApp() {
           if (data.transactions) for (const tx of data.transactions) await setDoc(doc(db, 'users', user.uid, 'transactions', tx.id), tx);
           if (data.investments) for (const inv of data.investments) await setDoc(doc(db, 'users', user.uid, 'investments', inv.id), inv);
           if (data.salesHistory) for (const sale of data.salesHistory) await setDoc(doc(db, 'users', user.uid, 'salesHistory', sale.id), sale);
+          if (data.investmentProceeds) for (const proceed of data.investmentProceeds) await setDoc(doc(db, 'users', user.uid, 'investmentProceeds', proceed.id), proceed);
           setImportMsg({ text: 'Backup restaurado com sucesso!', type: 'success' });
         } catch (err) { setImportMsg({ text: 'Erro ao importar.', type: 'error' }); } 
         finally { setIsProcessing(false); event.target.value = ''; }
