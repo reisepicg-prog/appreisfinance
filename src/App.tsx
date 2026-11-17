@@ -2355,7 +2355,7 @@ export default function FinanceApp() {
       if (!account || actualAmount <= 0) return;
       setIsSavingProceed(true);
       try {
-        const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
+        const transactionRef = doc(db, 'users', user.uid, 'transactions', 'investment-proceed-' + confirmProceed.id);
         const proceedRef = doc(db, 'users', user.uid, 'investmentProceeds', confirmProceed.id);
         const batch = writeBatch(db);
         const description = 'Provento ' + confirmProceed.ticker + ' - ' + confirmProceed.label;
