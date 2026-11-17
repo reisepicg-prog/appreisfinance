@@ -2295,7 +2295,9 @@ export default function FinanceApp() {
           if (existing?.status === 'received') return;
           const quantity = investments.filter((item: any) => String(item.ticker || '').toUpperCase() === ticker)
             .reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
-          const estimatedAmount = (Number(event.rate) || 0) * quantity;
+          const entitlementDate = String(event.lastDatePrior || event.exDate || '');
+          const canEstimateFromCurrentPosition = Boolean(entitlementDate && entitlementDate >= today);
+          const estimatedAmount = canEstimateFromCurrentPosition ? (Number(event.rate) || 0) * quantity : 0;
           const eventRef = doc(db, 'users', user.uid, 'investmentProceeds', eventId);
           saves.push(setDoc(eventRef, {
             id: eventId,
@@ -2337,7 +2339,7 @@ export default function FinanceApp() {
       refreshDividendCalendar(false).then(success => {
         if (success) localStorage.setItem(cacheKey, String(Date.now()));
       });
-    }, [portfolioManagerOpen, portfolioManagerSection, investments.length, isRefreshingDividends]);
+    }, [portfolioManagerOpen, portfolioManagerSection, investments.length]);
     const startConfirmProceed = (proceed: any) => {
       const defaultAccount = cards.find((card: any) => card.brand === 'Conta/Pix' && card.isDefaultAccount) || bankAccountsForProceeds[0];
       setConfirmProceed(proceed);
@@ -3023,7 +3025,8 @@ export default function FinanceApp() {
                                 {proceed.status === 'received' ? 'Recebido em ' + formatLocalDate(proceed.receivedDate || proceed.paymentDate) : (proceed.paymentDate ? 'Pagamento previsto para ' + formatLocalDate(proceed.paymentDate) : 'Data de pagamento não informada')}
                                 {proceed.source === 'brapi' && proceed.paymentDateIsDeadline ? ' • prazo máximo informado' : ''}
                               </p>
-                              {proceed.status !== 'received' && proceed.estimatedAmount > 0 && <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">Estimativa pela posição cadastrada: R$ {formatBRL(proceed.estimatedAmount)}. Confira o crédito real antes de confirmar.</p>}
+                              {proceed.status !== 'received' && proceed.estimatedAmount > 0 && <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">Estimativa usando a posição atual: R$ {formatBRL(proceed.estimatedAmount)}. Ela considera a quantidade cadastrada até a data-com; confira o crédito real antes de confirmar.</p>}
+                              {proceed.status !== 'received' && !(proceed.estimatedAmount > 0) && <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">Sem estimativa de quantidade elegível. Informe o valor efetivamente recebido ao confirmar.</p>}
                               {proceed.source === 'brapi' && proceed.verified === false && <p className="text-[10px] text-gray-400">Evento ainda não verificado em documento pelo provedor.</p>}
                             </div>
                             <div className="flex items-center gap-2">
