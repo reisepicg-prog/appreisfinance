@@ -3111,9 +3111,9 @@ export default function FinanceApp() {
           </div>
         )}
 
-        {payingInvoice && (
-          <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[10000] overflow-y-auto flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 border border-gray-100 dark:border-gray-700">
+        {payingInvoice && createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/60 p-4 dark:bg-black/80 animate-fadeIn">
+            <div role="dialog" aria-modal="true" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-3xl border border-gray-100 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800 space-y-4">
               <div>
                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Pagar fatura</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{payingInvoice.methodName} • {payingInvoice.dateLabel}</p>
@@ -3158,7 +3158,8 @@ export default function FinanceApp() {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {settlementTx && createPortal(
