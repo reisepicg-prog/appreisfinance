@@ -2800,11 +2800,16 @@ export default function FinanceApp() {
           </p>
         </div>
 
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">Ativos em Carteira</h3>
-          <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(filterBroker !== 'Geral' ? filterBroker : ''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
-            <Icons.Plus size={16}/> Novo Ativo
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => { setPortfolioManagerSection('portfolio'); setPortfolioManagerOpen(true); loadAssetMetadata(false); }} className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-900/70 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors">
+              Gerenciar Carteira
+            </button>
+            <button onClick={() => { setTickerInput(''); setQuantityInput(''); setDisplayUnitPrice(''); setBrokerInput(filterBroker !== 'Geral' ? filterBroker : ''); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors">
+              <Icons.Plus size={16}/> Novo Ativo
+            </button>
+          </div>
         </div>
 
         {groupedInvestments.length === 0 ? (
@@ -2903,6 +2908,216 @@ export default function FinanceApp() {
               </div>
             ))}
           </div>
+        )}
+
+
+        {portfolioManagerOpen && createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/60 p-2 dark:bg-black/80 sm:p-4">
+            <div role="dialog" aria-modal="true" className="my-auto max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-gray-200 bg-gray-50 p-4 shadow-2xl dark:border-gray-700 dark:bg-gray-900 sm:p-6">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Gerenciar Carteira</h3>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Classificação, composição e proventos dos ativos cadastrados.</p>
+                </div>
+                <button type="button" onClick={() => setPortfolioManagerOpen(false)} aria-label="Fechar Gerenciar Carteira" className="rounded-lg px-3 py-1 text-xl font-bold text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">×</button>
+              </div>
+              <div className="mb-5 flex gap-2 border-b border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={() => setPortfolioManagerSection('portfolio')} className={'border-b-2 px-3 py-2 text-sm font-semibold ' + (portfolioManagerSection === 'portfolio' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400')}>Composição da carteira</button>
+                <button type="button" onClick={() => setPortfolioManagerSection('proceeds')} className={'border-b-2 px-3 py-2 text-sm font-semibold ' + (portfolioManagerSection === 'proceeds' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400')}>Calendário de Proventos</button>
+              </div>
+
+              {portfolioManagerSection === 'portfolio' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="font-bold text-gray-800 dark:text-gray-100">Composição atual</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">A classificação vem do catálogo da BrAPI quando disponível; dados não reconhecidos ficam como “Não classificado”.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1 rounded-xl bg-gray-200 p-1 dark:bg-gray-800">
+                      <button type="button" onClick={() => setPortfolioMetric('market')} className={'rounded-lg px-2.5 py-1.5 text-xs font-semibold ' + (portfolioMetric === 'market' ? 'bg-white text-blue-700 shadow dark:bg-gray-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300')}>Valor atual</button>
+                      <button type="button" onClick={() => setPortfolioMetric('invested')} className={'rounded-lg px-2.5 py-1.5 text-xs font-semibold ' + (portfolioMetric === 'invested' ? 'bg-white text-blue-700 shadow dark:bg-gray-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300')}>Valor investido</button>
+                      <button type="button" onClick={() => setPortfolioMetric('quantity')} className={'rounded-lg px-2.5 py-1.5 text-xs font-semibold ' + (portfolioMetric === 'quantity' ? 'bg-white text-blue-700 shadow dark:bg-gray-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300')}>Quantidade</button>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {renderBreakdownChart('Ativos por corretora', portfolioBreakdowns.broker)}
+                    {renderBreakdownChart('Ativos por tipo de produto', portfolioBreakdowns.product)}
+                    {renderBreakdownChart('Ativos por classe', portfolioBreakdowns.assetClass)}
+                    {renderBreakdownChart('Composição por ativo', portfolioBreakdowns.ticker)}
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">O valor atual usa a cotação disponível; quando não há cotação, usa o preço médio cadastrado. Corretora e quantidade vêm dos registros de compra.</p>
+                </div>
+              )}
+
+              {portfolioManagerSection === 'proceeds' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-gray-800 dark:text-gray-100">Proventos</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Previsões não alteram o saldo. Uma receita só é criada quando você confirma o recebimento.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => refreshDividendCalendar(true)} disabled={isRefreshingDividends} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                        {isRefreshingDividends ? 'Atualizando...' : 'Atualizar calendário'}
+                      </button>
+                      <button type="button" onClick={() => {
+                        const defaultAccount = cards.find((card: any) => card.brand === 'Conta/Pix' && card.isDefaultAccount) || bankAccountsForProceeds[0];
+                        setManualProceedTicker('');
+                        setManualProceedLabel('Rendimento');
+                        setManualProceedAmount('');
+                        setManualProceedDate(todayLocalString());
+                        setManualProceedAccount(defaultAccount?.id || '');
+                        setManualProceedOpen(true);
+                      }} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">
+                        Registrar recebimento manual
+                      </button>
+                    </div>
+                  </div>
+                  {dividendStatus && <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-900/30 dark:text-blue-200">{dividendStatus}</div>}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                      <h5 className="mb-3 text-sm font-bold text-gray-800 dark:text-gray-100">Proventos confirmados • últimos 6 meses</h5>
+                      {monthlyProceeds.every(item => item.amount === 0) ? <p className="text-xs text-gray-500 dark:text-gray-400">Ainda não há proventos confirmados neste período.</p> : (
+                        <div className="flex h-44 items-end justify-around gap-2">
+                          {monthlyProceeds.map(item => {
+                            const height = maxMonthlyProceed > 0 ? Math.max(item.amount > 0 ? 8 : 0, item.amount / maxMonthlyProceed * 132) : 0;
+                            return (
+                              <div key={item.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                                <span className="text-[9px] text-gray-500 dark:text-gray-400">{item.amount > 0 ? 'R$ ' + formatBRL(item.amount) : ''}</span>
+                                <div className="w-full max-w-10 rounded-t-md bg-blue-500" style={{ height: height + 'px' }} />
+                                <span className="text-[10px] uppercase text-gray-500 dark:text-gray-400">{item.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    {renderBreakdownChart('Proventos recebidos por ativo', proceedsByTicker)}
+                  </div>
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <h5 className="text-sm font-bold text-gray-800 dark:text-gray-100">Calendário de Proventos</h5>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => {
+                          const parts = selectedProceedsMonth.split('-').map(Number);
+                          const month = new Date(parts[0], parts[1] - 2, 1);
+                          setSelectedProceedsMonth(String(month.getFullYear()) + '-' + String(month.getMonth() + 1).padStart(2, '0'));
+                        }} className="rounded-lg px-2 py-1 text-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">‹</button>
+                        <span className="min-w-28 text-center text-xs font-semibold uppercase text-gray-700 dark:text-gray-200">{new Date(Number(selectedProceedsMonth.slice(0, 4)), Number(selectedProceedsMonth.slice(5, 7)) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
+                        <button type="button" onClick={() => {
+                          const parts = selectedProceedsMonth.split('-').map(Number);
+                          const month = new Date(parts[0], parts[1], 1);
+                          setSelectedProceedsMonth(String(month.getFullYear()) + '-' + String(month.getMonth() + 1).padStart(2, '0'));
+                        }} className="rounded-lg px-2 py-1 text-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">›</button>
+                      </div>
+                    </div>
+                    {!proceedsForSelectedMonth.length ? (
+                      <p className="rounded-xl bg-gray-50 p-4 text-center text-xs text-gray-500 dark:bg-gray-900 dark:text-gray-400">Nenhum provento cadastrado para este mês. FIIs podem ser adicionados pelo botão “Registrar recebimento manual”.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {proceedsForSelectedMonth.map((proceed: any) => (
+                          <div key={proceed.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 p-3 dark:border-gray-700">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-800 dark:text-gray-100">{proceed.ticker} • {proceed.label}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {proceed.status === 'received' ? 'Recebido em ' + formatLocalDate(proceed.receivedDate || proceed.paymentDate) : (proceed.paymentDate ? 'Pagamento previsto para ' + formatLocalDate(proceed.paymentDate) : 'Data de pagamento não informada')}
+                                {proceed.source === 'brapi' && proceed.paymentDateIsDeadline ? ' • prazo máximo informado' : ''}
+                              </p>
+                              {proceed.status !== 'received' && proceed.estimatedAmount > 0 && <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">Estimativa pela posição cadastrada: R$ {formatBRL(proceed.estimatedAmount)}. Confira o crédito real antes de confirmar.</p>}
+                              {proceed.source === 'brapi' && proceed.verified === false && <p className="text-[10px] text-gray-400">Evento ainda não verificado em documento pelo provedor.</p>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={'rounded-full px-2 py-1 text-[10px] font-bold ' + (proceed.status === 'received' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300')}>
+                                {proceed.status === 'received' ? 'Confirmado' : 'Previsto'}
+                              </span>
+                              {proceed.status !== 'received' && <button type="button" onClick={() => startConfirmProceed(proceed)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Confirmar recebimento</button>}
+                              {proceed.status === 'received' && <span className="text-xs font-bold text-gray-800 dark:text-gray-100">R$ {formatBRL(proceed.amountReceived || 0)}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {confirmProceed && createPortal(
+          <div className="fixed inset-0 z-[10002] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/70 p-3">
+            <form role="dialog" aria-modal="true" onSubmit={handleConfirmInvestmentProceed} className="my-auto max-h-[90vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100">Confirmar provento recebido</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{confirmProceed.ticker} • {confirmProceed.label}. Este passo registra a receita na conta escolhida.</p>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Valor realmente recebido</label>
+                <input required type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={confirmProceedAmount} onChange={e => setConfirmProceedAmount(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Data do crédito</label>
+                <input required type="date" value={confirmProceedDate} onChange={e => setConfirmProceedDate(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Conta em que recebeu</label>
+                <select required value={confirmProceedAccount} onChange={e => setConfirmProceedAccount(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                  <option value="">Selecione uma conta</option>
+                  {bankAccountsForProceeds.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setConfirmProceed(null)} className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">Cancelar</button>
+                <button type="submit" disabled={isSavingProceed || !bankAccountsForProceeds.length} className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white disabled:opacity-50">{isSavingProceed ? 'Salvando...' : 'Confirmar e efetivar'}</button>
+              </div>
+              {!bankAccountsForProceeds.length && <p className="text-xs text-red-600">Cadastre uma conta bancária antes de efetivar o recebimento.</p>}
+            </form>
+          </div>,
+          document.body
+        )}
+
+        {manualProceedOpen && createPortal(
+          <div className="fixed inset-0 z-[10002] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/70 p-3">
+            <form role="dialog" aria-modal="true" onSubmit={handleSaveManualProceed} className="my-auto max-h-[90vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800">
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100">Registrar provento recebido</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Use esta opção para FIIs ou eventos que não apareceram no calendário. Ao salvar, a receita é efetivada na conta selecionada.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Ticker</label>
+                  <input required maxLength={8} value={manualProceedTicker} onChange={e => setManualProceedTicker(e.target.value.toUpperCase())} placeholder="Ex.: MXRF11" className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 uppercase text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Tipo</label>
+                  <select value={manualProceedLabel} onChange={e => setManualProceedLabel(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option>Rendimento</option><option>Dividendo</option><option>JCP</option><option>Amortização</option><option>Outro provento</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Valor recebido</label>
+                  <input required type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={manualProceedAmount} onChange={e => setManualProceedAmount(formatCurrencyEntry(e.target.value, currencyMaskEnabled))} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Data do crédito</label>
+                  <input required type="date" value={manualProceedDate} onChange={e => setManualProceedDate(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Conta do recebimento</label>
+                  <select required value={manualProceedAccount} onChange={e => setManualProceedAccount(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">Selecione uma conta</option>
+                    {bankAccountsForProceeds.map((account: any) => <option key={account.id} value={account.id}>{account.name}{account.isDefaultAccount ? ' (Padrão)' : ''}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setManualProceedOpen(false)} className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">Cancelar</button>
+                <button type="submit" disabled={isSavingProceed || !bankAccountsForProceeds.length} className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white disabled:opacity-50">{isSavingProceed ? 'Salvando...' : 'Registrar como recebido'}</button>
+              </div>
+            </form>
+          </div>,
+          document.body
         )}
 
         {(isAddOpen || editingAsset) && createPortal(
