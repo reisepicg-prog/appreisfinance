@@ -3224,6 +3224,9 @@ export default function FinanceApp() {
   };
 
   const History = () => {
+    const [historyView, setHistoryView] = useState('invoices');
+    const [managerFilters, setManagerFilters] = useState({ dateMode: 'invoice', dateGranularity: 'month', month: 'all', exactDate: '', type: 'all', status: 'all', methodId: 'all', category: 'all', person: 'all', search: '' });
+    const [expandedManagerGroups, setExpandedManagerGroups] = useState<string[]>([]);
     const [editingTx, setEditingTx] = useState<any>(null);
     const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '', category: '' });
     const [updateScope, setUpdateScope] = useState('single');
@@ -3355,6 +3358,99 @@ export default function FinanceApp() {
            return (dateA || 0) - (dateB || 0);
         });
     });
+
+    const managerBaseTransactions = (transactions || []).filter(tx => !tx?.isCardPaymentEntry);
+    const managerAvailableMonths = Array.from(new Set(managerBaseTransactions.map((tx: any) => {
+      const dateValue = managerFilters.dateMode === 'purchase' ? (tx.purchaseDate || tx.date) : (tx.date || tx.purchaseDate);
+      return String(dateValue || '').slice(0, 7);
+    }))).filter(Boolean).sort().reverse();
+    const managerAvailableCategories = Array.from(new Set(managerBaseTransactions.map((tx: any) => String(tx?.category || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    const managerAvailableMethods = Array.from(new Map(managerBaseTransactions.map((tx: any) => [String(tx?.methodId || 'pix'), String(tx?.method || 'Pix/Conta')])).entries()).sort((a: any, b: any) => a[1].localeCompare(b[1], 'pt-BR', { sensitivity: 'base' }));
+    const managerAvailablePeople = Array.from(new Set(managerBaseTransactions.flatMap((tx: any) => [
+      ...(tx?.splits || []).map((split: any) => String(split?.name || '').trim()),
+      ...(tx?.saleBuyers || []).map((buyer: any) => String(buyer?.name || '').trim())
+    ]).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    const managerToday = parseLocalDate(getLocalDateString());
+    const managerSearch = managerFilters.search.trim().toLocaleLowerCase('pt-BR');
+    const managerTransactions = managerBaseTransactions.filter((tx: any) => {
+      const selectedDate = String(managerFilters.dateMode === 'purchase' ? (tx.purchaseDate || tx.date || '') : (tx.date || tx.purchaseDate || ''));
+      if (managerFilters.dateGranularity === 'day' && managerFilters.exactDate && !selectedDate.startsWith(managerFilters.exactDate)) return false;
+      if (managerFilters.dateGranularity !== 'day' && managerFilters.month !== 'all' && !selectedDate.startsWith(managerFilters.month)) return false;
+      if (managerFilters.type !== 'all' && String(tx.type || '') !== managerFilters.type) return false;
+      if (managerFilters.methodId !== 'all' && String(tx.methodId || 'pix') !== managerFilters.methodId) return false;
+      if (managerFilters.category !== 'all' && String(tx.category || '') !== managerFilters.category) return false;
+      if (managerFilters.person === '__mine__' && (parseFloat(tx.myAmount) || 0) <= 0) return false;
+      if (managerFilters.person !== 'all' && managerFilters.person !== '__mine__') {
+        const names = [
+          ...(tx.splits || []).map((split: any) => String(split?.name || '')),
+          ...(tx.saleBuyers || []).map((buyer: any) => String(buyer?.name || '')),
+          String(tx.buyerName || '')
+        ];
+        if (!names.some(name => name.split(',').map((part: string) => part.trim()).includes(managerFilters.person))) return false;
+      }
+      if (managerFilters.status === 'paid' && tx.status !== 'paid') return false;
+      if (managerFilters.status === 'pending' && tx.status === 'paid') return false;
+      if (managerFilters.status === 'overdue') {
+        const dueDate = parseLocalDate(String(tx.date || ''));
+        if (tx.status === 'paid' || isNaN(dueDate.getTime()) || dueDate >= managerToday) return false;
+      }
+      if (managerSearch) {
+        const searchText = [tx.desc, tx.category, tx.method, tx.buyerName,
+          ...(tx.splits || []).map((split: any) => split?.name),
+          ...(tx.saleBuyers || []).map((buyer: any) => buyer?.name)
+        ].join(' ').toLocaleLowerCase('pt-BR');
+        if (!searchText.includes(managerSearch)) return false;
+      }
+      return true;
+    });
+    const managerGroupMap = managerTransactions.reduce((groups: Record<string, any>, tx: any) => {
+      const id = String(tx.groupId || tx.id);
+      if (!groups[id]) groups[id] = { id, transactions: [] };
+      groups[id].transactions.push(tx);
+      return groups;
+    }, {});
+    const managerGroups = Object.values(managerGroupMap).map((group: any) => {
+      group.transactions.sort((a: any, b: any) => String(a.date || '').localeCompare(String(b.date || '')));
+      const totalAmount = group.transactions.reduce((sum: number, tx: any) => sum + (parseFloat(tx.totalAmount) || 0), 0);
+      const ownAmount = group.transactions.reduce((sum: number, tx: any) => sum + (parseFloat(tx.myAmount) || 0), 0);
+      const paidCount = group.transactions.filter((tx: any) => tx.status === 'paid').length;
+      const first = group.transactions[0];
+      const last = group.transactions[group.transactions.length - 1];
+      return {
+        ...group,
+        title: String(first.desc || 'Lançamento').replace(/\s\(\d+\/\d+\)$/, ''),
+        type: first.type,
+        method: first.method || 'Pix/Conta',
+        category: first.category || 'Sem categoria',
+        totalAmount,
+        ownAmount,
+        paidCount,
+        statusLabel: paidCount === group.transactions.length ? 'Pago' : paidCount > 0 ? 'Parcial' : 'Pendente',
+        sortDate: String(managerFilters.dateMode === 'purchase' ? (first.purchaseDate || first.date || '') : (last.date || last.purchaseDate || '')),
+        sortDateLabel: managerFilters.dateMode === 'purchase' ? 'Compra' : 'Lançamento / fatura'
+      };
+    }).sort((a: any, b: any) => b.sortDate.localeCompare(a.sortDate));
+    const managerExpenses = managerTransactions.filter((tx: any) => tx.type === 'expense');
+    const managerIncome = managerTransactions.filter((tx: any) => tx.type === 'income');
+    const managerGrossExpenses = managerExpenses.reduce((sum: number, tx: any) => sum + (parseFloat(tx.totalAmount) || 0), 0);
+    const managerOwnExpenses = managerExpenses.reduce((sum: number, tx: any) => sum + (parseFloat(tx.myAmount) || 0), 0);
+    const managerPendingThirdParties = managerExpenses.reduce((sum: number, tx: any) => sum + (tx.splits || [])
+      .filter((split: any) => !split?.paid && !split?.isSaleReceivable)
+      .reduce((splitSum: number, split: any) => splitSum + (parseFloat(split?.amount) || 0), 0), 0);
+    const managerIncomeTotal = managerIncome.reduce((sum: number, tx: any) => sum + (parseFloat(tx.totalAmount) || 0), 0);
+    const updateManagerFilter = (field: string, value: string) => setManagerFilters(previous => {
+      if (field === 'dateMode') {
+        const availableMonthsForBasis = Array.from(new Set(managerBaseTransactions.map((tx: any) => {
+          const dateValue = value === 'purchase' ? (tx.purchaseDate || tx.date) : (tx.date || tx.purchaseDate);
+          return String(dateValue || '').slice(0, 7);
+        }))).filter(Boolean);
+        return { ...previous, dateMode: value, month: previous.month === 'all' || availableMonthsForBasis.includes(previous.month) ? previous.month : 'all' };
+      }
+      return { ...previous, [field]: value };
+    });
+    const clearManagerFilters = () => setManagerFilters({ dateMode: 'invoice', dateGranularity: 'month', month: 'all', exactDate: '', type: 'all', status: 'all', methodId: 'all', category: 'all', person: 'all', search: '' });
+    const toggleManagerGroup = (id: string) => setExpandedManagerGroups(previous => previous.includes(id) ? previous.filter(item => item !== id) : [...previous, id]);
+    const setAllManagerGroupsExpanded = (expanded: boolean) => setExpandedManagerGroups(expanded ? managerGroups.map((group: any) => group.id) : []);
 
     const handlePayInvoice = (invoice: any) => {
       setInvoicePaymentDate(getLocalDateString());
@@ -3556,8 +3652,182 @@ export default function FinanceApp() {
       }
     };
 
+    const historySubnav = (
+      <div className="mb-5 flex rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+        <button type="button" onClick={() => setHistoryView('invoices')} className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${historyView === 'invoices' ? 'bg-white text-blue-700 shadow-sm dark:bg-gray-700 dark:text-blue-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Faturas</button>
+        <button type="button" onClick={() => setHistoryView('manager')} className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${historyView === 'manager' ? 'bg-white text-blue-700 shadow-sm dark:bg-gray-700 dark:text-blue-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Visão Gerencial</button>
+      </div>
+    );
+
+    if (historyView === 'manager') {
+    const managerAllExpanded = managerGroups.length > 0 && managerGroups.every((group: any) => expandedManagerGroups.includes(group.id));
+      const managerSelectClass = 'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+      return (
+        <div className="animate-fadeIn pb-8">
+          {historySubnav}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Visão Gerencial</h2>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Resumo e auditoria dos lançamentos conforme os filtros.</p>
+            </div>
+            <button type="button" onClick={clearManagerFilters} className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">Limpar filtros</button>
+          </div>
+
+          <section className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-3">
+              <span className="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300">Considerar data por</span>
+              <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-700">
+                <button type="button" onClick={() => updateManagerFilter('dateMode', 'purchase')} className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold ${managerFilters.dateMode === 'purchase' ? 'bg-white text-blue-700 shadow-sm dark:bg-gray-600 dark:text-blue-200' : 'text-gray-500 dark:text-gray-300'}`}>Data da compra</button>
+                <button type="button" onClick={() => updateManagerFilter('dateMode', 'invoice')} className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold ${managerFilters.dateMode === 'invoice' ? 'bg-white text-blue-700 shadow-sm dark:bg-gray-600 dark:text-blue-200' : 'text-gray-500 dark:text-gray-300'}`}>Data do lançamento / fatura</button>
+              </div>
+            </div>
+            <p className="mb-3 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs font-medium text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+              Filtro aplicado: {managerFilters.dateMode === 'purchase' ? 'Data da compra' : 'Data do lançamento / fatura'} • {managerFilters.dateGranularity === 'day' ? (managerFilters.exactDate ? formatLocalDate(managerFilters.exactDate) : 'Todos os dias') : (managerFilters.month === 'all' ? 'Todos os meses' : `${managerFilters.month.slice(5, 7)}/${managerFilters.month.slice(0, 4)}`)}
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Filtrar por
+                <select value={managerFilters.dateGranularity} onChange={e => updateManagerFilter('dateGranularity', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
+                  <option value="month">Mês</option><option value="day">Dia exato</option>
+                </select>
+              </label>
+              {managerFilters.dateGranularity === 'day' ? (
+                <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Dia exato
+                  <input type="date" value={managerFilters.exactDate} onChange={e => updateManagerFilter('exactDate', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`} />
+                </label>
+              ) : (
+                <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Mês
+                  <select value={managerFilters.month} onChange={e => updateManagerFilter('month', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
+                    <option value="all">Todos os meses</option>
+                    {managerAvailableMonths.map((month: string) => <option key={month} value={month}>{`${month.slice(5, 7)}/${month.slice(0, 4)}`}</option>)}
+                  </select>
+                </label>
+              )}
+              <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Tipo
+                <select value={managerFilters.type} onChange={e => updateManagerFilter('type', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
+                  <option value="all">Receitas e despesas</option><option value="expense">Despesas</option><option value="income">Receitas</option>
+                </select>
+              </label>
+              <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Situação do lançamento
+                <select value={managerFilters.status} onChange={e => updateManagerFilter('status', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
+                  <option value="all">Todas</option><option value="pending">Pendente</option><option value="paid">Pago / recebido</option><option value="overdue">Atrasado pela data do lançamento</option>
+                </select>
+              </label>
+              <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Cartão / conta
+                <select value={managerFilters.methodId} onChange={e => updateManagerFilter('methodId', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
+                  <option value="all">Todos</option>
+                  {managerAvailableMethods.map(([id, name]: any) => <option key={id} value={id}>{name}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Categoria
+                <select value={managerFilters.category} onChange={e => updateManagerFilter('category', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
+                  <option value="all">Todas</option>
+                  {managerAvailableCategories.map((category: string) => <option key={category} value={category}>{category}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Pessoa
+                <select value={managerFilters.person} onChange={e => updateManagerFilter('person', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
+                  <option value="all">Todas</option><option value="__mine__">Minha parte</option>
+                  {managerAvailablePeople.map((person: string) => <option key={person} value={person}>{person}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-bold text-gray-600 dark:text-gray-300 sm:col-span-2">Buscar descrição, cartão ou pessoa
+                <input type="search" value={managerFilters.search} onChange={e => updateManagerFilter('search', e.target.value)} placeholder="Ex.: mercado, Nubank, Ana..." className={`${managerSelectClass} mt-1 font-normal`} />
+              </label>
+            </div>
+          </section>
+
+          <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {[
+              { label: 'Despesas lançadas', value: managerGrossExpenses, note: 'Bruto; exclui linhas auxiliares de fatura', color: 'text-gray-900 dark:text-gray-100' },
+              { label: 'Sua parte nas despesas', value: managerOwnExpenses, note: 'Usa o valor pessoal de cada lançamento', color: 'text-blue-700 dark:text-blue-300' },
+              { label: 'Reembolsos pendentes', value: managerPendingThirdParties, note: 'Divisões de despesas ainda não pagas', color: 'text-amber-700 dark:text-amber-300' },
+              { label: 'Receitas lançadas', value: managerIncomeTotal, note: 'Bruto; pode incluir valores a receber', color: 'text-emerald-700 dark:text-emerald-300' }
+            ].map(item => (
+              <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">{item.label}</p>
+                <p className={`mt-1 text-lg font-bold ${item.color}`}>R$ {formatBRL(item.value)}</p>
+                <p className="mt-1 text-[10px] leading-snug text-gray-400 dark:text-gray-500">{item.note}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400">{isLoading ? 'Sincronizando lançamentos…' : `${managerGroups.length} grupos • ${managerTransactions.length} lançamentos neste recorte`}</p>
+            <button type="button" onClick={() => setAllManagerGroupsExpanded(!managerAllExpanded)} disabled={managerGroups.length === 0} className="rounded-lg px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-900/30">{managerAllExpanded ? 'Recolher todos' : 'Expandir todos'}</button>
+          </div>
+          <p className="mb-3 text-[10px] text-gray-400 dark:text-gray-500">Agrupamento por ID da compra. Os indicadores somam os lançamentos que passaram pelos filtros; pagamentos auxiliares da fatura não são duplicados.</p>
+
+          {managerGroups.length === 0 ? (
+            <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">Nenhum lançamento encontrado com estes filtros.</div>
+          ) : (
+            <div className="space-y-3">
+              {managerGroups.map((group: any) => {
+                const expanded = expandedManagerGroups.includes(group.id);
+                const isIncome = group.type === 'income';
+                const groupStatusColor = group.statusLabel === 'Pago' ? 'text-emerald-700 dark:text-emerald-300' : group.statusLabel === 'Parcial' ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-gray-300';
+                return (
+                  <section key={group.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <button type="button" onClick={() => toggleManagerGroup(group.id)} aria-expanded={expanded} className="flex w-full flex-wrap items-center justify-between gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`text-[10px] font-bold uppercase ${isIncome ? 'text-emerald-700 dark:text-emerald-300' : 'text-blue-700 dark:text-blue-300'}`}>{isIncome ? 'Receita' : 'Despesa'}</span>
+                          <span className={`text-[10px] font-semibold ${groupStatusColor}`}>{group.statusLabel}</span>
+                          {group.transactions.length > 1 && <span className="text-[10px] text-gray-400 dark:text-gray-500">{group.transactions.length} lançamentos</span>}
+                        </div>
+                        <p className="mt-1 truncate text-sm font-bold text-gray-800 dark:text-gray-100">{group.title}</p>
+                        <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">{group.category} • {group.method} • {group.sortDateLabel}: {formatLocalDate(group.sortDate)}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">R$ {formatBRL(group.totalAmount)}</p>
+                          {!isIncome && group.ownAmount !== group.totalAmount && <p className="text-[10px] text-blue-700 dark:text-blue-300">Sua parte: R$ {formatBRL(group.ownAmount)}</p>}
+                        </div>
+                        <span className="text-gray-400">{expanded ? '⌃' : '⌄'}</span>
+                      </div>
+                    </button>
+                    {expanded && (
+                      <div className="space-y-2 border-t border-gray-100 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-900/30">
+                        {group.transactions.map((tx: any) => (
+                          <div key={tx.id} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                            <div className="flex flex-wrap justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">{tx.desc || 'Lançamento'}</p>
+                                <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">Compra: {formatLocalDate(tx.purchaseDate || tx.date)} • Lançamento/fatura: {formatLocalDate(tx.date || tx.purchaseDate)}</p>
+                                <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">{tx.category || 'Sem categoria'} • {tx.method || 'Pix/Conta'}</p>
+                              </div>
+                              <div className="text-right text-[11px]">
+                                <p className="font-bold text-gray-800 dark:text-gray-100">R$ {formatBRL(tx.totalAmount)}</p>
+                                {!isIncome && <p className="text-blue-700 dark:text-blue-300">Sua parte: R$ {formatBRL(tx.myAmount)}</p>}
+                                <p className={tx.status === 'paid' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>{tx.status === 'paid' ? 'Pago / recebido' : 'Pendente'}</p>
+                              </div>
+                            </div>
+                            {tx.type === 'expense' && (parseFloat(tx.myAmount) || 0) > 0 && (
+                              <p className="mt-2 border-t border-gray-100 pt-2 text-[10px] text-gray-600 dark:border-gray-700 dark:text-gray-300">Sua parte: R$ {formatBRL(tx.myAmount)} • {(tx.myPaid || tx.status === 'paid') ? 'Pago' : 'Pendente'}</p>
+                            )}
+                            {(tx.splits || []).length > 0 && (
+                              <div className="mt-2 space-y-1 border-t border-gray-100 pt-2 dark:border-gray-700">
+                                {(tx.splits || []).map((split: any, index: number) => {
+                                  const splitStatus = split.isSaleReceivable ? (split.paid ? 'Recebido' : 'A receber') : (split.paid ? 'Pago' : 'Pendente');
+                                  return <div key={`${tx.id}-split-${index}`} className="flex justify-between gap-2 text-[10px] text-gray-600 dark:text-gray-300"><span className="truncate">{split.name || 'Pessoa não informada'}</span><span className="shrink-0">R$ {formatBRL(split.amount)} • {splitStatus}</span></div>;
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="animate-fadeIn pb-8">
+        {historySubnav}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
           <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
