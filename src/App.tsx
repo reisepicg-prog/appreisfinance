@@ -3226,7 +3226,7 @@ export default function FinanceApp() {
 
   const History = () => {
     const [historyView, setHistoryView] = useState('invoices');
-    const [managerFilters, setManagerFilters] = useState({ dateMode: 'invoice', month: 'all', type: 'all', status: 'all', methodId: 'all', category: 'all', person: 'all', search: '' });
+    const [managerFilters, setManagerFilters] = useState({ dateMode: 'invoice', dateGranularity: 'month', month: 'all', exactDate: '', type: 'all', status: 'all', methodId: 'all', category: 'all', person: 'all', search: '' });
     const [expandedManagerGroups, setExpandedManagerGroups] = useState<string[]>([]);
     const [editingTx, setEditingTx] = useState<any>(null);
     const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '', category: '' });
@@ -3358,7 +3358,8 @@ export default function FinanceApp() {
     const managerSearch = managerFilters.search.trim().toLocaleLowerCase('pt-BR');
     const managerTransactions = managerBaseTransactions.filter((tx: any) => {
       const selectedDate = String(managerFilters.dateMode === 'purchase' ? (tx.purchaseDate || tx.date || '') : (tx.date || tx.purchaseDate || ''));
-      if (managerFilters.month !== 'all' && !selectedDate.startsWith(managerFilters.month)) return false;
+      if (managerFilters.dateGranularity === 'day' && managerFilters.exactDate && !selectedDate.startsWith(managerFilters.exactDate)) return false;
+      if (managerFilters.dateGranularity !== 'day' && managerFilters.month !== 'all' && !selectedDate.startsWith(managerFilters.month)) return false;
       if (managerFilters.type !== 'all' && String(tx.type || '') !== managerFilters.type) return false;
       if (managerFilters.methodId !== 'all' && String(tx.methodId || 'pix') !== managerFilters.methodId) return false;
       if (managerFilters.category !== 'all' && String(tx.category || '') !== managerFilters.category) return false;
@@ -3421,8 +3422,17 @@ export default function FinanceApp() {
       .filter((split: any) => !split?.paid && !split?.isSaleReceivable)
       .reduce((splitSum: number, split: any) => splitSum + (parseFloat(split?.amount) || 0), 0), 0);
     const managerIncomeTotal = managerIncome.reduce((sum: number, tx: any) => sum + (parseFloat(tx.totalAmount) || 0), 0);
-    const updateManagerFilter = (field: string, value: string) => setManagerFilters(previous => ({ ...previous, [field]: value }));
-    const clearManagerFilters = () => setManagerFilters({ dateMode: 'invoice', month: 'all', type: 'all', status: 'all', methodId: 'all', category: 'all', person: 'all', search: '' });
+    const updateManagerFilter = (field: string, value: string) => setManagerFilters(previous => {
+      if (field === 'dateMode') {
+        const availableMonthsForBasis = Array.from(new Set(managerBaseTransactions.map((tx: any) => {
+          const dateValue = value === 'purchase' ? (tx.purchaseDate || tx.date) : (tx.date || tx.purchaseDate);
+          return String(dateValue || '').slice(0, 7);
+        }))).filter(Boolean);
+        return { ...previous, dateMode: value, month: previous.month === 'all' || availableMonthsForBasis.includes(previous.month) ? previous.month : 'all' };
+      }
+      return { ...previous, [field]: value };
+    });
+    const clearManagerFilters = () => setManagerFilters({ dateMode: 'invoice', dateGranularity: 'month', month: 'all', exactDate: '', type: 'all', status: 'all', methodId: 'all', category: 'all', person: 'all', search: '' });
     const toggleManagerGroup = (id: string) => setExpandedManagerGroups(previous => previous.includes(id) ? previous.filter(item => item !== id) : [...previous, id]);
     const setAllManagerGroupsExpanded = (expanded: boolean) => setExpandedManagerGroups(expanded ? managerGroups.map((group: any) => group.id) : []);
 
@@ -3649,19 +3659,32 @@ export default function FinanceApp() {
 
           <section className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
             <div className="mb-3">
-              <span className="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300">Considerar mês por</span>
+              <span className="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300">Considerar data por</span>
               <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-700">
                 <button type="button" onClick={() => updateManagerFilter('dateMode', 'purchase')} className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold ${managerFilters.dateMode === 'purchase' ? 'bg-white text-blue-700 shadow-sm dark:bg-gray-600 dark:text-blue-200' : 'text-gray-500 dark:text-gray-300'}`}>Data da compra</button>
                 <button type="button" onClick={() => updateManagerFilter('dateMode', 'invoice')} className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold ${managerFilters.dateMode === 'invoice' ? 'bg-white text-blue-700 shadow-sm dark:bg-gray-600 dark:text-blue-200' : 'text-gray-500 dark:text-gray-300'}`}>Data do lançamento / fatura</button>
               </div>
             </div>
+            <p className="mb-3 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs font-medium text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+              Filtro aplicado: {managerFilters.dateMode === 'purchase' ? 'Data da compra' : 'Data do lançamento / fatura'} • {managerFilters.dateGranularity === 'day' ? (managerFilters.exactDate ? formatLocalDate(managerFilters.exactDate) : 'Todos os dias') : (managerFilters.month === 'all' ? 'Todos os meses' : `${managerFilters.month.slice(5, 7)}/${managerFilters.month.slice(0, 4)}`)}
+            </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Mês
-                <select value={managerFilters.month} onChange={e => updateManagerFilter('month', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
-                  <option value="all">Todos os meses</option>
-                  {managerAvailableMonths.map((month: string) => <option key={month} value={month}>{`${month.slice(5, 7)}/${month.slice(0, 4)}`}</option>)}
+              <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Filtrar por
+                <select value={managerFilters.dateGranularity} onChange={e => updateManagerFilter('dateGranularity', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
+                  <option value="month">Mês</option><option value="day">Dia exato</option>
                 </select>
               </label>
+              {managerFilters.dateGranularity === 'day' ? (
+                <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Dia exato
+                  <input type="date" value={managerFilters.exactDate} onChange={e => updateManagerFilter('exactDate', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`} />
+                </label>
+              ) : (
+                <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Mês
+                  <select value={managerFilters.month} onChange={e => updateManagerFilter('month', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
+                    <option value="all">Todos os meses</option>
+                    {managerAvailableMonths.map((month: string) => <option key={month} value={month}>{`${month.slice(5, 7)}/${month.slice(0, 4)}`}</option>)}
+                  </select>
+                </label>
               <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Tipo
                 <select value={managerFilters.type} onChange={e => updateManagerFilter('type', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
                   <option value="all">Receitas e despesas</option><option value="expense">Despesas</option><option value="income">Receitas</option>
