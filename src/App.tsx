@@ -293,8 +293,9 @@ export default function FinanceApp() {
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const [filtersColl, setFiltersColl] = useState({ month: currentMonthStr, person: 'all', status: 'all', description: '' });
   const filtersCollDraftRef = useRef({ month: currentMonthStr, person: 'all', status: 'all', description: '' });
-  const [filtersHist, setFiltersHist] = useState({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' });
-  const filtersHistDraftRef = useRef({ month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' });
+  const defaultHistoryFilters = { dateBasis: 'invoice', dateMode: 'month', month: 'all', exactDate: '', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' };
+  const [filtersHist, setFiltersHist] = useState(defaultHistoryFilters);
+  const filtersHistDraftRef = useRef(defaultHistoryFilters);
 
   // --- Listas Inteligentes de Memória (Autocomplete) ---
   const allDescriptions = Array.from(new Set((transactions || []).map(t => {
@@ -1469,6 +1470,13 @@ export default function FinanceApp() {
             </div>
           )}
 
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
+            <select value={category} onChange={e => setCategory(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+              <option value="">Selecione uma categoria</option>
+              {categoryOptions.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </div>
           {txType === 'income' && !isSaleReceivable && purchaseDate <= new Date().toISOString().split('T')[0] && (
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Conta onde recebeu</label>
@@ -1478,18 +1486,9 @@ export default function FinanceApp() {
               </select>
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
-              <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                <option value="">Selecione uma categoria</option>
-                {categoryOptions.map(option => <option key={option} value={option}>{option}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observação (opcional)</label>
-              <input type="text" value={observation} onChange={e => setObservation(e.target.value)} placeholder="Detalhes adicionais" className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observação (opcional)</label>
+            <input type="text" value={observation} onChange={e => setObservation(e.target.value)} placeholder="Detalhes adicionais" className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -3262,21 +3261,36 @@ export default function FinanceApp() {
       forceDraftRender(version => version + 1);
     };
 
+    const filterDateBasis = filtersHistDraft.dateBasis;
+    const filterDateMode = filtersHistDraft.dateMode;
     const filterMonth = filtersHistDraft.month;
+    const filterExactDate = filtersHistDraft.exactDate;
+    const getMonthForDate = (value: any) => {
+      if (!value) return '';
+      const d = parseLocalDate(value);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    };
+    const availableInvoiceMonths = Array.from(new Set((transactions || []).map((tx: any) => getMonthForDate(tx?.date))))
+      .filter(month => month !== '').sort().reverse() as string[];
+    const availablePurchaseMonths = Array.from(new Set((transactions || []).map((tx: any) => getMonthForDate(tx?.purchaseDate || tx?.date))))
+      .filter(month => month !== '').sort().reverse() as string[];
+    const availableMonths = filterDateBasis === 'purchase' ? availablePurchaseMonths : availableInvoiceMonths;
+    const setFilterDateBasis = (dateBasis: string) => setFiltersHistDraft(prev => ({
+      ...prev,
+      dateBasis,
+      month: prev.month === 'all' || (dateBasis === 'purchase' ? availablePurchaseMonths : availableInvoiceMonths).includes(prev.month) ? prev.month : 'all',
+      exactDate: ''
+    }));
+    const setFilterDateMode = (dateMode: string) => setFiltersHistDraft(prev => ({ ...prev, dateMode, month: 'all', exactDate: '' }));
     const setFilterMonth = (month: string) => setFiltersHistDraft(prev => ({ ...prev, month }));
+    const setFilterExactDate = (exactDate: string) => setFiltersHistDraft(prev => ({ ...prev, exactDate }));
     const filterType = filtersHistDraft.type;
     const setFilterType = (type: string) => setFiltersHistDraft(prev => ({ ...prev, type }));
     const filterPerson = filtersHistDraft.person;
     const filterMethodId = filtersHistDraft.methodId;
     const setFilterMethodId = (methodId: string) => setFiltersHistDraft(prev => ({ ...prev, methodId }));
     const setFilterPerson = (person: string) => setFiltersHistDraft(prev => ({ ...prev, person }));
-
-    const availableMonths = Array.from(new Set((transactions || []).map(t => {
-      if (!t?.date) return '';
-      const d = parseLocalDate(t.date);
-      if (isNaN(d.getTime())) return '';
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }))).filter(m => m !== '').sort().reverse() as string[];
     
     const availableMethods = Array.from(new Map((transactions || []).map((tx: any) => [String(tx?.methodId || 'pix'), String(tx?.method || 'Pix/Conta')])).entries()).sort((a: any, b: any) => a[1].localeCompare(b[1], 'pt-BR', { sensitivity: 'base' }));
     const availablePersons = Array.from(new Set((transactions || []).flatMap(t => t.splits?.map((s: any) => String(s?.name || '')) || []))).filter(Boolean).sort() as string[];
@@ -3285,7 +3299,9 @@ export default function FinanceApp() {
     
     const filteredTxsForHistory = (transactions || []).filter(tx => {
       if (!tx?.date) return false;
-      if (filtersHist.month !== 'all' && filtersHist.month !== '' && !String(tx.date).startsWith(filtersHist.month)) return false;
+      const dateToFilter = filtersHist.dateBasis === 'purchase' ? (tx.purchaseDate || tx.date) : tx.date;
+      if (filtersHist.dateMode === 'day' && filtersHist.exactDate && !String(dateToFilter || '').startsWith(filtersHist.exactDate)) return false;
+      if (filtersHist.dateMode !== 'day' && filtersHist.month !== 'all' && filtersHist.month !== '' && getMonthForDate(dateToFilter) !== filtersHist.month) return false;
       if (filtersHist.type !== 'all' && String(tx.type) !== filtersHist.type) return false;
       if (filtersHist.methodId !== 'all' && String(tx.methodId || 'pix') !== filtersHist.methodId) return false;
       const descriptionQuery = filtersHist.description.trim().toLocaleLowerCase('pt-BR');
@@ -3545,23 +3561,54 @@ export default function FinanceApp() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Faturas e Lançamentos</h2>
           <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
-          {(filtersHistDraft.month !== 'all' || filtersHistDraft.type !== 'all' || filtersHistDraft.person !== 'all' || filtersHistDraft.methodId !== 'all' || !filtersHistDraft.unpaidOnly || filtersHistDraft.description !== '' || filtersHist.month !== 'all' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || !filtersHist.unpaidOnly || filtersHist.description !== '') && (
-            <button onClick={() => { const reset = { month: 'all', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' }; setFiltersHist(reset); setFiltersHistDraft(reset); }} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+          {(filtersHistDraft.month !== 'all' || filtersHistDraft.exactDate !== '' || filtersHistDraft.dateBasis !== 'invoice' || filtersHistDraft.dateMode !== 'month' || filtersHistDraft.type !== 'all' || filtersHistDraft.person !== 'all' || filtersHistDraft.methodId !== 'all' || !filtersHistDraft.unpaidOnly || filtersHistDraft.description !== '' || filtersHist.month !== 'all' || filtersHist.exactDate !== '' || filtersHist.dateBasis !== 'invoice' || filtersHist.dateMode !== 'month' || filtersHist.type !== 'all' || filtersHist.person !== 'all' || filtersHist.methodId !== 'all' || !filtersHist.unpaidOnly || filtersHist.description !== '') && (
+            <button onClick={() => { const reset = { dateBasis: 'invoice', dateMode: 'month', month: 'all', exactDate: '', type: 'all', person: 'all', methodId: 'all', unpaidOnly: true, description: '' }; setFiltersHist(reset); setFiltersHistDraft(reset); }} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
           )}
         </div>
         
+        <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs dark:border-blue-900/60 dark:bg-blue-950/30">
+          <p className="font-semibold text-blue-900 dark:text-blue-200">
+            Filtro aplicado aos resultados: {filtersHist.dateMode === 'day' ? ((filtersHist.dateBasis === 'purchase' ? 'Data da compra' : 'Data da fatura') + ' • ' + (filtersHist.exactDate ? formatLocalDate(filtersHist.exactDate) : 'Todos os dias')) : ((filtersHist.dateBasis === 'purchase' ? 'Data da compra' : 'Mês da fatura') + ' • ' + (filtersHist.month === 'all' ? 'Todos os meses' : filtersHist.month))}
+          </p>
+          {(filtersHist.dateBasis !== filtersHistDraft.dateBasis || filtersHist.dateMode !== filtersHistDraft.dateMode || filtersHist.month !== filtersHistDraft.month || filtersHist.exactDate !== filtersHistDraft.exactDate) && (
+            <p className="mt-1 text-blue-700 dark:text-blue-300">
+              Seleção atual ainda não aplicada: {filtersHistDraft.dateMode === 'day' ? ((filtersHistDraft.dateBasis === 'purchase' ? 'Data da compra' : 'Data da fatura') + ' • ' + (filtersHistDraft.exactDate ? formatLocalDate(filtersHistDraft.exactDate) : 'Todos os dias')) : ((filtersHistDraft.dateBasis === 'purchase' ? 'Data da compra' : 'Mês da fatura') + ' • ' + (filtersHistDraft.month === 'all' ? 'Todos os meses' : filtersHistDraft.month))}. Clique em “Aplicar” para atualizar a lista.
+            </p>
+          )}
+        </div>
         {filtersExpanded && <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Mês</label>
-            <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="all">Todos os Meses</option>
-              {availableMonths.map(month => {
-                  if (!month) return null;
-                  const [y, m] = (month as string).split('-');
-                  return <option key={month as string} value={month as string}>{`${m}/${y}`}</option>
-              })}
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Data considerada</label>
+            <select value={filterDateBasis} onChange={e => setFilterDateBasis(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="invoice">Mês da fatura</option>
+              <option value="purchase">Data da compra</option>
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Filtrar por</label>
+            <select value={filterDateMode} onChange={e => setFilterDateMode(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="month">Mês</option>
+              <option value="day">Dia exato</option>
+            </select>
+          </div>
+          {filterDateMode === 'day' ? (
+            <div>
+              <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Data exata</label>
+              <input type="date" value={filterExactDate} onChange={e => setFilterExactDate(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">{filterDateBasis === 'purchase' ? 'Mês da compra' : 'Mês da fatura'}</label>
+              <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="all">Todos os Meses</option>
+                {availableMonths.map(month => {
+                    if (!month) return null;
+                    const [y, m] = (month as string).split('-');
+                    return <option key={month as string} value={month as string}>{`${m}/${y}`}</option>
+                })}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Tipo</label>
             <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-100 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
