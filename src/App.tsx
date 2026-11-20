@@ -1470,6 +1470,13 @@ export default function FinanceApp() {
             </div>
           )}
 
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
+            <select value={category} onChange={e => setCategory(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+              <option value="">Selecione uma categoria</option>
+              {categoryOptions.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </div>
           {txType === 'income' && !isSaleReceivable && purchaseDate <= new Date().toISOString().split('T')[0] && (
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Conta onde recebeu</label>
@@ -1479,18 +1486,9 @@ export default function FinanceApp() {
               </select>
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
-              <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                <option value="">Selecione uma categoria</option>
-                {categoryOptions.map(option => <option key={option} value={option}>{option}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observação (opcional)</label>
-              <input type="text" value={observation} onChange={e => setObservation(e.target.value)} placeholder="Detalhes adicionais" className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observação (opcional)</label>
+            <input type="text" value={observation} onChange={e => setObservation(e.target.value)} placeholder="Detalhes adicionais" className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
