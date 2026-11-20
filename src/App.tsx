@@ -3568,7 +3568,16 @@ export default function FinanceApp() {
           )}
         </div>
         
-        <p className="mb-2 text-[11px] text-gray-500 dark:text-gray-400">Filtro de data aplicado: {filtersHist.dateMode === 'day' ? ((filtersHist.dateBasis === 'purchase' ? 'Data da compra' : 'Data da fatura') + ' • ' + (filtersHist.exactDate ? formatLocalDate(filtersHist.exactDate) : 'Todos os dias')) : ((filtersHist.dateBasis === 'purchase' ? 'Data da compra' : 'Mês da fatura') + ' • ' + (filtersHist.month === 'all' ? 'Todos os meses' : filtersHist.month))}{filtersHist.dateBasis !== filtersHistDraft.dateBasis || filtersHist.dateMode !== filtersHistDraft.dateMode || filtersHist.month !== filtersHistDraft.month || filtersHist.exactDate !== filtersHistDraft.exactDate ? ' • há alterações não aplicadas' : ''}</p>
+        <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs dark:border-blue-900/60 dark:bg-blue-950/30">
+          <p className="font-semibold text-blue-900 dark:text-blue-200">
+            Filtro aplicado aos resultados: {filtersHist.dateMode === 'day' ? ((filtersHist.dateBasis === 'purchase' ? 'Data da compra' : 'Data da fatura') + ' • ' + (filtersHist.exactDate ? formatLocalDate(filtersHist.exactDate) : 'Todos os dias')) : ((filtersHist.dateBasis === 'purchase' ? 'Data da compra' : 'Mês da fatura') + ' • ' + (filtersHist.month === 'all' ? 'Todos os meses' : filtersHist.month))}
+          </p>
+          {(filtersHist.dateBasis !== filtersHistDraft.dateBasis || filtersHist.dateMode !== filtersHistDraft.dateMode || filtersHist.month !== filtersHistDraft.month || filtersHist.exactDate !== filtersHistDraft.exactDate) && (
+            <p className="mt-1 text-blue-700 dark:text-blue-300">
+              Seleção atual ainda não aplicada: {filtersHistDraft.dateMode === 'day' ? ((filtersHistDraft.dateBasis === 'purchase' ? 'Data da compra' : 'Data da fatura') + ' • ' + (filtersHistDraft.exactDate ? formatLocalDate(filtersHistDraft.exactDate) : 'Todos os dias')) : ((filtersHistDraft.dateBasis === 'purchase' ? 'Data da compra' : 'Mês da fatura') + ' • ' + (filtersHistDraft.month === 'all' ? 'Todos os meses' : filtersHistDraft.month))}. Clique em “Aplicar” para atualizar a lista.
+            </p>
+          )}
+        </div>
         {filtersExpanded && <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Data considerada</label>
