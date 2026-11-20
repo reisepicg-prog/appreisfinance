@@ -3685,6 +3685,7 @@ export default function FinanceApp() {
                     {managerAvailableMonths.map((month: string) => <option key={month} value={month}>{`${month.slice(5, 7)}/${month.slice(0, 4)}`}</option>)}
                   </select>
                 </label>
+              )}
               <label className="text-xs font-bold text-gray-600 dark:text-gray-300">Tipo
                 <select value={managerFilters.type} onChange={e => updateManagerFilter('type', e.target.value)} className={`${managerSelectClass} mt-1 font-normal`}>
                   <option value="all">Receitas e despesas</option><option value="expense">Despesas</option><option value="income">Receitas</option>
