@@ -3234,6 +3234,7 @@ export default function FinanceApp() {
     const [editSaleBuyers, setEditSaleBuyers] = useState<any[]>([]);
     const [editSaleAutoSplit, setEditSaleAutoSplit] = useState(false);
     const [editError, setEditError] = useState('');
+    const [editCalcTarget, setEditCalcTarget] = useState<any>(null);
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
     const editCategoryOptions = editingTx?.type === 'income'
@@ -4313,7 +4314,10 @@ export default function FinanceApp() {
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Valor Total (R$)</label>
-                      <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={editForm.totalAmount} onChange={e => setEditForm({ ...editForm, totalAmount: formatCurrencyEntry(e.target.value, currencyMaskEnabled) })} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" required />
+                      <div className="flex gap-2">
+                        <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={editForm.totalAmount} onChange={e => setEditForm({ ...editForm, totalAmount: formatCurrencyEntry(e.target.value, currencyMaskEnabled) })} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" required />
+                        <button type="button" onClick={() => setEditCalcTarget({ type: 'total' })} aria-label="Abrir calculadora para o valor total" title="Calculadora" className="rounded-lg border border-gray-300 bg-gray-100 px-3 text-xl text-gray-700 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600">🧮</button>
+                      </div>
                     </div>
                     {updateScope === 'single' && (
                       <div>
@@ -4346,7 +4350,10 @@ export default function FinanceApp() {
                             <div key={index} className="rounded-lg border border-blue-100 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
                               <div className="flex flex-col gap-2 sm:flex-row">
                                 <input type="text" value={split.name || ''} onChange={e => handleEditSplitChange(index, 'name', e.target.value)} placeholder="Nome da pessoa" list="edit-split-names-suggestions" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
-                                <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={split.displayAmount || ''} onChange={e => handleEditSplitChange(index, 'displayAmount', e.target.value)} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} aria-label={"Valor de " + (split.name || "terceiro")} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 sm:w-36 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                                <div className="flex min-w-0 flex-1 gap-1">
+                                  <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={split.displayAmount || ''} onChange={e => handleEditSplitChange(index, 'displayAmount', e.target.value)} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} aria-label={"Valor de " + (split.name || "terceiro")} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                                  <button type="button" onClick={() => setEditCalcTarget({ type: 'split', index })} aria-label={"Abrir calculadora para a divisão " + (index + 1)} title="Calculadora" className="rounded-lg border border-gray-300 bg-gray-100 px-2 text-lg text-gray-700 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600">🧮</button>
+                                </div>
                                 <button type="button" onClick={() => setEditSplits(previous => previous.filter((_, i) => i !== index))} aria-label="Remover pessoa" className="rounded-lg px-3 py-2 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30">Remover</button>
                               </div>
                               <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
@@ -4384,7 +4391,10 @@ export default function FinanceApp() {
                         <div key={index} className="rounded-lg border border-emerald-100 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
                           <div className="flex flex-col gap-2 sm:flex-row">
                             <input type="text" required value={buyer.name || ''} onChange={e => handleEditBuyerChange(index, 'name', e.target.value)} placeholder={"Comprador " + (index + 1)} list="edit-sale-buyer-names-suggestions" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
-                            <input type="text" required inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={buyer.displayAmount || ''} onChange={e => handleEditBuyerChange(index, 'displayAmount', e.target.value)} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} aria-label={"Valor do comprador " + (index + 1)} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 sm:w-36 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                            <div className="flex min-w-0 flex-1 gap-1">
+                              <input type="text" required inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={buyer.displayAmount || ''} onChange={e => handleEditBuyerChange(index, 'displayAmount', e.target.value)} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} aria-label={"Valor do comprador " + (index + 1)} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                              <button type="button" onClick={() => setEditCalcTarget({ type: 'buyer', index })} aria-label={"Abrir calculadora para o comprador " + (index + 1)} title="Calculadora" className="rounded-lg border border-gray-300 bg-gray-100 px-2 text-lg text-gray-700 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600">🧮</button>
+                            </div>
                             {editSaleBuyers.length > 1 && <button type="button" onClick={() => setEditSaleBuyers(previous => previous.filter((_, i) => i !== index))} aria-label="Remover comprador" className="rounded-lg px-3 py-2 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30">Remover</button>}
                           </div>
                           {(editingTx.isSaleReceivable || editSplits.some((item: any) => item.isSaleReceivable)) && (
@@ -4405,17 +4415,17 @@ export default function FinanceApp() {
 
                   {editError && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">{editError}</div>}
 
-                  {editingTx.groupId && (
+                  {editingTx.groupId && transactions.filter((tx: any) => tx.groupId === editingTx.groupId).length > 1 && (
                     <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/30">
-                      <label className="mb-2 block text-xs font-bold text-blue-800 dark:text-blue-300">Este é um lançamento recorrente. Deseja alterar:</label>
+                      <label className="mb-2 block text-xs font-bold text-blue-800 dark:text-blue-300">Este lançamento faz parte de um grupo. Deseja alterar:</label>
                       <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                         <label className="flex cursor-pointer items-center gap-2">
                           <input type="radio" value="single" checked={updateScope === 'single'} onChange={() => setUpdateScope('single')} className="text-blue-600" />
-                          Apenas este mês
+                          Apenas este lançamento
                         </label>
                         <label className="flex cursor-pointer items-center gap-2">
                           <input type="radio" value="future" checked={updateScope === 'future'} onChange={() => setUpdateScope('future')} className="text-blue-600" />
-                          Este e os próximos meses pendentes
+                          Este e os próximos lançamentos pendentes
                         </label>
                       </div>
                     </div>
@@ -4433,6 +4443,20 @@ export default function FinanceApp() {
           </div>,
           document.body
         )}
+        <CalculatorModal
+          isOpen={editCalcTarget !== null}
+          onClose={() => setEditCalcTarget(null)}
+          onApply={(value) => {
+            const formatted = formatCurrencyValueForEntry(value, currencyMaskEnabled);
+            if (editCalcTarget?.type === 'total') {
+              setEditForm(previous => ({ ...previous, totalAmount: formatted }));
+            } else if (editCalcTarget?.type === 'split') {
+              handleEditSplitChange(editCalcTarget.index, 'displayAmount', formatted);
+            } else if (editCalcTarget?.type === 'buyer') {
+              handleEditBuyerChange(editCalcTarget.index, 'displayAmount', formatted);
+            }
+          }}
+        />
       </div>
     );
   };
