@@ -3740,9 +3740,9 @@ export default function FinanceApp() {
         const promises = targets.map((t: any) => {
           const previousTotal = Number(t.totalAmount) || 0;
           const ratio = previousTotal > 0 ? ((Number(t.myAmount) || 0) / previousTotal) : 1;
-          const newMyAmount = isExpenseWithSplits
-            ? Math.round((newTotal - splitTotal + Number.EPSILON) * 100) / 100
-            : editingTx.type === 'income' && isSaleIncome
+          const newMyAmount = editingTx.type === 'expense'
+            ? (isExpenseWithSplits ? Math.round((newTotal - splitTotal + Number.EPSILON) * 100) / 100 : newTotal)
+            : isSaleIncome
               ? newTotal
               : Math.round((newTotal * ratio + Number.EPSILON) * 100) / 100;
 
@@ -3752,7 +3752,7 @@ export default function FinanceApp() {
               const existing = updatedSplits.find((item: any) => String(item.name || '').trim() === split.name);
               return { ...existing, ...split };
             });
-          } else if (editingTx.type === 'expense' && editHasSplits) {
+          } else if (editingTx.type === 'expense' && !editHasSplits) {
             updatedSplits = [];
           } else if (isSaleIncome) {
             updatedSplits = t.isSaleReceivable
@@ -4292,55 +4292,139 @@ export default function FinanceApp() {
         {editingTx && createPortal(
           <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] overflow-hidden p-2 sm:p-4 animate-fadeIn">
             <div className="h-full overflow-y-auto overscroll-contain flex items-start sm:items-center justify-center" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
-            <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm max-h-full my-auto overflow-y-auto overscroll-contain shadow-xl space-y-4 border border-gray-100 dark:border-gray-700">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Editar Lançamento</h3>
-              <form onSubmit={handleSaveEdit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
-                  <input type="text" value={editForm.desc} onChange={e => setEditForm({...editForm, desc: e.target.value})} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
-                  <select value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg">
-                    <option value="">Sem categoria</option>
-                    {categoryOptions.map(category => <option key={category} value={category}>{category}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Total (R$)</label>
-                  <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={editForm.totalAmount} onChange={e => setEditForm({...editForm, totalAmount: formatCurrencyEntry(e.target.value, currencyMaskEnabled)})} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
-                </div>
-                {updateScope === 'single' && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Data</label>
-                    <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded-lg" required />
-                  </div>
-                )}
-                
-                {editingTx.groupId && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-lg">
-                    <label className="block text-xs font-bold text-blue-800 dark:text-blue-300 mb-2">Este é um lançamento recorrente. Deseja alterar:</label>
-                    <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" value="single" checked={updateScope === 'single'} onChange={() => setUpdateScope('single')} className="text-blue-600" />
-                        Apenas este mês
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" value="future" checked={updateScope === 'future'} onChange={() => setUpdateScope('future')} className="text-blue-600" />
-                        Este e os próximos meses pendentes
-                      </label>
+              <div role="dialog" aria-modal="true" className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-6 w-full max-w-2xl max-h-full my-auto overflow-y-auto overscroll-contain shadow-xl space-y-4 border border-gray-100 dark:border-gray-700">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Editar Lançamento</h3>
+                <form onSubmit={handleSaveEdit} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Descrição</label>
+                      <input type="text" value={editForm.desc} onChange={e => setEditForm({ ...editForm, desc: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" required />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Categoria</label>
+                      <select value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                        <option value="">Sem categoria</option>
+                        {categoryOptions.map(category => <option key={category} value={category}>{category}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Valor Total (R$)</label>
+                      <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={editForm.totalAmount} onChange={e => setEditForm({ ...editForm, totalAmount: formatCurrencyEntry(e.target.value, currencyMaskEnabled) })} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" required />
+                    </div>
+                    {updateScope === 'single' && (
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data</label>
+                        <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" required />
+                      </div>
+                    )}
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Observação (opcional)</label>
+                      <input type="text" value={editForm.observation} onChange={e => setEditForm({ ...editForm, observation: e.target.value })} placeholder="Detalhes adicionais" className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
                     </div>
                   </div>
-                )}
-                
-                <div className="flex gap-2 pt-2">
-                  <button type="button" onClick={() => setEditingTx(null)} className="flex-1 py-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg font-medium">Cancelar</button>
-                  <button type="submit" disabled={isUpdating} className="flex-1 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium disabled:opacity-50">
-                    {isUpdating ? 'Salvando...' : 'Salvar'}
-                  </button>
-                </div>
-              </form>
-            </div>
+
+                  {editingTx.type === 'expense' && (
+                    <section className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20">
+                      <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                        <input type="checkbox" checked={editHasSplits} onChange={e => {
+                          const enabled = e.target.checked;
+                          setEditHasSplits(enabled);
+                          if (enabled && !editSplits.length) setEditSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]);
+                        }} className="h-4 w-4 rounded text-blue-600" />
+                        Dividir esta despesa com outras pessoas
+                      </label>
+                      {editHasSplits && (
+                        <div className="space-y-3">
+                          <datalist id="edit-split-names-suggestions">
+                            {allSplitNames.map(name => <option key={name} value={name} />)}
+                          </datalist>
+                          {editSplits.map((split, index) => (
+                            <div key={index} className="rounded-lg border border-blue-100 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                              <div className="flex flex-col gap-2 sm:flex-row">
+                                <input type="text" value={split.name || ''} onChange={e => handleEditSplitChange(index, 'name', e.target.value)} placeholder="Nome da pessoa" list="edit-split-names-suggestions" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                                <input type="text" inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={split.displayAmount || ''} onChange={e => handleEditSplitChange(index, 'displayAmount', e.target.value)} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} aria-label={"Valor de " + (split.name || "terceiro")} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 sm:w-36 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                                <button type="button" onClick={() => setEditSplits(previous => previous.filter((_, i) => i !== index))} aria-label="Remover pessoa" className="rounded-lg px-3 py-2 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30">Remover</button>
+                              </div>
+                              <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                                <input type="checkbox" checked={Boolean(split.paid)} onChange={e => handleEditSplitChange(index, 'paid', e.target.checked)} className="h-4 w-4 rounded text-blue-600" />
+                                Esta pessoa já pagou sua parte
+                              </label>
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => setEditSplits(previous => [...previous, { name: '', amount: 0, displayAmount: '', paid: false }])} className="text-sm font-medium text-blue-700 dark:text-blue-300">+ Adicionar pessoa</button>
+                          <div className="flex justify-between border-t border-blue-200 pt-3 text-sm dark:border-blue-800">
+                            <span className="text-gray-600 dark:text-gray-300">Parte de terceiros</span>
+                            <strong className="text-gray-800 dark:text-gray-100">R$ {formatBRL(editSplits.reduce((sum: number, split: any) => sum + (parseCurrencyToNumber(split.displayAmount, currencyMaskEnabled) || 0), 0))}</strong>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  )}
+
+                  {editingTx.type === 'income' && editForm.category === 'Vendas' && (
+                    <section className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-800/50 dark:bg-emerald-900/20">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">Compradores</h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Confira os valores para que a soma corresponda ao valor total da venda.</p>
+                        </div>
+                        <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                          <input type="checkbox" checked={editSaleAutoSplit} onChange={e => setEditSaleAutoSplit(e.target.checked)} className="h-4 w-4 rounded text-emerald-600" />
+                          Dividir igualmente
+                        </label>
+                      </div>
+                      <datalist id="edit-sale-buyer-names-suggestions">
+                        {allBuyerNames.map(name => <option key={name} value={name} />)}
+                      </datalist>
+                      {editSaleBuyers.map((buyer, index) => (
+                        <div key={index} className="rounded-lg border border-emerald-100 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <input type="text" required value={buyer.name || ''} onChange={e => handleEditBuyerChange(index, 'name', e.target.value)} placeholder={"Comprador " + (index + 1)} list="edit-sale-buyer-names-suggestions" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                            <input type="text" required inputMode={currencyMaskEnabled ? 'numeric' : 'decimal'} value={buyer.displayAmount || ''} onChange={e => handleEditBuyerChange(index, 'displayAmount', e.target.value)} placeholder={currencyMaskEnabled ? 'R$ 0,00' : '0,00'} aria-label={"Valor do comprador " + (index + 1)} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-800 sm:w-36 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                            {editSaleBuyers.length > 1 && <button type="button" onClick={() => setEditSaleBuyers(previous => previous.filter((_, i) => i !== index))} aria-label="Remover comprador" className="rounded-lg px-3 py-2 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30">Remover</button>}
+                          </div>
+                          {(editingTx.isSaleReceivable || editSplits.some((item: any) => item.isSaleReceivable)) && (
+                            <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                              <input type="checkbox" checked={Boolean(buyer.paid)} onChange={e => handleEditBuyerChange(index, 'paid', e.target.checked)} className="h-4 w-4 rounded text-emerald-600" />
+                              Este comprador já pagou
+                            </label>
+                          )}
+                        </div>
+                      ))}
+                      <button type="button" onClick={addEditSaleBuyer} className="text-sm font-medium text-emerald-700 dark:text-emerald-300">+ Adicionar comprador</button>
+                      <div className="flex justify-between border-t border-emerald-200 pt-3 text-sm dark:border-emerald-800">
+                        <span className="text-gray-600 dark:text-gray-300">Total informado pelos compradores</span>
+                        <strong className="text-gray-800 dark:text-gray-100">R$ {formatBRL(editSaleBuyers.reduce((sum: number, buyer: any) => sum + (parseCurrencyToNumber(buyer.displayAmount, currencyMaskEnabled) || 0), 0))}</strong>
+                      </div>
+                    </section>
+                  )}
+
+                  {editError && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">{editError}</div>}
+
+                  {editingTx.groupId && (
+                    <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/30">
+                      <label className="mb-2 block text-xs font-bold text-blue-800 dark:text-blue-300">Este é um lançamento recorrente. Deseja alterar:</label>
+                      <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input type="radio" value="single" checked={updateScope === 'single'} onChange={() => setUpdateScope('single')} className="text-blue-600" />
+                          Apenas este mês
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input type="radio" value="future" checked={updateScope === 'future'} onChange={() => setUpdateScope('future')} className="text-blue-600" />
+                          Este e os próximos meses pendentes
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => setEditingTx(null)} className="flex-1 rounded-lg bg-gray-100 py-2.5 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button>
+                    <button type="submit" disabled={isUpdating} className="flex-1 rounded-lg bg-blue-600 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                      {isUpdating ? 'Salvando...' : 'Salvar'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>,
           document.body
