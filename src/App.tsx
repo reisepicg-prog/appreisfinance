@@ -3700,11 +3700,14 @@ export default function FinanceApp() {
       const newTotal = Math.round((parsedTotal + Number.EPSILON) * 100) / 100;
       const isExpenseWithSplits = editingTx.type === 'expense' && editHasSplits;
       const cleanedSplits = isExpenseWithSplits
-        ? editSplits.filter((split: any) => String(split.name || '').trim()).map((split: any) => ({
-            ...split,
-            name: String(split.name || '').trim(),
-            amount: Math.round(((parseCurrencyToNumber(split.displayAmount, currencyMaskEnabled) || 0) + Number.EPSILON) * 100) / 100
-          }))
+        ? editSplits.filter((split: any) => String(split.name || '').trim()).map((split: any) => {
+            const { displayAmount, ...splitData } = split;
+            return {
+              ...splitData,
+              name: String(split.name || '').trim(),
+              amount: Math.round(((parseCurrencyToNumber(displayAmount, currencyMaskEnabled) || 0) + Number.EPSILON) * 100) / 100
+            };
+          })
         : [];
       const splitTotal = cleanedSplits.reduce((sum: number, split: any) => sum + split.amount, 0);
       const isSaleIncome = editingTx.type === 'income' && editForm.category === 'Vendas';
@@ -3758,9 +3761,10 @@ export default function FinanceApp() {
             updatedSplits = t.isSaleReceivable
               ? cleanedBuyers.map((buyer: any) => {
                   const existing = updatedSplits.find((item: any) => item.isSaleReceivable && String(item.name || '').trim() === buyer.name);
+                  const { displayAmount, ...buyerData } = buyer;
                   return {
                     ...existing,
-                    ...buyer,
+                    ...buyerData,
                     isSaleReceivable: true,
                     paid: Boolean(buyer.paid),
                     receivedAccountId: buyer.receivedAccountId || existing?.receivedAccountId || '',
