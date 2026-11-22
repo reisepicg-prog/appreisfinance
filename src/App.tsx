@@ -3228,7 +3228,12 @@ export default function FinanceApp() {
     const [managerFilters, setManagerFilters] = useState({ dateMode: 'invoice', dateGranularity: 'month', month: 'all', exactDate: '', type: 'all', status: 'all', methodId: 'all', category: 'all', person: 'all', search: '' });
     const [expandedManagerGroups, setExpandedManagerGroups] = useState<string[]>([]);
     const [editingTx, setEditingTx] = useState<any>(null);
-    const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '', category: '' });
+    const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '', category: '', observation: '' });
+    const [editSplits, setEditSplits] = useState<any[]>([]);
+    const [editHasSplits, setEditHasSplits] = useState(false);
+    const [editSaleBuyers, setEditSaleBuyers] = useState<any[]>([]);
+    const [editSaleAutoSplit, setEditSaleAutoSplit] = useState(false);
+    const [editError, setEditError] = useState('');
     const [updateScope, setUpdateScope] = useState('single');
     const [isUpdating, setIsUpdating] = useState(false);
     const editCategoryOptions = editingTx?.type === 'income'
@@ -3603,10 +3608,79 @@ export default function FinanceApp() {
         desc: tx.desc || '',
         totalAmount: Number.isFinite(editAmount) ? formatCurrencyValueForEntry(editAmount, currencyMaskEnabled) : '',
         date: tx.date || '',
-        category: tx.category || ''
+        category: tx.category || '',
+        observation: tx.observation || ''
       });
+      const normalizedSplits = (Array.isArray(tx.splits) ? tx.splits : []).map((split: any) => ({
+        ...split,
+        amount: Number(split.amount) || 0,
+        displayAmount: formatCurrencyValueForEntry(Number(split.amount) || 0, currencyMaskEnabled)
+      }));
+      setEditSplits(normalizedSplits.length ? normalizedSplits : [{ name: '', amount: 0, displayAmount: '', paid: false }]);
+      setEditHasSplits(tx.type === 'expense' && normalizedSplits.length > 0);
+      const receivableSplits = normalizedSplits.filter((split: any) => split.isSaleReceivable);
+      const storedBuyers = Array.isArray(tx.saleBuyers) && tx.saleBuyers.length
+        ? tx.saleBuyers
+        : receivableSplits.length
+          ? receivableSplits
+          : String(tx.buyerName || '').split(',').map((name: string) => name.trim()).filter(Boolean).map((name: string) => ({ name, amount: 0 }));
+      const normalizedBuyers = storedBuyers.map((buyer: any) => {
+        const split = receivableSplits.find((item: any) => String(item.name || '').trim() === String(buyer.name || '').trim());
+        const amount = Number(split?.amount ?? buyer.amount) || 0;
+        return {
+          ...buyer,
+          name: String(buyer.name || ''),
+          amount,
+          displayAmount: formatCurrencyValueForEntry(amount, currencyMaskEnabled),
+          paid: Boolean(split?.paid ?? buyer.paid),
+          receivedAccountId: split?.receivedAccountId || buyer.receivedAccountId || '',
+          receivedDate: split?.receivedDate || buyer.receivedDate || ''
+        };
+      });
+      setEditSaleBuyers(normalizedBuyers);
+      const equalBuyerAmounts = normalizedBuyers.length < 2 || normalizedBuyers.every((buyer: any) => Math.abs((Number(buyer.amount) || 0) - (Number(normalizedBuyers[0].amount) || 0)) < 0.01);
+      setEditSaleAutoSplit(equalBuyerAmounts);
+      setEditError('');
       setUpdateScope('single');
     };
+
+    const handleEditSplitChange = (index: number, field: string, value: any) => {
+      setEditSplits(previous => previous.map((split, i) => {
+        if (i !== index) return split;
+        if (field === 'displayAmount') {
+          const displayAmount = formatCurrencyEntry(value, currencyMaskEnabled);
+          return { ...split, displayAmount, amount: parseCurrencyToNumber(displayAmount, currencyMaskEnabled) };
+        }
+        return { ...split, [field]: value };
+      }));
+    };
+
+    const handleEditBuyerChange = (index: number, field: string, value: any) => {
+      if (field === 'displayAmount') {
+        const displayAmount = formatCurrencyEntry(value, currencyMaskEnabled);
+        setEditSaleAutoSplit(false);
+        setEditSaleBuyers(previous => previous.map((buyer, i) => i === index
+          ? { ...buyer, displayAmount, amount: parseCurrencyToNumber(displayAmount, currencyMaskEnabled) }
+          : buyer));
+        return;
+      }
+      setEditSaleBuyers(previous => previous.map((buyer, i) => i === index ? { ...buyer, [field]: value } : buyer));
+    };
+
+    const addEditSaleBuyer = () => {
+      setEditSaleBuyers(previous => [...previous, { name: '', amount: 0, displayAmount: '', paid: false }]);
+    };
+
+    useEffect(() => {
+      if (!editingTx || !editSaleAutoSplit || editingTx.type !== 'income' || editForm.category !== 'Vendas' || !editSaleBuyers.length) return;
+      const totalCents = Math.round((parseCurrencyToNumber(editForm.totalAmount, currencyMaskEnabled) || 0) * 100);
+      const baseCents = Math.floor(totalCents / editSaleBuyers.length);
+      const remainingCents = totalCents - baseCents * editSaleBuyers.length;
+      setEditSaleBuyers(previous => previous.map((buyer, index) => {
+        const amount = (baseCents + (index < remainingCents ? 1 : 0)) / 100;
+        return { ...buyer, amount, displayAmount: formatCurrencyValueForEntry(amount, currencyMaskEnabled) };
+      }));
+    }, [editingTx, editForm.category, editForm.totalAmount, editSaleAutoSplit, editSaleBuyers.length, currencyMaskEnabled]);
 
     useEffect(() => {
       if (editingTx || settlementTx) {
@@ -3621,37 +3695,106 @@ export default function FinanceApp() {
     const handleSaveEdit = async (e: any) => {
       e.preventDefault();
       if (!user || !editingTx) return;
+      setEditError('');
+      const parsedTotal = parseCurrencyToNumber(editForm.totalAmount, currencyMaskEnabled) || 0;
+      const newTotal = Math.round((parsedTotal + Number.EPSILON) * 100) / 100;
+      const isExpenseWithSplits = editingTx.type === 'expense' && editHasSplits;
+      const cleanedSplits = isExpenseWithSplits
+        ? editSplits.filter((split: any) => String(split.name || '').trim()).map((split: any) => ({
+            ...split,
+            name: String(split.name || '').trim(),
+            amount: Math.round(((parseCurrencyToNumber(split.displayAmount, currencyMaskEnabled) || 0) + Number.EPSILON) * 100) / 100
+          }))
+        : [];
+      const splitTotal = cleanedSplits.reduce((sum: number, split: any) => sum + split.amount, 0);
+      const isSaleIncome = editingTx.type === 'income' && editForm.category === 'Vendas';
+      const cleanedBuyers = isSaleIncome
+        ? editSaleBuyers.filter((buyer: any) => String(buyer.name || '').trim()).map((buyer: any) => ({
+            ...buyer,
+            name: String(buyer.name || '').trim(),
+            amount: Math.round(((parseCurrencyToNumber(buyer.displayAmount, currencyMaskEnabled) || 0) + Number.EPSILON) * 100) / 100
+          }))
+        : [];
+      const buyerTotal = cleanedBuyers.reduce((sum: number, buyer: any) => sum + buyer.amount, 0);
+
+      if (newTotal <= 0) {
+        setEditError('Informe um valor total maior que zero.');
+        return;
+      }
+      if (isExpenseWithSplits && splitTotal > newTotal + 0.01) {
+        setEditError('A soma das divisões não pode ser maior que o valor total da despesa.');
+        return;
+      }
+      if (isSaleIncome && (!cleanedBuyers.length || cleanedBuyers.length !== editSaleBuyers.length || Math.abs(buyerTotal - newTotal) > 0.05)) {
+        setEditError('Informe o nome de todos os compradores e confira se a soma dos valores corresponde ao total da venda.');
+        return;
+      }
+
       setIsUpdating(true);
       try {
-        const parsedTotal = parseCurrencyToNumber(editForm.totalAmount, currencyMaskEnabled) || 0;
-        const newTotal = Math.round((parsedTotal + Number.EPSILON) * 100) / 100;
         let targets = [editingTx];
-        
         if (updateScope === 'future' && editingTx.groupId) {
           targets = transactions.filter(t => t.groupId === editingTx.groupId && t.date >= editingTx.date && t.status !== 'paid');
         }
 
-        const promises = targets.map(t => {
-          const ratio = t.totalAmount > 0 ? (t.myAmount / t.totalAmount) : 1;
-          const newMyAmount = Math.round((newTotal * ratio + Number.EPSILON) * 100) / 100;
-          return updateDoc(doc(db, 'users', user.uid, 'transactions', t.id), {
-            desc: updateScope === 'future' ? t.desc : editForm.desc, 
+        const promises = targets.map((t: any) => {
+          const previousTotal = Number(t.totalAmount) || 0;
+          const ratio = previousTotal > 0 ? ((Number(t.myAmount) || 0) / previousTotal) : 1;
+          const newMyAmount = isExpenseWithSplits
+            ? Math.round((newTotal - splitTotal + Number.EPSILON) * 100) / 100
+            : editingTx.type === 'income' && isSaleIncome
+              ? newTotal
+              : Math.round((newTotal * ratio + Number.EPSILON) * 100) / 100;
+
+          let updatedSplits = Array.isArray(t.splits) ? t.splits : [];
+          if (isExpenseWithSplits) {
+            updatedSplits = cleanedSplits.map((split: any) => {
+              const existing = updatedSplits.find((item: any) => String(item.name || '').trim() === split.name);
+              return { ...existing, ...split };
+            });
+          } else if (editingTx.type === 'expense' && editHasSplits) {
+            updatedSplits = [];
+          } else if (isSaleIncome) {
+            updatedSplits = t.isSaleReceivable
+              ? cleanedBuyers.map((buyer: any) => {
+                  const existing = updatedSplits.find((item: any) => item.isSaleReceivable && String(item.name || '').trim() === buyer.name);
+                  return {
+                    ...existing,
+                    ...buyer,
+                    isSaleReceivable: true,
+                    paid: Boolean(buyer.paid),
+                    receivedAccountId: buyer.receivedAccountId || existing?.receivedAccountId || '',
+                    receivedDate: buyer.receivedDate || existing?.receivedDate || ''
+                  };
+                })
+              : updatedSplits.filter((item: any) => !item.isSaleReceivable);
+          }
+
+          const changes: any = {
+            desc: updateScope === 'future' ? t.desc : editForm.desc,
             totalAmount: newTotal,
             myAmount: newMyAmount,
             date: updateScope === 'single' ? editForm.date : t.date,
-            category: editForm.category
-          });
+            category: editForm.category,
+            observation: editForm.observation.trim(),
+            splits: updatedSplits
+          };
+          if (editingTx.type === 'income' && isSaleIncome) {
+            changes.saleBuyers = cleanedBuyers.map(({ displayAmount, ...buyer }: any) => ({ name: buyer.name, amount: buyer.amount }));
+            changes.buyerName = cleanedBuyers.map((buyer: any) => buyer.name).join(', ');
+          }
+          return updateDoc(doc(db, 'users', user.uid, 'transactions', t.id), changes);
         });
 
         await Promise.all(promises);
         setEditingTx(null);
       } catch (err) {
         console.error(err);
+        setEditError('Não foi possível salvar as alterações. Tente novamente.');
       } finally {
         setIsUpdating(false);
       }
     };
-
     const historySubnav = (
       <div className="mb-5 flex rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
         <button type="button" onClick={() => setHistoryView('invoices')} className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${historyView === 'invoices' ? 'bg-white text-blue-700 shadow-sm dark:bg-gray-700 dark:text-blue-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Faturas</button>
