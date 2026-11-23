@@ -812,6 +812,11 @@ export default function FinanceApp() {
     const [selectedPixCard, setSelectedPixCard] = useState<any>(null);
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [selectedCardMonth, setSelectedCardMonth] = useState(currentMonthStr);
+    const [showArchivedCards, setShowArchivedCards] = useState(false);
+    const [archiveTarget, setArchiveTarget] = useState<any>(null);
+    const [archiveDate, setArchiveDate] = useState(getLocalDateInputValue());
+    const [archiveReason, setArchiveReason] = useState('');
+    const [archiveError, setArchiveError] = useState('');
 
     const handleSaveCard = async (e: any) => {
       e.preventDefault();
@@ -850,10 +855,61 @@ export default function FinanceApp() {
 
     const handleDeleteCard = async (id: string) => {
       if (!user) return;
-      if (window.confirm("Deseja realmente excluir este cartão/conta?")) {
-         try { await deleteDoc(doc(db, 'users', user.uid, 'cards', id)); } 
-         catch (err) { console.error(err); }
+      const linkedTransactions = transactions.filter((tx: any) =>
+        String(tx.methodId || '') === id ||
+        String(tx.settlementAccountId || '') === id ||
+        (Array.isArray(tx.splits) && tx.splits.some((split: any) => String(split?.receivedAccountId || '') === id))
+      );
+      if (linkedTransactions.length > 0) {
+        alert(`Este cartão/conta possui ${linkedTransactions.length} lançamento(s) vinculado(s). Exclua primeiro todos os lançamentos relacionados.`);
+        return;
       }
+      if (window.confirm("Deseja realmente excluir este cartão/conta?")) {
+        try { await deleteDoc(doc(db, 'users', user.uid, 'cards', id)); }
+        catch (err) { console.error(err); }
+      }
+    };
+
+    const openArchiveCard = (card: any) => {
+      setArchiveTarget(card);
+      setArchiveDate(getLocalDateInputValue());
+      setArchiveReason('');
+      setArchiveError('');
+    };
+
+    const handleConfirmArchiveCard = async (event: any) => {
+      event.preventDefault();
+      if (!user || !archiveTarget) return;
+      const reason = String(archiveReason || '').trim();
+      if (!archiveDate || !reason) {
+        setArchiveError('Informe a data e o motivo do arquivamento.');
+        return;
+      }
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'cards', archiveTarget.id), {
+          archived: true,
+          archivedAt: archiveDate,
+          archiveReason: reason,
+          isDefaultAccount: false,
+          isDefaultPix: false
+        });
+        if (selectedCardId === archiveTarget.id) setSelectedCardId(null);
+        setArchiveTarget(null);
+      } catch (err) {
+        console.error('Erro ao arquivar conta/cartão', err);
+        setArchiveError('Não foi possível arquivar. Tente novamente.');
+      }
+    };
+
+    const handleUnarchiveCard = async (id: string) => {
+      if (!user) return;
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'cards', id), {
+          archived: false,
+          archivedAt: '',
+          archiveReason: ''
+        });
+      } catch (err) { console.error('Erro ao reativar conta/cartão', err); }
     };
 
     const openEditCard = (c: any) => {
@@ -873,10 +929,12 @@ export default function FinanceApp() {
        setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false, isDefaultAccount: false, openingBalance: 0 });
     };
 
-    const sortedCards = [...cards].sort((a: any, b: any) =>
-      String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR', { sensitivity: 'base' })
-    );
-    const selectedCard = cards.find((card: any) => card.id === selectedCardId) || null;
+    const sortedCards = cards
+      .filter((card: any) => showArchivedCards || !card.archived)
+      .sort((a: any, b: any) =>
+        String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR', { sensitivity: 'base' })
+      );
+    const selectedCard = sortedCards.find((card: any) => card.id === selectedCardId) || null;
     const selectedCardIsCredit = selectedCard ? (parseFloat(selectedCard.limit) || 0) > 0 : false;
     const selectedCardMovements: any[] = selectedCard
       ? selectedCardIsCredit
@@ -930,11 +988,17 @@ export default function FinanceApp() {
 
     return (
       <div className="animate-fadeIn pb-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Contas e Cartões</h2>
-          <button onClick={() => isAdding ? cancelEdit() : setIsAdding(true)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isAdding ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
-            {isAdding ? 'Cancelar' : '+ Adicionar'}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+              <input type="checkbox" checked={showArchivedCards} onChange={event => setShowArchivedCards(event.target.checked)} className="h-4 w-4 rounded text-blue-600" />
+              Exibir arquivados
+            </label>
+            <button onClick={() => isAdding ? cancelEdit() : setIsAdding(true)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isAdding ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
+              {isAdding ? 'Cancelar' : '+ Adicionar'}
+            </button>
+          </div>
         </div>
 
         {isAdding && (
@@ -1043,13 +1107,15 @@ export default function FinanceApp() {
                 <div className="flex items-center justify-between border-t border-gray-200 px-3 py-2 dark:border-gray-700">
                   <button type="button" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); setSelectedPixCard({ ...c, payload }); }} disabled={!c.pixKey} title={c.pixKey ? 'Mostrar QR Code Pix' : 'Esta conta não tem chave Pix cadastrada'} className="rounded-lg p-2 text-blue-500 hover:bg-blue-100 disabled:opacity-30 dark:hover:bg-blue-900/30"><Icons.QrCode size={16} /></button>
                   <button type="button" onClick={() => openEditCard(c)} title="Editar conta/cartão" className="rounded-lg p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30"><Icons.Edit size={16} /></button>
+                  {c.archived && <span className="mr-auto text-[10px] font-semibold text-amber-600 dark:text-amber-400">Arquivado em {c.archivedAt ? formatLocalDate(c.archivedAt) : '—'}</span>}
+                  <button type="button" onClick={() => c.archived ? handleUnarchiveCard(c.id) : openArchiveCard(c)} title={c.archived ? 'Reativar conta/cartão' : 'Arquivar conta/cartão'} className="rounded-lg px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/30">{c.archived ? 'Reativar' : 'Arquivar'}</button>
                   <button type="button" onClick={() => handleDeleteCard(c.id)} title="Excluir conta/cartão" className="rounded-lg p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30"><Icons.Trash size={16} /></button>
                 </div>
               </div>
             );
           })}
-          {cards.length === 0 && !isAdding && (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">Nenhum registro cadastrado ainda.</p>
+          {sortedCards.length === 0 && !isAdding && (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">{cards.length === 0 ? 'Nenhum registro cadastrado ainda.' : 'Nenhuma conta/cartão ativo. Marque “Exibir arquivados” para consultar os arquivados.'}</p>
           )}
         </div>
         {selectedCard && (
@@ -1099,6 +1165,33 @@ export default function FinanceApp() {
             )}
           </section>
         )}
+      {archiveTarget && createPortal(
+        <div className="fixed inset-0 z-[10000] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
+          <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <form onSubmit={handleConfirmArchiveCard} role="dialog" aria-modal="true" className="my-auto max-h-full w-full max-w-md space-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">Arquivar {archiveTarget.name}</h3>
+                <button type="button" onClick={() => setArchiveTarget(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">O registro ficará oculto na lista. Você poderá consultá-lo novamente ao marcar “Exibir arquivados”.</p>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data do arquivamento</label>
+                <input type="date" required value={archiveDate} onChange={event => setArchiveDate(event.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Motivo</label>
+                <textarea required rows={3} value={archiveReason} onChange={event => setArchiveReason(event.target.value)} placeholder="Ex.: conta encerrada ou cartão cancelado" className="w-full resize-y rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
+              {archiveError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{archiveError}</p>}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setArchiveTarget(null)} className="flex-1 rounded-lg bg-gray-100 py-2 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button>
+                <button type="submit" className="flex-1 rounded-lg bg-amber-600 py-2 font-medium text-white hover:bg-amber-700">Confirmar arquivamento</button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
       {selectedPixCard && createPortal(
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
           <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
