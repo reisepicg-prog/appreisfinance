@@ -1667,6 +1667,7 @@ export default function FinanceApp() {
     const [collectionPaymentAccountId, setCollectionPaymentAccountId] = useState('');
     const [collectionPaymentDate, setCollectionPaymentDate] = useState('');
     const [selectedCollectionItems, setSelectedCollectionItems] = useState<Record<string, boolean>>({});
+    const [collectionSortDirection, setCollectionSortDirection] = useState<'asc' | 'desc'>('asc');
     const [filtersExpanded, setFiltersExpanded] = useState(false);
     const [, forceDraftRender] = useState(0);
     const filtersCollDraft = filtersCollDraftRef.current;
@@ -1923,12 +1924,24 @@ export default function FinanceApp() {
 
     return (
       <div className="animate-fadeIn pb-8">
-        <div className="flex justify-between items-center mb-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Fechamento e Cobranças</h2>
-          <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
-          {(filtersCollDraft.month !== defaultCollectionsMonth || filtersCollDraft.person !== 'all' || filtersCollDraft.status !== 'all' || filtersCollDraft.description !== '' || filtersColl.month !== defaultCollectionsMonth || filtersColl.person !== 'all' || filtersColl.status !== 'all' || filtersColl.description !== '') && (
-            <button onClick={() => { const reset = { month: defaultCollectionsMonth, person: 'all', status: 'all', description: '' }; setFiltersColl(reset); setFiltersCollDraft(reset); }} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCollectionSortDirection(direction => direction === 'asc' ? 'desc' : 'asc')}
+              aria-label={collectionSortDirection === 'asc' ? 'Ordenação crescente por data; clique para ver as mais recentes primeiro' : 'Ordenação decrescente por data; clique para ver as mais antigas primeiro'}
+              title={collectionSortDirection === 'asc' ? 'Data: mais antigas primeiro' : 'Data: mais recentes primeiro'}
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            >
+              {collectionSortDirection === 'asc' ? <Icons.ChevronUp size={15} /> : <Icons.ChevronDown size={15} />}
+              <span>{collectionSortDirection === 'asc' ? 'Mais antigas' : 'Mais recentes'}</span>
+            </button>
+            <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
+            {(filtersCollDraft.month !== defaultCollectionsMonth || filtersCollDraft.person !== 'all' || filtersCollDraft.status !== 'all' || filtersCollDraft.description !== '' || filtersColl.month !== defaultCollectionsMonth || filtersColl.person !== 'all' || filtersColl.status !== 'all' || filtersColl.description !== '') && (
+              <button onClick={() => { const reset = { month: defaultCollectionsMonth, person: 'all', status: 'all', description: '' }; setFiltersColl(reset); setFiltersCollDraft(reset); }} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
+            )}
+          </div>
         </div>
         
         {filtersExpanded && <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1978,6 +1991,11 @@ export default function FinanceApp() {
                 if (filtersColl.status === 'pending') return !i.paid;
                 if (filtersColl.status === 'paid') return i.paid;
                 return true;
+              }).sort((a: any, b: any) => {
+                const dateA = String(a.transactionDate || a.date || '');
+                const dateB = String(b.transactionDate || b.date || '');
+                const comparison = dateA.localeCompare(dateB);
+                return collectionSortDirection === 'asc' ? comparison : -comparison;
               });
 
               if (filteredItems.length === 0) return null;
