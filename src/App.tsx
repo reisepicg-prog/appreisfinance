@@ -1722,10 +1722,26 @@ export default function FinanceApp() {
       ...personSettlements.map((entry: any) => String(entry.person || '').trim()),
       ...transactions
         .filter((tx: any) => tx.isPersonSettlement && !tx.isCardPaymentEntry)
-        .map((tx: any) => String(tx.settlementPerson || '').trim())
+        .map((tx: any) => String(tx.settlementPerson || '').trim()),
+      ...transactions.flatMap((tx: any) => (tx.splits || [])
+        .filter((split: any) => !split?.paid)
+        .map((split: any) => String(split?.name || '').trim()))
     ].filter(Boolean))).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
     const settlementGroups = settlementPeople.reduce((groups: Record<string, any>, name: string) => {
-      groups[name] = { expenses: transactions.filter((tx: any) => tx.type === 'expense' && tx.isPersonSettlement && !tx.isCardPaymentEntry && String(tx.settlementPerson || '').trim() === name), adjustments: personSettlements.filter((entry: any) => String(entry.person || '').trim() === name) };
+      groups[name] = {
+        expenses: transactions.filter((tx: any) => tx.type === 'expense' && tx.isPersonSettlement && !tx.isCardPaymentEntry && String(tx.settlementPerson || '').trim() === name),
+        adjustments: personSettlements.filter((entry: any) => String(entry.person || '').trim() === name),
+        receivables: transactions.flatMap((tx: any) => (tx.isCardPaymentEntry ? [] : (tx.splits || []).map((split: any, index: number) => ({ tx, split, index }))))
+          .filter((item: any) => String(item.split?.name || '').trim() === name && !item.split?.paid)
+          .map((item: any) => ({
+            id: `${item.tx.id}-split-${item.index}`,
+            desc: item.tx.desc || 'Despesa compartilhada',
+            amount: Number(item.split.amount) || 0,
+            date: item.tx.purchaseDate || item.tx.date,
+            method: item.tx.method || 'Pix/Conta',
+            kind: 'collection'
+          }))
+      };
       return groups;
     }, {});
     const settlementDirectionLabels: Record<string, string> = { advance_by_me: 'Adiantamento meu · descontar', advance_by_person: 'Adiantamento da pessoa · somar ao que devo', i_owe: 'Eu devo', they_owe: 'Tenho a descontar', i_paid: 'Eu paguei', they_paid: 'A pessoa pagou' };
@@ -2018,15 +2034,18 @@ export default function FinanceApp() {
         </div>
 
         {personSettlementEnabled && activeCollectionsView === 'settlements' && <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Acertos entre pessoas e instituições</h3><p className="text-xs text-gray-500 dark:text-gray-400">Despesas marcadas no cadastro aparecem em A pagar. Use ajustes somente para adiantamentos.</p></div><button type="button" onClick={() => { setSettlementError(''); setSettlementModalOpen(true); }} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white">+ Novo ajuste</button></div>
+          <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Acertos entre pessoas e instituições</h3><p className="text-xs text-gray-500 dark:text-gray-400">Despesas marcadas aparecem em A pagar; cobranças abertas da aba Cobrar entram em Descontar. Use ajustes somente para adiantamentos.</p></div><button type="button" onClick={() => { setSettlementError(''); setSettlementModalOpen(true); }} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white">+ Novo ajuste</button></div>
           <p className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-200">A despesa continua registrada normalmente. O vínculo só organiza o acerto; ajustes registram adiantamentos e não alteram saldos financeiros.</p>
           {Object.keys(settlementGroups).length === 0 ? <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800">Nenhuma despesa marcada e nenhum adiantamento cadastrado.</div> : <div className="space-y-4">{Object.entries(settlementGroups).sort(([a], [b]) => a.localeCompare(b, 'pt-BR')).map(([person, group]: [string, any]) => {
             const pagar = [...group.expenses.map((tx: any) => ({ id: tx.id, desc: tx.desc || 'Despesa', amount: Number(tx.totalAmount) || 0, date: tx.purchaseDate || tx.date, paid: Boolean(tx.settlementPaid), kind: 'expense', tx })), ...group.adjustments.filter((x: any) => ['advance_by_person', 'i_owe', 'they_paid'].includes(x.direction)).map((x: any) => ({ id: x.id, desc: x.desc || 'Adiantamento', amount: Number(x.amount) || 0, date: x.date, kind: 'adjustment', entry: x }))];
-            const descontar = group.adjustments.filter((x: any) => ['advance_by_me', 'they_owe', 'i_paid'].includes(x.direction)).map((x: any) => ({ id: x.id, desc: x.desc || 'Adiantamento', amount: Number(x.amount) || 0, date: x.date, kind: 'adjustment', entry: x }));
+            const descontar = [
+              ...group.adjustments.filter((x: any) => ['advance_by_me', 'they_owe', 'i_paid'].includes(x.direction)).map((x: any) => ({ id: x.id, desc: x.desc || 'Adiantamento', amount: Number(x.amount) || 0, date: x.date, kind: 'adjustment', entry: x })),
+              ...group.receivables
+            ];
             const pagarTotal = pagar.filter((x: any) => !x.paid).reduce((sum: number, x: any) => sum + x.amount, 0);
             const descontarTotal = descontar.reduce((sum: number, x: any) => sum + x.amount, 0);
             const net = pagarTotal - descontarTotal;
-            const rows = (items: any[]) => items.length ? items.map((x: any) => <div key={x.id} className="flex items-center justify-between gap-2 border-b border-gray-100 py-2 text-xs last:border-0 dark:border-gray-700"><div className="min-w-0"><span className={x.paid ? 'block truncate text-gray-500 line-through' : 'block truncate font-medium text-gray-700 dark:text-gray-200'}>{x.desc}</span><span className="text-[10px] text-gray-500">{formatLocalDate(x.date)}{x.kind === 'adjustment' ? ' · ' + (settlementDirectionLabels[x.entry.direction] || 'Ajuste') : ' · Despesa'}</span></div><div className="flex shrink-0 items-center gap-2"><strong>R$ {formatBRL(x.amount)}</strong>{x.kind === 'expense' ? <button type="button" onClick={() => togglePersonExpenseSettlementPaid(x.tx)} className="rounded bg-gray-100 px-2 py-1 text-[10px] dark:bg-gray-700">{x.paid ? 'Reabrir' : 'Marcar pago'}</button> : <button type="button" onClick={() => deletePersonSettlement(x.id)} className="text-red-500">×</button>}</div></div>) : <p className="py-3 text-xs text-gray-400">Nenhum item</p>;
+            const rows = (items: any[]) => items.length ? items.map((x: any) => <div key={x.id} className="flex items-center justify-between gap-2 border-b border-gray-100 py-2 text-xs last:border-0 dark:border-gray-700"><div className="min-w-0"><span className={x.paid ? 'block truncate text-gray-500 line-through' : 'block truncate font-medium text-gray-700 dark:text-gray-200'}>{x.desc}</span><span className="text-[10px] text-gray-500">{formatLocalDate(x.date)}{x.kind === 'adjustment' ? ' · ' + (settlementDirectionLabels[x.entry.direction] || 'Ajuste') : x.kind === 'collection' ? ' · Cobrar' + (x.method ? ' · ' + x.method : '') : ' · Despesa'}</span></div><div className="flex shrink-0 items-center gap-2"><strong>R$ {formatBRL(x.amount)}</strong>{x.kind === 'expense' ? <button type="button" onClick={() => togglePersonExpenseSettlementPaid(x.tx)} className="rounded bg-gray-100 px-2 py-1 text-[10px] dark:bg-gray-700">{x.paid ? 'Reabrir' : 'Marcar pago'}</button> : x.kind === 'adjustment' ? <button type="button" onClick={() => deletePersonSettlement(x.id)} className="text-red-500">×</button> : <span className="rounded bg-blue-50 px-2 py-1 text-[10px] text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Cobrar</span>}</div></div>) : <p className="py-3 text-xs text-gray-400">Nenhum item</p>;
             return <article key={person} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"><h4 className="border-b border-gray-200 px-4 py-3 font-bold dark:border-gray-700">{person}</h4><div className="grid grid-cols-1 divide-y md:grid-cols-2 md:divide-x md:divide-y-0"><div className="p-4"><div className="mb-2 flex justify-between text-xs font-bold"><span>A PAGAR</span><span>R$ {formatBRL(pagarTotal)}</span></div>{rows(pagar)}</div><div className="p-4"><div className="mb-2 flex justify-between text-xs font-bold"><span>DESCONTAR</span><span>R$ {formatBRL(descontarTotal)}</span></div>{rows(descontar)}</div></div><div className="flex justify-end border-t border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-900/40"><strong>{net > 0.005 ? 'Total a pagar' : net < -0.005 ? 'Total a receber' : 'Total'}: R$ {formatBRL(Math.abs(net))}</strong></div></article>;
           })}</div>}
         </section>}
