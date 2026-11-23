@@ -141,6 +141,11 @@ const formatLocalDate = (value: any): string => {
   return isNaN(date.getTime()) ? '-' : date.toLocaleDateString('pt-BR');
 };
 
+const getLocalDateInputValue = (): string => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+};
+
 // --- Lista Estática Inteligente para Autocomplete (B3) ---
 const POPULAR_TICKERS = ["AAPL34", "ABEV3", "ALOS3", "ARZZ3", "ASAI3", "AZUL4", "B3SA3", "BBAS3", "BBDC3", "BBDC4", "BBSE3", "BPAC11", "BRAP4", "BRFS3", "BRKM5", "CCRO3", "CIEL3", "CMIG4", "COGN3", "CPFE3", "CPLE6", "CRFB3", "CSAN3", "CSNA3", "CVCB3", "CYRE3", "ELET3", "ELET6", "EMBR3", "ENEV3", "ENGI11", "EQTL3", "EZTC3", "FLRY3", "GGBR4", "GOAU4", "GOLL4", "HAPV3", "HGLG11", "HYPE3", "IGTI11", "IRBR3", "ITSA4", "ITUB4", "JBSS3", "KLBN11", "KNRI11", "LREN3", "LWSA3", "MGLU3", "MRFG3", "MRVE3", "MULT3", "MXRF11", "NTCO3", "PCAR3", "PETR3", "PETR4", "PETZ3", "PRIO3", "RADL3", "RAIL3", "RDOR3", "RENT3", "RRRP3", "SANB11", "SBSP3", "SIMH3", "SLCE3", "SOMA3", "SUZB3", "TAEE11", "TIMS3", "TOTS3", "UGPA3", "USIM5", "VALE3", "VAMO3", "VBBR3", "VILG11", "VISC11", "VIVT3", "WEGE3", "XPLG11", "XPML11", "YDUQ3"];
 
@@ -261,9 +266,11 @@ export default function FinanceApp() {
   const [investments, setInvestments] = useState<any[]>([]);
   const [salesHistory, setSalesHistory] = useState<any[]>([]);
   const [investmentProceeds, setInvestmentProceeds] = useState<any[]>([]);
+  const [personSettlements, setPersonSettlements] = useState<any[]>([]);
 
   const [user, setUser] = useState<any>(null);
   const [currencyMaskEnabled, setCurrencyMaskEnabled] = useState(true);
+  const [personSettlementEnabled, setPersonSettlementEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [loginError, setLoginError] = useState('');
@@ -306,6 +313,7 @@ export default function FinanceApp() {
   }))).filter(Boolean).sort() as string[];
   
   const allSplitNames = Array.from(new Set((transactions || []).flatMap(t => t?.splits?.map((s: any) => String(s?.name || '')) || []))).filter(Boolean).sort() as string[];
+  const allSettlementPeople = Array.from(new Set([...personSettlements.map((entry: any) => String(entry.person || '').trim()), ...transactions.filter((tx: any) => tx.isPersonSettlement).map((tx: any) => String(tx.settlementPerson || '').trim())].filter(Boolean))).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
   const allBuyerNames = Array.from(new Set([
     ...allSplitNames,
     ...(transactions || []).flatMap(t => t?.saleBuyers?.map((buyer: any) => String(buyer?.name || '').trim()) || [])
@@ -334,14 +342,24 @@ export default function FinanceApp() {
   useEffect(() => {
     if (!user) {
       setCurrencyMaskEnabled(true);
+      setPersonSettlementEnabled(false);
       return;
     }
     const preferencesRef = doc(db, 'users', user.uid, 'settings', 'preferences');
     return onSnapshot(preferencesRef, snapshot => {
       const preference = snapshot.data()?.currencyMaskEnabled;
+      const settlementPreference = snapshot.data()?.personSettlementEnabled;
       if (typeof preference === 'boolean') setCurrencyMaskEnabled(preference);
+      if (typeof settlementPreference === 'boolean') setPersonSettlementEnabled(settlementPreference);
     }, console.error);
   }, [user]);
+
+  const savePersonSettlementPreference = async (enabled: boolean) => {
+    setPersonSettlementEnabled(enabled);
+    if (!user) return;
+    try { await setDoc(doc(db, 'users', user.uid, 'settings', 'preferences'), { personSettlementEnabled: enabled }, { merge: true }); }
+    catch (err) { console.error('Erro ao salvar preferência de acertos entre pessoas', err); }
+  };
 
   const saveCurrencyMaskPreference = async (enabled: boolean) => {
     setCurrencyMaskEnabled(enabled);
@@ -386,7 +404,14 @@ export default function FinanceApp() {
       setInvestmentProceeds(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, console.error);
 
-    return () => { unsubscribeTxs(); unsubscribeCards(); unsubscribeInv(); unsubscribeSales(); unsubscribeProceeds(); };
+    const settlementsQuery = query(collection(db, 'users', user.uid, 'personSettlements'));
+    const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
+      const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      entries.sort((a: any, b: any) => String(b.date || '').localeCompare(String(a.date || '')));
+      setPersonSettlements(entries);
+    }, console.error);
+
+    return () => { unsubscribeTxs(); unsubscribeCards(); unsubscribeInv(); unsubscribeSales(); unsubscribeProceeds(); unsubscribeSettlements(); };
   }, [user]);
 
   const handleDeleteDoc = async (id: string) => {
@@ -787,6 +812,11 @@ export default function FinanceApp() {
     const [selectedPixCard, setSelectedPixCard] = useState<any>(null);
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [selectedCardMonth, setSelectedCardMonth] = useState(currentMonthStr);
+    const [showArchivedCards, setShowArchivedCards] = useState(false);
+    const [archiveTarget, setArchiveTarget] = useState<any>(null);
+    const [archiveDate, setArchiveDate] = useState(getLocalDateInputValue());
+    const [archiveReason, setArchiveReason] = useState('');
+    const [archiveError, setArchiveError] = useState('');
 
     const handleSaveCard = async (e: any) => {
       e.preventDefault();
@@ -825,10 +855,61 @@ export default function FinanceApp() {
 
     const handleDeleteCard = async (id: string) => {
       if (!user) return;
-      if (window.confirm("Deseja realmente excluir este cartão/conta?")) {
-         try { await deleteDoc(doc(db, 'users', user.uid, 'cards', id)); } 
-         catch (err) { console.error(err); }
+      const linkedTransactions = transactions.filter((tx: any) =>
+        String(tx.methodId || '') === id ||
+        String(tx.settlementAccountId || '') === id ||
+        (Array.isArray(tx.splits) && tx.splits.some((split: any) => String(split?.receivedAccountId || '') === id))
+      );
+      if (linkedTransactions.length > 0) {
+        alert(`Este cartão/conta possui ${linkedTransactions.length} lançamento(s) vinculado(s). Exclua primeiro todos os lançamentos relacionados.`);
+        return;
       }
+      if (window.confirm("Deseja realmente excluir este cartão/conta?")) {
+        try { await deleteDoc(doc(db, 'users', user.uid, 'cards', id)); }
+        catch (err) { console.error(err); }
+      }
+    };
+
+    const openArchiveCard = (card: any) => {
+      setArchiveTarget(card);
+      setArchiveDate(getLocalDateInputValue());
+      setArchiveReason('');
+      setArchiveError('');
+    };
+
+    const handleConfirmArchiveCard = async (event: any) => {
+      event.preventDefault();
+      if (!user || !archiveTarget) return;
+      const reason = String(archiveReason || '').trim();
+      if (!archiveDate || !reason) {
+        setArchiveError('Informe a data e o motivo do arquivamento.');
+        return;
+      }
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'cards', archiveTarget.id), {
+          archived: true,
+          archivedAt: archiveDate,
+          archiveReason: reason,
+          isDefaultAccount: false,
+          isDefaultPix: false
+        });
+        if (selectedCardId === archiveTarget.id) setSelectedCardId(null);
+        setArchiveTarget(null);
+      } catch (err) {
+        console.error('Erro ao arquivar conta/cartão', err);
+        setArchiveError('Não foi possível arquivar. Tente novamente.');
+      }
+    };
+
+    const handleUnarchiveCard = async (id: string) => {
+      if (!user) return;
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'cards', id), {
+          archived: false,
+          archivedAt: '',
+          archiveReason: ''
+        });
+      } catch (err) { console.error('Erro ao reativar conta/cartão', err); }
     };
 
     const openEditCard = (c: any) => {
@@ -848,10 +929,12 @@ export default function FinanceApp() {
        setCardForm({ name: '', brand: 'Conta/Pix', closingDay: '', dueDay: '', limit: 0, cashbackPct: 0, obs: '', pixKey: '', isDefaultPix: false, isDefaultAccount: false, openingBalance: 0 });
     };
 
-    const sortedCards = [...cards].sort((a: any, b: any) =>
-      String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR', { sensitivity: 'base' })
-    );
-    const selectedCard = cards.find((card: any) => card.id === selectedCardId) || null;
+    const sortedCards = cards
+      .filter((card: any) => showArchivedCards || !card.archived)
+      .sort((a: any, b: any) =>
+        String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR', { sensitivity: 'base' })
+      );
+    const selectedCard = sortedCards.find((card: any) => card.id === selectedCardId) || null;
     const selectedCardIsCredit = selectedCard ? (parseFloat(selectedCard.limit) || 0) > 0 : false;
     const selectedCardMovements: any[] = selectedCard
       ? selectedCardIsCredit
@@ -905,11 +988,17 @@ export default function FinanceApp() {
 
     return (
       <div className="animate-fadeIn pb-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Contas e Cartões</h2>
-          <button onClick={() => isAdding ? cancelEdit() : setIsAdding(true)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isAdding ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
-            {isAdding ? 'Cancelar' : '+ Adicionar'}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+              <input type="checkbox" checked={showArchivedCards} onChange={event => setShowArchivedCards(event.target.checked)} className="h-4 w-4 rounded text-blue-600" />
+              Exibir arquivados
+            </label>
+            <button onClick={() => isAdding ? cancelEdit() : setIsAdding(true)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isAdding ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
+              {isAdding ? 'Cancelar' : '+ Adicionar'}
+            </button>
+          </div>
         </div>
 
         {isAdding && (
@@ -1018,13 +1107,15 @@ export default function FinanceApp() {
                 <div className="flex items-center justify-between border-t border-gray-200 px-3 py-2 dark:border-gray-700">
                   <button type="button" onClick={() => { const payload = generatePixPayload(c.pixKey, 0, c.name); setSelectedPixCard({ ...c, payload }); }} disabled={!c.pixKey} title={c.pixKey ? 'Mostrar QR Code Pix' : 'Esta conta não tem chave Pix cadastrada'} className="rounded-lg p-2 text-blue-500 hover:bg-blue-100 disabled:opacity-30 dark:hover:bg-blue-900/30"><Icons.QrCode size={16} /></button>
                   <button type="button" onClick={() => openEditCard(c)} title="Editar conta/cartão" className="rounded-lg p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30"><Icons.Edit size={16} /></button>
+                  {c.archived && <span className="mr-auto text-[10px] font-semibold text-amber-600 dark:text-amber-400">Arquivado em {c.archivedAt ? formatLocalDate(c.archivedAt) : '—'}</span>}
+                  <button type="button" onClick={() => c.archived ? handleUnarchiveCard(c.id) : openArchiveCard(c)} title={c.archived ? 'Reativar conta/cartão' : 'Arquivar conta/cartão'} className="rounded-lg px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/30">{c.archived ? 'Reativar' : 'Arquivar'}</button>
                   <button type="button" onClick={() => handleDeleteCard(c.id)} title="Excluir conta/cartão" className="rounded-lg p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30"><Icons.Trash size={16} /></button>
                 </div>
               </div>
             );
           })}
-          {cards.length === 0 && !isAdding && (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">Nenhum registro cadastrado ainda.</p>
+          {sortedCards.length === 0 && !isAdding && (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">{cards.length === 0 ? 'Nenhum registro cadastrado ainda.' : 'Nenhuma conta/cartão ativo. Marque “Exibir arquivados” para consultar os arquivados.'}</p>
           )}
         </div>
         {selectedCard && (
@@ -1074,6 +1165,33 @@ export default function FinanceApp() {
             )}
           </section>
         )}
+      {archiveTarget && createPortal(
+        <div className="fixed inset-0 z-[10000] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
+          <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <form onSubmit={handleConfirmArchiveCard} role="dialog" aria-modal="true" className="my-auto max-h-full w-full max-w-md space-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">Arquivar {archiveTarget.name}</h3>
+                <button type="button" onClick={() => setArchiveTarget(null)} className="px-2 py-1 font-bold text-gray-400">✕</button>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">O registro ficará oculto na lista. Você poderá consultá-lo novamente ao marcar “Exibir arquivados”.</p>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data do arquivamento</label>
+                <input type="date" required value={archiveDate} onChange={event => setArchiveDate(event.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Motivo</label>
+                <textarea required rows={3} value={archiveReason} onChange={event => setArchiveReason(event.target.value)} placeholder="Ex.: conta encerrada ou cartão cancelado" className="w-full resize-y rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+              </div>
+              {archiveError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{archiveError}</p>}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setArchiveTarget(null)} className="flex-1 rounded-lg bg-gray-100 py-2 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button>
+                <button type="submit" className="flex-1 rounded-lg bg-amber-600 py-2 font-medium text-white hover:bg-amber-700">Confirmar arquivamento</button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
       {selectedPixCard && createPortal(
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80">
           <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -1108,6 +1226,8 @@ export default function FinanceApp() {
     const [saleAutoSplit, setSaleAutoSplit] = useState(true);
     const [salePending, setSalePending] = useState(false);
     const [observation, setObservation] = useState('');
+    const [includeInPersonSettlement, setIncludeInPersonSettlement] = useState(false);
+    const [settlementPersonName, setSettlementPersonName] = useState('');
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
     const [calcTarget, setCalcTarget] = useState<any>(null);
@@ -1252,6 +1372,7 @@ export default function FinanceApp() {
         return;
       }
       if (txType === 'expense') {
+        if (personSettlementEnabled && includeInPersonSettlement && !settlementPersonName.trim()) { setErrorMsg('Informe a pessoa ou instituição deste acerto.'); return; }
         if (installments < 1) { setErrorMsg("Preencha a quantidade de parcelas."); return; }
         if (isSplit && includeMe && myShare < -0.05) { setErrorMsg("A soma das divisões não pode ser maior que o valor total."); return; }
         if (isSplit && !includeMe && Math.abs(parsedTotalAmount - totalSplits) > 0.05) {
@@ -1305,6 +1426,9 @@ export default function FinanceApp() {
             paymentDate: purchaseDate,
             settlementAccountId: '',
             isCardPaidExpense: true,
+            isPersonSettlement: personSettlementEnabled && includeInPersonSettlement,
+            settlementPerson: personSettlementEnabled && includeInPersonSettlement ? settlementPersonName.trim() : '',
+            settlementPaid: false,
             linkedCardTransactionIds: cardPaymentRefs.map(ref => ref.id),
             createdAt: new Date().toISOString()
           });
@@ -1374,13 +1498,16 @@ export default function FinanceApp() {
               type: txType, desc: desc + suffix, category, buyerName: isSaleCategory ? saleBuyers.map(buyer => String(buyer.name || '').trim()).join(', ') : '', saleBuyers: isSaleCategory ? saleBuyers.map(buyer => ({ name: String(buyer.name || '').trim(), amount: parseFloat(buyer.amount) || 0 })) : [], isSaleReceivable: installmentIsReceivable, observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
               date: formattedDate, method: cardName, methodId: finalMethodId, splits: instSplits, groupId, status: initialStatus,
               settlementAccountId: initialStatus === 'paid' && txType === 'income' ? incomeAccountId : '',
+              isPersonSettlement: txType === 'expense' && personSettlementEnabled && includeInPersonSettlement,
+              settlementPerson: txType === 'expense' && personSettlementEnabled && includeInPersonSettlement ? settlementPersonName.trim() : '',
+              settlementPaid: false,
               createdAt: new Date().toISOString()
             };
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
         }
         
-        setDesc(''); setCategory(''); setObservation(''); setIncomeAccountId(defaultBankAccountId); setBillCreditCardId(''); setSaleBuyers([{ name: '', amount: 0, displayAmount: '' }]); setSaleAutoSplit(true); setSalePending(false); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setCategory(''); setObservation(''); setIncludeInPersonSettlement(false); setSettlementPersonName(''); setIncomeAccountId(defaultBankAccountId); setBillCreditCardId(''); setSaleBuyers([{ name: '', amount: 0, displayAmount: '' }]); setSaleAutoSplit(true); setSalePending(false); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
       } catch (err) { console.error(err); setErrorMsg("Erro ao salvar."); } finally { setIsSaving(false); }
     };
@@ -1551,6 +1678,7 @@ export default function FinanceApp() {
             )}
           </div>
 
+          {txType === 'expense' && personSettlementEnabled && <section className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/50 dark:bg-indigo-900/20"><label className="flex cursor-pointer items-start gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100"><input type="checkbox" checked={includeInPersonSettlement} onChange={event => setIncludeInPersonSettlement(event.target.checked)} className="mt-0.5 h-4 w-4 rounded text-indigo-600" /><span>Incluir em acerto com pessoa ou instituição</span></label>{includeInPersonSettlement && <div className="mt-3"><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa ou instituição</label><input required list="settlement-person-options" value={settlementPersonName} onChange={event => setSettlementPersonName(event.target.value)} placeholder="Ex.: Pai" className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="settlement-person-options">{allSettlementPeople.map(name => <option key={name} value={name} />)}</datalist><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Aparecerá em Cobrar › Acertos como valor a pagar.</p></div>}</section>}
           {txType === 'expense' && (
             <>
               <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
@@ -1663,6 +1791,12 @@ export default function FinanceApp() {
 
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
+    const [activeCollectionsView, setActiveCollectionsView] = useState<'collections' | 'settlements'>('collections');
+    const [settlementMonth, setSettlementMonth] = useState(currentMonthStr);
+    const [settlementModalOpen, setSettlementModalOpen] = useState(false);
+    const [settlementDraft, setSettlementDraft] = useState<any>({ person: '', desc: '', amount: '', date: getLocalDateInputValue(), direction: 'advance_by_me' });
+    const [settlementError, setSettlementError] = useState('');
+    const [isSavingSettlement, setIsSavingSettlement] = useState(false);
     const [collectionPayment, setCollectionPayment] = useState<any>(null);
     const [collectionPaymentAccountId, setCollectionPaymentAccountId] = useState('');
     const [collectionPaymentDate, setCollectionPaymentDate] = useState('');
@@ -1678,6 +1812,70 @@ export default function FinanceApp() {
     const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
     const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
+    const settlementMonthKey = (value: any) => {
+      const date = parseLocalDate(value);
+      if (isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    };
+    const monthlySettlementExpenses = transactions.filter((tx: any) =>
+      tx.isPersonSettlement && !tx.isCardPaymentEntry &&
+      settlementMonthKey(tx.date) === settlementMonth
+    );
+    const monthlySettlementAdjustments = personSettlements.filter((entry: any) =>
+      settlementMonthKey(entry.date) === settlementMonth
+    );
+    const settlementPeople = Array.from(new Set([
+      ...monthlySettlementAdjustments.map((entry: any) => String(entry.person || '').trim()),
+      ...monthlySettlementExpenses.map((tx: any) => String(tx.settlementPerson || '').trim())
+    ].filter(Boolean))).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
+    const settlementGroups = settlementPeople.reduce((groups: Record<string, any>, name: string) => {
+      groups[name] = {
+        expenses: monthlySettlementExpenses.filter((tx: any) => String(tx.settlementPerson || '').trim() === name),
+        adjustments: monthlySettlementAdjustments.filter((entry: any) => String(entry.person || '').trim() === name),
+        receivables: transactions.flatMap((tx: any) => (tx.isCardPaymentEntry ? [] : (tx.splits || []).map((split: any, index: number) => ({ tx, split, index }))))
+          .filter((item: any) => String(item.split?.name || '').trim() === name && !item.split?.paid && settlementMonthKey(item.tx.date) !== '' && settlementMonthKey(item.tx.date) <= settlementMonth)
+          .map((item: any) => ({
+            id: `${item.tx.id}-split-${item.index}`,
+            desc: item.tx.desc || 'Despesa compartilhada',
+            amount: Number(item.split.amount) || 0,
+            date: item.tx.date || item.tx.purchaseDate,
+            method: item.tx.method || 'Pix/Conta',
+            kind: 'collection'
+          }))
+      };
+      return groups;
+    }, {});
+    const settlementDirectionLabels: Record<string, string> = { advance_by_me: 'Adiantamento meu · descontar', advance_by_person: 'Adiantamento da pessoa · somar ao que devo', i_owe: 'Eu devo', they_owe: 'Tenho a descontar', i_paid: 'Eu paguei', they_paid: 'A pessoa pagou' };
+    const savePersonSettlement = async (event: any) => {
+      event.preventDefault();
+      const person = String(settlementDraft.person || '').trim();
+      const desc = String(settlementDraft.desc || '').trim();
+      const amount = parseCurrencyToNumber(settlementDraft.amount, currencyMaskEnabled);
+      if (!user || !person || !desc || amount <= 0 || !settlementDraft.date) {
+        setSettlementError('Informe a pessoa, a descrição, um valor maior que zero e a data.');
+        return;
+      }
+      setIsSavingSettlement(true);
+      setSettlementError('');
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'personSettlements'), { person, desc, amount, date: settlementDraft.date, direction: settlementDraft.direction, createdAt: new Date().toISOString() });
+        setSettlementDraft({ person, desc: '', amount: '', date: getLocalDateInputValue(), direction: 'advance_by_me' });
+        setSettlementModalOpen(false);
+      } catch (error) {
+        console.error('Erro ao salvar acerto entre pessoas', error);
+        setSettlementError('Não foi possível salvar o acerto. Tente novamente.');
+      } finally { setIsSavingSettlement(false); }
+    };
+    const togglePersonExpenseSettlementPaid = async (tx: any) => {
+      if (!user) return;
+      try { await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), { settlementPaid: !tx.settlementPaid, settlementPaidDate: tx.settlementPaid ? '' : getLocalDateInputValue() }); }
+      catch (error) { console.error('Erro ao atualizar pagamento do acerto', error); }
+    };
+    const deletePersonSettlement = async (id: string) => {
+      if (!user || !window.confirm('Deseja excluir este movimento do acerto?')) return;
+      try { await deleteDoc(doc(db, 'users', user.uid, 'personSettlements', id)); }
+      catch (error) { console.error('Erro ao excluir acerto entre pessoas', error); }
+    };
 
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
         if (!tx?.date) return '';
@@ -1926,24 +2124,38 @@ export default function FinanceApp() {
       <div className="animate-fadeIn pb-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Fechamento e Cobranças</h2>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCollectionSortDirection(direction => direction === 'asc' ? 'desc' : 'asc')}
-              aria-label={collectionSortDirection === 'asc' ? 'Ordenação crescente por data; clique para ver as mais recentes primeiro' : 'Ordenação decrescente por data; clique para ver as mais antigas primeiro'}
-              title={collectionSortDirection === 'asc' ? 'Data: mais antigas primeiro' : 'Data: mais recentes primeiro'}
-              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-            >
-              {collectionSortDirection === 'asc' ? <Icons.ChevronUp size={15} /> : <Icons.ChevronDown size={15} />}
-              <span>{collectionSortDirection === 'asc' ? 'Mais antigas' : 'Mais recentes'}</span>
-            </button>
-            <button type="button" onClick={() => setFiltersExpanded(open => !open)} aria-expanded={filtersExpanded} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
-            {(filtersCollDraft.month !== defaultCollectionsMonth || filtersCollDraft.person !== 'all' || filtersCollDraft.status !== 'all' || filtersCollDraft.description !== '' || filtersColl.month !== defaultCollectionsMonth || filtersColl.person !== 'all' || filtersColl.status !== 'all' || filtersColl.description !== '') && (
-              <button onClick={() => { const reset = { month: defaultCollectionsMonth, person: 'all', status: 'all', description: '' }; setFiltersColl(reset); setFiltersCollDraft(reset); }} className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg font-medium transition-colors">Limpar Filtros</button>
-            )}
-          </div>
+          {personSettlementEnabled && <div className="order-3 flex w-full rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+            <button type="button" onClick={() => setActiveCollectionsView('collections')} className={activeCollectionsView === 'collections' ? 'flex-1 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm dark:bg-gray-700 dark:text-blue-300' : 'flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400'}>Cobrar</button>
+            <button type="button" onClick={() => setActiveCollectionsView('settlements')} className={activeCollectionsView === 'settlements' ? 'flex-1 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-indigo-700 shadow-sm dark:bg-gray-700 dark:text-indigo-300' : 'flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400'}>Acertos</button>
+          </div>}
+          {(!personSettlementEnabled || activeCollectionsView === 'collections') && <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setCollectionSortDirection(direction => direction === 'asc' ? 'desc' : 'asc')} className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">{collectionSortDirection === 'asc' ? <Icons.ChevronUp size={15} /> : <Icons.ChevronDown size={15} />}<span>{collectionSortDirection === 'asc' ? 'Mais antigas' : 'Mais recentes'}</span></button>
+            <button type="button" onClick={() => setFiltersExpanded(open => !open)} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Icons.Filter size={14} /> Filtros</button>
+          </div>}
         </div>
-        
+
+        {personSettlementEnabled && activeCollectionsView === 'settlements' && <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Acertos entre pessoas e instituições</h3><p className="text-xs text-gray-500 dark:text-gray-400">Despesas marcadas aparecem em A pagar; cobranças abertas da aba Cobrar entram em Descontar. Use ajustes somente para adiantamentos.</p></div><button type="button" onClick={() => { setSettlementError(''); setSettlementModalOpen(true); }} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white">+ Novo ajuste</button></div>
+          <div className="flex items-center justify-center gap-3 rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+            <button type="button" onClick={() => { const date = new Date(`${settlementMonth}-01T12:00:00`); date.setMonth(date.getMonth() - 1); setSettlementMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`); }} aria-label="Mês anterior" className="rounded px-3 py-1 text-lg font-bold text-gray-600 dark:text-gray-300">‹</button>
+            <input type="month" value={settlementMonth} onChange={event => setSettlementMonth(event.target.value)} aria-label="Mês do acerto" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+            <button type="button" onClick={() => { const date = new Date(`${settlementMonth}-01T12:00:00`); date.setMonth(date.getMonth() + 1); setSettlementMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`); }} aria-label="Próximo mês" className="rounded px-3 py-1 text-lg font-bold text-gray-600 dark:text-gray-300">›</button>
+          </div>
+          <p className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-200">A despesa continua registrada normalmente. O vínculo só organiza o acerto; ajustes registram adiantamentos e não alteram saldos financeiros.</p>
+          {Object.keys(settlementGroups).length === 0 ? <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800">Nenhuma despesa marcada e nenhum adiantamento cadastrado.</div> : <div className="space-y-4">{Object.entries(settlementGroups).sort(([a], [b]) => a.localeCompare(b, 'pt-BR')).map(([person, group]: [string, any]) => {
+            const pagar = [...group.expenses.map((tx: any) => ({ id: tx.id, desc: tx.desc || 'Despesa', amount: Number(tx.totalAmount) || 0, date: tx.purchaseDate || tx.date, paid: Boolean(tx.settlementPaid), kind: 'expense', tx })), ...group.adjustments.filter((x: any) => ['advance_by_person', 'i_owe', 'they_paid'].includes(x.direction)).map((x: any) => ({ id: x.id, desc: x.desc || 'Adiantamento', amount: Number(x.amount) || 0, date: x.date, kind: 'adjustment', entry: x }))];
+            const descontar = [
+              ...group.adjustments.filter((x: any) => ['advance_by_me', 'they_owe', 'i_paid'].includes(x.direction)).map((x: any) => ({ id: x.id, desc: x.desc || 'Adiantamento', amount: Number(x.amount) || 0, date: x.date, kind: 'adjustment', entry: x })),
+              ...group.receivables
+            ];
+            const pagarTotal = pagar.filter((x: any) => !x.paid).reduce((sum: number, x: any) => sum + x.amount, 0);
+            const descontarTotal = descontar.reduce((sum: number, x: any) => sum + x.amount, 0);
+            const net = pagarTotal - descontarTotal;
+            const rows = (items: any[]) => items.length ? items.map((x: any) => <div key={x.id} className="flex items-center justify-between gap-2 border-b border-gray-100 py-2 text-xs last:border-0 dark:border-gray-700"><div className="min-w-0"><span className={x.paid ? 'block truncate text-gray-500 line-through' : 'block truncate font-medium text-gray-700 dark:text-gray-200'}>{x.desc}</span><span className="text-[10px] text-gray-500">{formatLocalDate(x.date)}{x.kind === 'adjustment' ? ' · ' + (settlementDirectionLabels[x.entry.direction] || 'Ajuste') : x.kind === 'collection' ? ' · Cobrar' + (x.method ? ' · ' + x.method : '') : ' · Despesa'}</span></div><div className="flex shrink-0 items-center gap-2"><strong>R$ {formatBRL(x.amount)}</strong>{x.kind === 'expense' ? <button type="button" onClick={() => togglePersonExpenseSettlementPaid(x.tx)} className="rounded bg-gray-100 px-2 py-1 text-[10px] dark:bg-gray-700">{x.paid ? 'Reabrir' : 'Marcar pago'}</button> : x.kind === 'adjustment' ? <button type="button" onClick={() => deletePersonSettlement(x.id)} className="text-red-500">×</button> : <span className="rounded bg-blue-50 px-2 py-1 text-[10px] text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Cobrar</span>}</div></div>) : <p className="py-3 text-xs text-gray-400">Nenhum item</p>;
+            return <article key={person} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"><h4 className="border-b border-gray-200 px-4 py-3 font-bold dark:border-gray-700">{person}</h4><div className="grid grid-cols-1 divide-y md:grid-cols-2 md:divide-x md:divide-y-0"><div className="p-4"><div className="mb-2 flex justify-between text-xs font-bold"><span>A PAGAR</span><span>R$ {formatBRL(pagarTotal)}</span></div>{rows(pagar)}</div><div className="p-4"><div className="mb-2 flex justify-between text-xs font-bold"><span>DESCONTAR</span><span>R$ {formatBRL(descontarTotal)}</span></div>{rows(descontar)}</div></div><div className="flex justify-end border-t border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-900/40"><strong>{net > 0.005 ? 'Total a pagar' : net < -0.005 ? 'Total a receber' : 'Total'}: R$ {formatBRL(Math.abs(net))}</strong></div></article>;
+          })}</div>}
+        </section>}
+        {(!personSettlementEnabled || activeCollectionsView === 'collections') && <>
         {filtersExpanded && <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Mês</label>
@@ -2072,6 +2284,19 @@ export default function FinanceApp() {
               );
             })}
           </div>
+        )}
+
+        </>}
+
+        {settlementModalOpen && createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/60 p-3 dark:bg-black/80"><form onSubmit={savePersonSettlement} role="dialog" aria-modal="true" className="my-auto max-h-[95vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex items-center justify-between"><h3 className="font-bold text-gray-800 dark:text-gray-100">Novo ajuste de adiantamento</h3><button type="button" onClick={() => setSettlementModalOpen(false)} className="px-2 py-1 font-bold text-gray-400">✕</button></div><p className="text-xs text-gray-500 dark:text-gray-400">Despesas comuns devem ser cadastradas em Novo Lançamento. Use este formulário somente para adiantamentos.</p>
+            <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa</label><input required list="settlement-person-options" value={settlementDraft.person} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, person: event.target.value }))} placeholder="Ex.: Pai" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="settlement-person-options">{allSettlementPeople.map(name => <option key={name} value={name} />)}</datalist></div>
+            <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Tipo de movimento</label><select value={settlementDraft.direction} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, direction: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"><option value="advance_by_me">Adiantamento meu (descontar)</option><option value="advance_by_person">Adiantamento da pessoa (somar ao que devo)</option></select></div>
+            <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Descrição</label><input required value={settlementDraft.desc} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, desc: event.target.value }))} placeholder="Ex.: Spotify novembro, ajuda da casa" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /></div>
+            <div className="grid grid-cols-2 gap-3"><div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label><input required inputMode="decimal" value={settlementDraft.amount} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, amount: formatCurrencyEntry(event.target.value, currencyMaskEnabled) }))} placeholder="0,00" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /></div><div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data</label><input required type="date" value={settlementDraft.date} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, date: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /></div></div>
+            {settlementError && <p role="alert" className="rounded-lg bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300">{settlementError}</p>}<div className="flex gap-2"><button type="button" onClick={() => setSettlementModalOpen(false)} className="flex-1 rounded-lg bg-gray-100 py-2 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button><button type="submit" disabled={isSavingSettlement} className="flex-1 rounded-lg bg-indigo-600 py-2 font-medium text-white disabled:opacity-50">{isSavingSettlement ? 'Salvando...' : 'Salvar ajuste'}</button></div>
+          </form></div>, document.body
         )}
 
         {collectionPayment && createPortal(
@@ -3258,7 +3483,7 @@ export default function FinanceApp() {
     const [managerFilters, setManagerFilters] = useState({ dateMode: 'invoice', dateGranularity: 'month', month: 'all', exactDate: '', type: 'all', status: 'all', methodId: 'all', category: 'all', person: 'all', search: '' });
     const [expandedManagerGroups, setExpandedManagerGroups] = useState<string[]>([]);
     const [editingTx, setEditingTx] = useState<any>(null);
-    const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '', category: '', observation: '' });
+    const [editForm, setEditForm] = useState<any>({ desc: '', totalAmount: '', date: '', category: '', observation: '' });
     const [editSplits, setEditSplits] = useState<any[]>([]);
     const [editHasSplits, setEditHasSplits] = useState(false);
     const [editSaleBuyers, setEditSaleBuyers] = useState<any[]>([]);
@@ -3640,7 +3865,9 @@ export default function FinanceApp() {
         totalAmount: Number.isFinite(editAmount) ? formatCurrencyValueForEntry(editAmount, currencyMaskEnabled) : '',
         date: tx.date || '',
         category: tx.category || '',
-        observation: tx.observation || ''
+        observation: tx.observation || '',
+        isPersonSettlement: Boolean(tx.isPersonSettlement),
+        settlementPerson: tx.settlementPerson || ''
       });
       const normalizedSplits = (Array.isArray(tx.splits) ? tx.splits : []).map((split: any) => ({
         ...split,
@@ -3751,6 +3978,7 @@ export default function FinanceApp() {
         : [];
       const buyerTotal = cleanedBuyers.reduce((sum: number, buyer: any) => sum + buyer.amount, 0);
 
+      if (personSettlementEnabled && editForm.isPersonSettlement && !String(editForm.settlementPerson || '').trim()) { setEditError('Informe a pessoa ou instituição deste acerto.'); return; }
       if (newTotal <= 0) {
         setEditError('Informe um valor total maior que zero.');
         return;
@@ -3812,6 +4040,9 @@ export default function FinanceApp() {
             date: updateScope === 'single' ? editForm.date : t.date,
             category: editForm.category,
             observation: editForm.observation.trim(),
+            isPersonSettlement: personSettlementEnabled ? Boolean(editForm.isPersonSettlement) : Boolean(t.isPersonSettlement),
+            settlementPerson: personSettlementEnabled ? (editForm.isPersonSettlement ? String(editForm.settlementPerson || '').trim() : '') : (t.settlementPerson || ''),
+            settlementPaid: !personSettlementEnabled ? Boolean(t.settlementPaid) : (editForm.isPersonSettlement && String(editForm.settlementPerson || '').trim() === String(t.settlementPerson || '').trim() ? Boolean(t.settlementPaid) : false),
             splits: updatedSplits
           };
           if (editingTx.type === 'income' && isSaleIncome) {
@@ -4361,6 +4592,12 @@ export default function FinanceApp() {
                     </div>
                   </div>
 
+                  {editingTx.type === 'expense' && personSettlementEnabled && (
+                    <section className="mb-3 rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/50 dark:bg-indigo-900/20">
+                      <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100"><input type="checkbox" checked={Boolean(editForm.isPersonSettlement)} onChange={event => setEditForm((previous: any) => ({ ...previous, isPersonSettlement: event.target.checked }))} className="h-4 w-4 rounded text-indigo-600" /> Incluir em acerto com pessoa ou instituição</label>
+                      {editForm.isPersonSettlement && <div className="mt-3"><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa ou instituição</label><input required list="edit-settlement-person-options" value={editForm.settlementPerson || ''} onChange={event => setEditForm((previous: any) => ({ ...previous, settlementPerson: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="edit-settlement-person-options">{allSettlementPeople.map(name => <option key={name} value={name} />)}</datalist></div>}
+                    </section>
+                  )}
                   {editingTx.type === 'expense' && (
                     <section className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20">
                       <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
@@ -4496,7 +4733,7 @@ export default function FinanceApp() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const handleExportJSON = () => {
-      const data = { transactions, cards, investments, salesHistory, investmentProceeds };
+      const data = { transactions, cards, investments, salesHistory, investmentProceeds, personSettlements };
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute("href", dataStr);
@@ -4520,6 +4757,7 @@ export default function FinanceApp() {
           if (data.investments) for (const inv of data.investments) await setDoc(doc(db, 'users', user.uid, 'investments', inv.id), inv);
           if (data.salesHistory) for (const sale of data.salesHistory) await setDoc(doc(db, 'users', user.uid, 'salesHistory', sale.id), sale);
           if (data.investmentProceeds) for (const proceed of data.investmentProceeds) await setDoc(doc(db, 'users', user.uid, 'investmentProceeds', proceed.id), proceed);
+          if (data.personSettlements) for (const settlement of data.personSettlements) await setDoc(doc(db, 'users', user.uid, 'personSettlements', settlement.id), settlement);
           setImportMsg({ text: 'Backup restaurado com sucesso!', type: 'success' });
         } catch (err) { setImportMsg({ text: 'Erro ao importar.', type: 'error' }); } 
         finally { setIsProcessing(false); event.target.value = ''; }
@@ -4612,6 +4850,14 @@ export default function FinanceApp() {
               </label>
             </div>
             <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">A preferência fica salva na sua conta e vale para os campos monetários de lançamentos, contas, cartões e ativos.</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="mb-2 text-lg font-bold text-gray-800 dark:text-gray-100">Acertos entre pessoas</h3>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+              <input type="checkbox" checked={personSettlementEnabled} onChange={event => savePersonSettlementPreference(event.target.checked)} className="mt-1 h-4 w-4 rounded text-indigo-600" />
+              <span><strong className="block text-sm text-gray-800 dark:text-gray-100">Habilitar controle de acertos</strong><span className="text-xs text-gray-500 dark:text-gray-400">Mostra a subaba Acertos em Cobrar e a opção de vincular despesas a uma pessoa ou instituição.</span></span>
+            </label>
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
