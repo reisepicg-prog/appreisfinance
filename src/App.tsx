@@ -1699,6 +1699,7 @@ export default function FinanceApp() {
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
     const [activeCollectionsView, setActiveCollectionsView] = useState<'collections' | 'settlements'>('collections');
+    const [settlementMonth, setSettlementMonth] = useState(currentMonthStr);
     const [settlementModalOpen, setSettlementModalOpen] = useState(false);
     const [settlementDraft, setSettlementDraft] = useState<any>({ person: '', desc: '', amount: '', date: getLocalDateInputValue(), direction: 'advance_by_me' });
     const [settlementError, setSettlementError] = useState('');
@@ -1718,19 +1719,26 @@ export default function FinanceApp() {
     const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
     const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
+    const settlementMonthKey = (value: any) => {
+      const date = parseLocalDate(value);
+      if (isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    };
+    const monthlySettlementExpenses = transactions.filter((tx: any) =>
+      tx.isPersonSettlement && !tx.isCardPaymentEntry &&
+      settlementMonthKey(tx.purchaseDate || tx.date) === settlementMonth
+    );
+    const monthlySettlementAdjustments = personSettlements.filter((entry: any) =>
+      settlementMonthKey(entry.date) === settlementMonth
+    );
     const settlementPeople = Array.from(new Set([
-      ...personSettlements.map((entry: any) => String(entry.person || '').trim()),
-      ...transactions
-        .filter((tx: any) => tx.isPersonSettlement && !tx.isCardPaymentEntry)
-        .map((tx: any) => String(tx.settlementPerson || '').trim()),
-      ...transactions.flatMap((tx: any) => (tx.splits || [])
-        .filter((split: any) => !split?.paid)
-        .map((split: any) => String(split?.name || '').trim()))
+      ...monthlySettlementAdjustments.map((entry: any) => String(entry.person || '').trim()),
+      ...monthlySettlementExpenses.map((tx: any) => String(tx.settlementPerson || '').trim())
     ].filter(Boolean))).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
     const settlementGroups = settlementPeople.reduce((groups: Record<string, any>, name: string) => {
       groups[name] = {
-        expenses: transactions.filter((tx: any) => tx.type === 'expense' && tx.isPersonSettlement && !tx.isCardPaymentEntry && String(tx.settlementPerson || '').trim() === name),
-        adjustments: personSettlements.filter((entry: any) => String(entry.person || '').trim() === name),
+        expenses: monthlySettlementExpenses.filter((tx: any) => String(tx.settlementPerson || '').trim() === name),
+        adjustments: monthlySettlementAdjustments.filter((entry: any) => String(entry.person || '').trim() === name),
         receivables: transactions.flatMap((tx: any) => (tx.isCardPaymentEntry ? [] : (tx.splits || []).map((split: any, index: number) => ({ tx, split, index }))))
           .filter((item: any) => String(item.split?.name || '').trim() === name && !item.split?.paid)
           .map((item: any) => ({
@@ -2035,6 +2043,11 @@ export default function FinanceApp() {
 
         {personSettlementEnabled && activeCollectionsView === 'settlements' && <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Acertos entre pessoas e instituições</h3><p className="text-xs text-gray-500 dark:text-gray-400">Despesas marcadas aparecem em A pagar; cobranças abertas da aba Cobrar entram em Descontar. Use ajustes somente para adiantamentos.</p></div><button type="button" onClick={() => { setSettlementError(''); setSettlementModalOpen(true); }} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white">+ Novo ajuste</button></div>
+          <div className="flex items-center justify-center gap-3 rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+            <button type="button" onClick={() => { const date = new Date(`${settlementMonth}-01T12:00:00`); date.setMonth(date.getMonth() - 1); setSettlementMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`); }} aria-label="Mês anterior" className="rounded px-3 py-1 text-lg font-bold text-gray-600 dark:text-gray-300">‹</button>
+            <input type="month" value={settlementMonth} onChange={event => setSettlementMonth(event.target.value)} aria-label="Mês do acerto" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+            <button type="button" onClick={() => { const date = new Date(`${settlementMonth}-01T12:00:00`); date.setMonth(date.getMonth() + 1); setSettlementMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`); }} aria-label="Próximo mês" className="rounded px-3 py-1 text-lg font-bold text-gray-600 dark:text-gray-300">›</button>
+          </div>
           <p className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-200">A despesa continua registrada normalmente. O vínculo só organiza o acerto; ajustes registram adiantamentos e não alteram saldos financeiros.</p>
           {Object.keys(settlementGroups).length === 0 ? <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800">Nenhuma despesa marcada e nenhum adiantamento cadastrado.</div> : <div className="space-y-4">{Object.entries(settlementGroups).sort(([a], [b]) => a.localeCompare(b, 'pt-BR')).map(([person, group]: [string, any]) => {
             const pagar = [...group.expenses.map((tx: any) => ({ id: tx.id, desc: tx.desc || 'Despesa', amount: Number(tx.totalAmount) || 0, date: tx.purchaseDate || tx.date, paid: Boolean(tx.settlementPaid), kind: 'expense', tx })), ...group.adjustments.filter((x: any) => ['advance_by_person', 'i_owe', 'they_paid'].includes(x.direction)).map((x: any) => ({ id: x.id, desc: x.desc || 'Adiantamento', amount: Number(x.amount) || 0, date: x.date, kind: 'adjustment', entry: x }))];
