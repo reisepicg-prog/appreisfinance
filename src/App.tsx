@@ -1728,6 +1728,8 @@ export default function FinanceApp() {
             desc: tx.desc || '', 
             amount: split.amount || 0, 
             date: tx.date || '',
+            transactionDate: tx.purchaseDate || tx.date || '',
+            method: tx.method || 'Pix/Conta',
             paid: split.paid || false,
             receivedAccountId: split.receivedAccountId || '',
             receivedDate: split.receivedDate || ''
@@ -1745,6 +1747,8 @@ export default function FinanceApp() {
           desc: tx.desc || '',
           amount: parseFloat(tx.myAmount) || 0,
           date: tx.date || '',
+          transactionDate: tx.purchaseDate || tx.date || '',
+          method: tx.method || 'Pix/Conta',
           paid: tx.myPaid || false
         });
       }
@@ -1982,18 +1986,21 @@ export default function FinanceApp() {
               const selectedItems = unpaidItems.filter((item: any) => selectedCollectionItems[collectionItemKey(name, item)]);
               const totalSelected = selectedItems.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0);
               const allUnpaidSelected = unpaidItems.length > 0 && selectedItems.length === unpaidItems.length;
-              const totalOwed = unpaidItems.reduce((acc: number, curr: any) => acc + (parseFloat(curr.amount) || 0), 0);
-              const isAllPaid = filteredItems.length > 0 && unpaidItems.length === 0;
+              const totalOriginal = items.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0);
+              const totalOwed = items.filter((item: any) => !item.paid).reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0);
+              const isAllPaid = items.length > 0 && items.every((item: any) => item.paid);
 
               return (
                 <div key={name} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                  <div className="flex justify-between items-center border-b dark:border-gray-700 pb-3 mb-3">
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">{name}</h3>
-                    {isAllPaid ? (
-                      <span className="font-bold text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-lg">Tudo Pago!</span>
-                    ) : (
-                      <span className="font-bold text-blue-600 dark:text-blue-400">Restante: R$ {formatBRL(totalOwed)}</span>
-                    )}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3 mb-3 dark:border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">{name}</h3>
+                      {isAllPaid && <span className="rounded-lg bg-green-100 px-2 py-1 text-[10px] font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">Tudo pago</span>}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Total lançado: <strong className="text-gray-700 dark:text-gray-300">R$ {formatBRL(totalOriginal)}</strong></p>
+                      <p className="text-xs font-bold text-blue-600 dark:text-blue-400">Restante: R$ {formatBRL(totalOwed)}</p>
+                    </div>
                   </div>
                   {unpaidItems.length > 0 && (
                     <div className="mb-2 flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-2 py-1.5 text-xs dark:bg-gray-900/40">
@@ -2015,9 +2022,14 @@ export default function FinanceApp() {
                           ) : (
                             <input type="checkbox" checked={!!selectedCollectionItems[collectionItemKey(name, item)]} onChange={() => toggleCollectionItemSelection(name, item)} aria-label={`Selecionar ${item.desc}`} className="w-4 h-4 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 cursor-pointer flex-shrink-0" />
                           )}
-                          <span className={`truncate ${item.paid ? 'line-through text-gray-500 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200 font-medium'}`}>
-                            {item.desc}
-                          </span>
+                          <div className="min-w-0">
+                            <span className={`block truncate ${item.paid ? 'line-through text-gray-500 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200 font-medium'}`}>
+                              {item.desc}
+                            </span>
+                            <span className="block truncate text-[10px] text-gray-500 dark:text-gray-400">
+                              {formatLocalDate(item.transactionDate || item.date)}{item.method ? ' • ' + item.method : ''}
+                            </span>
+                          </div>
                         </div>
                         <span className={`${item.paid ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-100 font-medium'}`}>
                           R$ {formatBRL(item.amount)}
