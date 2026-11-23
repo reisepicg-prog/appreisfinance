@@ -261,6 +261,7 @@ export default function FinanceApp() {
   const [investments, setInvestments] = useState<any[]>([]);
   const [salesHistory, setSalesHistory] = useState<any[]>([]);
   const [investmentProceeds, setInvestmentProceeds] = useState<any[]>([]);
+  const [personSettlements, setPersonSettlements] = useState<any[]>([]);
 
   const [user, setUser] = useState<any>(null);
   const [currencyMaskEnabled, setCurrencyMaskEnabled] = useState(true);
@@ -386,7 +387,14 @@ export default function FinanceApp() {
       setInvestmentProceeds(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, console.error);
 
-    return () => { unsubscribeTxs(); unsubscribeCards(); unsubscribeInv(); unsubscribeSales(); unsubscribeProceeds(); };
+    const settlementsQuery = query(collection(db, 'users', user.uid, 'personSettlements'));
+    const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
+      const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      entries.sort((a: any, b: any) => String(b.date || '').localeCompare(String(a.date || '')));
+      setPersonSettlements(entries);
+    }, console.error);
+
+    return () => { unsubscribeTxs(); unsubscribeCards(); unsubscribeInv(); unsubscribeSales(); unsubscribeProceeds(); unsubscribeSettlements(); };
   }, [user]);
 
   const handleDeleteDoc = async (id: string) => {
@@ -1663,6 +1671,10 @@ export default function FinanceApp() {
 
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
+    const [settlementModalOpen, setSettlementModalOpen] = useState(false);
+    const [settlementDraft, setSettlementDraft] = useState<any>({ person: '', desc: '', amount: '', date: new Date().toISOString().slice(0, 10), direction: 'i_owe' });
+    const [settlementError, setSettlementError] = useState('');
+    const [isSavingSettlement, setIsSavingSettlement] = useState(false);
     const [collectionPayment, setCollectionPayment] = useState<any>(null);
     const [collectionPaymentAccountId, setCollectionPaymentAccountId] = useState('');
     const [collectionPaymentDate, setCollectionPaymentDate] = useState('');
@@ -1678,6 +1690,48 @@ export default function FinanceApp() {
     const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
     const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
+    const settlementPeople = Array.from(new Set(personSettlements.map((entry: any) => String(entry.person || '').trim()).filter(Boolean))).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
+    const settlementGroups = personSettlements.reduce((groups: Record<string, any[]>, entry: any) => {
+      const name = String(entry.person || '').trim();
+      if (!name) return groups;
+      if (!groups[name]) groups[name] = [];
+      groups[name].push(entry);
+      return groups;
+    }, {});
+    const settlementDirectionLabels: Record<string, string> = { i_owe: 'Eu devo', they_owe: 'Tenho a descontar', i_paid: 'Eu paguei', they_paid: 'A pessoa pagou' };
+    const settlementNet = (entries: any[]) => entries.reduce((sum: number, entry: any) => {
+      const amount = Number(entry.amount) || 0;
+      if (entry.direction === 'i_owe') return sum + amount;
+      if (entry.direction === 'they_owe') return sum - amount;
+      if (entry.direction === 'i_paid') return sum - amount;
+      if (entry.direction === 'they_paid') return sum + amount;
+      return sum;
+    }, 0);
+    const savePersonSettlement = async (event: any) => {
+      event.preventDefault();
+      const person = String(settlementDraft.person || '').trim();
+      const desc = String(settlementDraft.desc || '').trim();
+      const amount = parseCurrencyToNumber(settlementDraft.amount, currencyMaskEnabled);
+      if (!user || !person || !desc || amount <= 0 || !settlementDraft.date) {
+        setSettlementError('Informe a pessoa, a descrição, um valor maior que zero e a data.');
+        return;
+      }
+      setIsSavingSettlement(true);
+      setSettlementError('');
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'personSettlements'), { person, desc, amount, date: settlementDraft.date, direction: settlementDraft.direction, createdAt: new Date().toISOString() });
+        setSettlementDraft({ person, desc: '', amount: '', date: new Date().toISOString().slice(0, 10), direction: 'i_owe' });
+        setSettlementModalOpen(false);
+      } catch (error) {
+        console.error('Erro ao salvar acerto entre pessoas', error);
+        setSettlementError('Não foi possível salvar o acerto. Tente novamente.');
+      } finally { setIsSavingSettlement(false); }
+    };
+    const deletePersonSettlement = async (id: string) => {
+      if (!user || !window.confirm('Deseja excluir este movimento do acerto?')) return;
+      try { await deleteDoc(doc(db, 'users', user.uid, 'personSettlements', id)); }
+      catch (error) { console.error('Erro ao excluir acerto entre pessoas', error); }
+    };
 
     const availableMonths = Array.from(new Set((transactions || []).map(tx => {
         if (!tx?.date) return '';
@@ -1944,6 +1998,20 @@ export default function FinanceApp() {
           </div>
         </div>
         
+        <section className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-bold text-gray-800 dark:text-gray-100">Acertos entre pessoas</h3><p className="text-xs text-gray-600 dark:text-gray-400">Registre dívidas, valores a descontar e pagamentos para ver o saldo líquido.</p></div><button type="button" onClick={() => { setSettlementError(''); setSettlementModalOpen(true); }} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">+ Novo acerto</button></div>
+          <p className="mb-3 rounded-lg bg-white/70 p-2 text-[11px] text-gray-600 dark:bg-gray-900/40 dark:text-gray-400">Este controle é independente dos lançamentos financeiros: não altera saldos de contas, faturas ou receitas e despesas. Cadastre aqui o controle entre vocês e mantenha o lançamento financeiro na rotina normal quando necessário.</p>
+          {Object.keys(settlementGroups).length === 0 ? <p className="rounded-lg bg-white p-4 text-center text-sm text-gray-500 dark:bg-gray-800 dark:text-gray-400">Nenhum acerto cadastrado ainda.</p> : <div className="space-y-3">{Object.entries(settlementGroups).sort(([a], [b]) => a.localeCompare(b, 'pt-BR')).map(([person, entries]: [string, any[]]) => {
+            const owedByMe = entries.filter(entry => entry.direction === 'i_owe').reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+            const owedToMe = entries.filter(entry => entry.direction === 'they_owe').reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+            const net = settlementNet(entries);
+            return <div key={person} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><strong className="text-sm text-gray-800 dark:text-gray-100">{person}</strong><span className={`text-xs font-bold ${Math.abs(net) < 0.005 ? 'text-green-700 dark:text-green-400' : 'text-indigo-700 dark:text-indigo-300'}`}>{Math.abs(net) < 0.005 ? 'Sem saldo pendente' : net > 0 ? `Saldo: você deve R$ ${formatBRL(net)}` : `Saldo: a pessoa deve R$ ${formatBRL(Math.abs(net))}`}</span></div>
+              <div className="mb-2 grid grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-gray-400"><span>Você deve: <strong className="text-gray-800 dark:text-gray-200">R$ {formatBRL(owedByMe)}</strong></span><span>A descontar: <strong className="text-gray-800 dark:text-gray-200">R$ {formatBRL(owedToMe)}</strong></span></div>
+              <div className="space-y-1.5">{entries.map(entry => <div key={entry.id} className="flex items-center justify-between gap-2 rounded-md bg-gray-50 px-2 py-1.5 text-xs dark:bg-gray-900/50"><div className="min-w-0"><span className="font-medium text-gray-700 dark:text-gray-200">{entry.desc}</span><span className="ml-1 text-[10px] text-gray-500 dark:text-gray-400">· {settlementDirectionLabels[entry.direction] || 'Movimento'} · {formatLocalDate(entry.date)}</span></div><div className="flex shrink-0 items-center gap-2"><span className="font-semibold text-gray-800 dark:text-gray-100">R$ {formatBRL(entry.amount)}</span><button type="button" onClick={() => deletePersonSettlement(entry.id)} aria-label={`Excluir ${entry.desc}`} title="Excluir movimento" className="text-red-500 hover:text-red-700">×</button></div></div>)}</div>
+            </div>;
+          })}</div>}
+        </section>
+
         {filtersExpanded && <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Mês</label>
@@ -2072,6 +2140,17 @@ export default function FinanceApp() {
               );
             })}
           </div>
+        )}
+
+        {settlementModalOpen && createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/60 p-3 dark:bg-black/80"><form onSubmit={savePersonSettlement} role="dialog" aria-modal="true" className="my-auto max-h-[95vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex items-center justify-between"><h3 className="font-bold text-gray-800 dark:text-gray-100">Novo acerto entre pessoas</h3><button type="button" onClick={() => setSettlementModalOpen(false)} className="px-2 py-1 font-bold text-gray-400">✕</button></div><p className="text-xs text-gray-500 dark:text-gray-400">Inclua uma dívida, um valor a descontar ou um pagamento. Os movimentos atualizam apenas este saldo entre vocês.</p>
+            <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa</label><input required list="settlement-person-options" value={settlementDraft.person} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, person: event.target.value }))} placeholder="Ex.: Pai" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="settlement-person-options">{settlementPeople.map(name => <option key={name} value={name} />)}</datalist></div>
+            <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Tipo de movimento</label><select value={settlementDraft.direction} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, direction: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"><option value="i_owe">Eu devo à pessoa</option><option value="they_owe">A pessoa me deve (descontar)</option><option value="i_paid">Eu paguei à pessoa</option><option value="they_paid">A pessoa me pagou</option></select></div>
+            <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Descrição</label><input required value={settlementDraft.desc} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, desc: event.target.value }))} placeholder="Ex.: Spotify novembro, ajuda da casa" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /></div>
+            <div className="grid grid-cols-2 gap-3"><div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label><input required inputMode="decimal" value={settlementDraft.amount} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, amount: formatCurrencyEntry(event.target.value, currencyMaskEnabled) }))} placeholder="0,00" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /></div><div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data</label><input required type="date" value={settlementDraft.date} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, date: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /></div></div>
+            {settlementError && <p role="alert" className="rounded-lg bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300">{settlementError}</p>}<div className="flex gap-2"><button type="button" onClick={() => setSettlementModalOpen(false)} className="flex-1 rounded-lg bg-gray-100 py-2 font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">Cancelar</button><button type="submit" disabled={isSavingSettlement} className="flex-1 rounded-lg bg-indigo-600 py-2 font-medium text-white disabled:opacity-50">{isSavingSettlement ? 'Salvando...' : 'Salvar movimento'}</button></div>
+          </form></div>, document.body
         )}
 
         {collectionPayment && createPortal(
@@ -4496,7 +4575,7 @@ export default function FinanceApp() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const handleExportJSON = () => {
-      const data = { transactions, cards, investments, salesHistory, investmentProceeds };
+      const data = { transactions, cards, investments, salesHistory, investmentProceeds, personSettlements };
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute("href", dataStr);
@@ -4520,6 +4599,7 @@ export default function FinanceApp() {
           if (data.investments) for (const inv of data.investments) await setDoc(doc(db, 'users', user.uid, 'investments', inv.id), inv);
           if (data.salesHistory) for (const sale of data.salesHistory) await setDoc(doc(db, 'users', user.uid, 'salesHistory', sale.id), sale);
           if (data.investmentProceeds) for (const proceed of data.investmentProceeds) await setDoc(doc(db, 'users', user.uid, 'investmentProceeds', proceed.id), proceed);
+          if (data.personSettlements) for (const settlement of data.personSettlements) await setDoc(doc(db, 'users', user.uid, 'personSettlements', settlement.id), settlement);
           setImportMsg({ text: 'Backup restaurado com sucesso!', type: 'success' });
         } catch (err) { setImportMsg({ text: 'Erro ao importar.', type: 'error' }); } 
         finally { setIsProcessing(false); event.target.value = ''; }
