@@ -270,6 +270,7 @@ export default function FinanceApp() {
 
   const [user, setUser] = useState<any>(null);
   const [currencyMaskEnabled, setCurrencyMaskEnabled] = useState(true);
+  const [personSettlementEnabled, setPersonSettlementEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [loginError, setLoginError] = useState('');
@@ -340,14 +341,24 @@ export default function FinanceApp() {
   useEffect(() => {
     if (!user) {
       setCurrencyMaskEnabled(true);
+      setPersonSettlementEnabled(false);
       return;
     }
     const preferencesRef = doc(db, 'users', user.uid, 'settings', 'preferences');
     return onSnapshot(preferencesRef, snapshot => {
       const preference = snapshot.data()?.currencyMaskEnabled;
+      const settlementPreference = snapshot.data()?.personSettlementEnabled;
       if (typeof preference === 'boolean') setCurrencyMaskEnabled(preference);
+      if (typeof settlementPreference === 'boolean') setPersonSettlementEnabled(settlementPreference);
     }, console.error);
   }, [user]);
+
+  const savePersonSettlementPreference = async (enabled: boolean) => {
+    setPersonSettlementEnabled(enabled);
+    if (!user) return;
+    try { await setDoc(doc(db, 'users', user.uid, 'settings', 'preferences'), { personSettlementEnabled: enabled }, { merge: true }); }
+    catch (err) { console.error('Erro ao salvar preferência de acertos entre pessoas', err); }
+  };
 
   const saveCurrencyMaskPreference = async (enabled: boolean) => {
     setCurrencyMaskEnabled(enabled);
@@ -1121,6 +1132,8 @@ export default function FinanceApp() {
     const [saleAutoSplit, setSaleAutoSplit] = useState(true);
     const [salePending, setSalePending] = useState(false);
     const [observation, setObservation] = useState('');
+    const [includeInPersonSettlement, setIncludeInPersonSettlement] = useState(false);
+    const [settlementPersonName, setSettlementPersonName] = useState('');
     const [amount, setAmount] = useState<number | ''>(''); 
     const [displayAmount, setDisplayAmount] = useState('');
     const [calcTarget, setCalcTarget] = useState<any>(null);
@@ -1265,6 +1278,7 @@ export default function FinanceApp() {
         return;
       }
       if (txType === 'expense') {
+        if (personSettlementEnabled && includeInPersonSettlement && !settlementPersonName.trim()) { setErrorMsg('Informe a pessoa ou instituição deste acerto.'); return; }
         if (installments < 1) { setErrorMsg("Preencha a quantidade de parcelas."); return; }
         if (isSplit && includeMe && myShare < -0.05) { setErrorMsg("A soma das divisões não pode ser maior que o valor total."); return; }
         if (isSplit && !includeMe && Math.abs(parsedTotalAmount - totalSplits) > 0.05) {
@@ -1318,6 +1332,9 @@ export default function FinanceApp() {
             paymentDate: purchaseDate,
             settlementAccountId: '',
             isCardPaidExpense: true,
+            isPersonSettlement: personSettlementEnabled && includeInPersonSettlement,
+            settlementPerson: personSettlementEnabled && includeInPersonSettlement ? settlementPersonName.trim() : '',
+            settlementPaid: false,
             linkedCardTransactionIds: cardPaymentRefs.map(ref => ref.id),
             createdAt: new Date().toISOString()
           });
@@ -1387,13 +1404,16 @@ export default function FinanceApp() {
               type: txType, desc: desc + suffix, category, buyerName: isSaleCategory ? saleBuyers.map(buyer => String(buyer.name || '').trim()).join(', ') : '', saleBuyers: isSaleCategory ? saleBuyers.map(buyer => ({ name: String(buyer.name || '').trim(), amount: parseFloat(buyer.amount) || 0 })) : [], isSaleReceivable: installmentIsReceivable, observation: observation.trim(), totalAmount: instTotalAmt, myAmount: instMyAmt, purchaseDate: purchaseDate,
               date: formattedDate, method: cardName, methodId: finalMethodId, splits: instSplits, groupId, status: initialStatus,
               settlementAccountId: initialStatus === 'paid' && txType === 'income' ? incomeAccountId : '',
+              isPersonSettlement: txType === 'expense' && personSettlementEnabled && includeInPersonSettlement,
+              settlementPerson: txType === 'expense' && personSettlementEnabled && includeInPersonSettlement ? settlementPersonName.trim() : '',
+              settlementPaid: false,
               createdAt: new Date().toISOString()
             };
             await setDoc(doc(collection(db, 'users', user.uid, 'transactions')), newTx);
         }
         }
         
-        setDesc(''); setCategory(''); setObservation(''); setIncomeAccountId(defaultBankAccountId); setBillCreditCardId(''); setSaleBuyers([{ name: '', amount: 0, displayAmount: '' }]); setSaleAutoSplit(true); setSalePending(false); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
+        setDesc(''); setCategory(''); setObservation(''); setIncludeInPersonSettlement(false); setSettlementPersonName(''); setIncomeAccountId(defaultBankAccountId); setBillCreditCardId(''); setSaleBuyers([{ name: '', amount: 0, displayAmount: '' }]); setSaleAutoSplit(true); setSalePending(false); setAmount(''); setDisplayAmount(''); setInstallments(1); setIsSplit(false); setSplits([{ name: '', amount: 0, displayAmount: '', paid: false }]); setExpenseType('installment');
         setActiveTab('history');
       } catch (err) { console.error(err); setErrorMsg("Erro ao salvar."); } finally { setIsSaving(false); }
     };
@@ -1564,6 +1584,7 @@ export default function FinanceApp() {
             )}
           </div>
 
+          {txType === 'expense' && personSettlementEnabled && <section className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/50 dark:bg-indigo-900/20"><label className="flex cursor-pointer items-start gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100"><input type="checkbox" checked={includeInPersonSettlement} onChange={event => setIncludeInPersonSettlement(event.target.checked)} className="mt-0.5 h-4 w-4 rounded text-indigo-600" /><span>Incluir em acerto com pessoa ou instituição</span></label>{includeInPersonSettlement && <div className="mt-3"><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa ou instituição</label><input required list="settlement-person-options" value={settlementPersonName} onChange={event => setSettlementPersonName(event.target.value)} placeholder="Ex.: Pai" className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="settlement-person-options">{settlementPeople.map(name => <option key={name} value={name} />)}</datalist><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Aparecerá em Cobrar › Acertos como valor a pagar.</p></div>}</section>}
           {txType === 'expense' && (
             <>
               <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
