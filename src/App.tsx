@@ -1998,7 +1998,7 @@ export default function FinanceApp() {
                       {isAllPaid && <span className="rounded-lg bg-green-100 px-2 py-1 text-[10px] font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">Tudo pago</span>}
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Total lançado: <strong className="text-gray-700 dark:text-gray-300">R$ {formatBRL(totalOriginal)}</strong></p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Total devido: <strong className="text-gray-700 dark:text-gray-300">R$ {formatBRL(totalOriginal)}</strong></p>
                       <p className="text-xs font-bold text-blue-600 dark:text-blue-400">Restante: R$ {formatBRL(totalOwed)}</p>
                     </div>
                   </div>
