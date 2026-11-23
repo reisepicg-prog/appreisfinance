@@ -3358,7 +3358,7 @@ export default function FinanceApp() {
     const [managerFilters, setManagerFilters] = useState({ dateMode: 'invoice', dateGranularity: 'month', month: 'all', exactDate: '', type: 'all', status: 'all', methodId: 'all', category: 'all', person: 'all', search: '' });
     const [expandedManagerGroups, setExpandedManagerGroups] = useState<string[]>([]);
     const [editingTx, setEditingTx] = useState<any>(null);
-    const [editForm, setEditForm] = useState({ desc: '', totalAmount: '', date: '', category: '', observation: '' });
+    const [editForm, setEditForm] = useState<any>({ desc: '', totalAmount: '', date: '', category: '', observation: '' });
     const [editSplits, setEditSplits] = useState<any[]>([]);
     const [editHasSplits, setEditHasSplits] = useState(false);
     const [editSaleBuyers, setEditSaleBuyers] = useState<any[]>([]);
