@@ -1718,7 +1718,6 @@ export default function FinanceApp() {
     const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
     const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
-    const settlementPeople = Array.from(new Set([...personSettlements.map((entry: any) => String(entry.person || '').trim()), ...transactions.filter((tx: any) => tx.isPersonSettlement && !tx.isCardPaymentEntry).map((tx: any) => String(tx.settlementPerson || '').trim())].filter(Boolean))).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
     const settlementGroups = settlementPeople.reduce((groups: Record<string, any>, name: string) => {
       groups[name] = { expenses: transactions.filter((tx: any) => tx.type === 'expense' && tx.isPersonSettlement && !tx.isCardPaymentEntry && String(tx.settlementPerson || '').trim() === name), adjustments: personSettlements.filter((entry: any) => String(entry.person || '').trim() === name) };
       return groups;
@@ -3912,7 +3911,7 @@ export default function FinanceApp() {
             observation: editForm.observation.trim(),
             isPersonSettlement: personSettlementEnabled ? Boolean(editForm.isPersonSettlement) : Boolean(t.isPersonSettlement),
             settlementPerson: personSettlementEnabled ? (editForm.isPersonSettlement ? String(editForm.settlementPerson || '').trim() : '') : (t.settlementPerson || ''),
-            settlementPaid: personSettlementEnabled && editForm.isPersonSettlement && String(editForm.settlementPerson || '').trim() === String(t.settlementPerson || '').trim() ? Boolean(t.settlementPaid) : false,
+            settlementPaid: !personSettlementEnabled ? Boolean(t.settlementPaid) : (editForm.isPersonSettlement && String(editForm.settlementPerson || '').trim() === String(t.settlementPerson || '').trim() ? Boolean(t.settlementPaid) : false),
             splits: updatedSplits
           };
           if (editingTx.type === 'income' && isSaleIncome) {
