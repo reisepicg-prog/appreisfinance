@@ -141,6 +141,11 @@ const formatLocalDate = (value: any): string => {
   return isNaN(date.getTime()) ? '-' : date.toLocaleDateString('pt-BR');
 };
 
+const getLocalDateInputValue = (): string => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+};
+
 // --- Lista Estática Inteligente para Autocomplete (B3) ---
 const POPULAR_TICKERS = ["AAPL34", "ABEV3", "ALOS3", "ARZZ3", "ASAI3", "AZUL4", "B3SA3", "BBAS3", "BBDC3", "BBDC4", "BBSE3", "BPAC11", "BRAP4", "BRFS3", "BRKM5", "CCRO3", "CIEL3", "CMIG4", "COGN3", "CPFE3", "CPLE6", "CRFB3", "CSAN3", "CSNA3", "CVCB3", "CYRE3", "ELET3", "ELET6", "EMBR3", "ENEV3", "ENGI11", "EQTL3", "EZTC3", "FLRY3", "GGBR4", "GOAU4", "GOLL4", "HAPV3", "HGLG11", "HYPE3", "IGTI11", "IRBR3", "ITSA4", "ITUB4", "JBSS3", "KLBN11", "KNRI11", "LREN3", "LWSA3", "MGLU3", "MRFG3", "MRVE3", "MULT3", "MXRF11", "NTCO3", "PCAR3", "PETR3", "PETR4", "PETZ3", "PRIO3", "RADL3", "RAIL3", "RDOR3", "RENT3", "RRRP3", "SANB11", "SBSP3", "SIMH3", "SLCE3", "SOMA3", "SUZB3", "TAEE11", "TIMS3", "TOTS3", "UGPA3", "USIM5", "VALE3", "VAMO3", "VBBR3", "VILG11", "VISC11", "VIVT3", "WEGE3", "XPLG11", "XPML11", "YDUQ3"];
 
@@ -1672,7 +1677,7 @@ export default function FinanceApp() {
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
     const [settlementModalOpen, setSettlementModalOpen] = useState(false);
-    const [settlementDraft, setSettlementDraft] = useState<any>({ person: '', desc: '', amount: '', date: new Date().toISOString().slice(0, 10), direction: 'i_owe' });
+    const [settlementDraft, setSettlementDraft] = useState<any>({ person: '', desc: '', amount: '', date: getLocalDateInputValue(), direction: 'i_owe' });
     const [settlementError, setSettlementError] = useState('');
     const [isSavingSettlement, setIsSavingSettlement] = useState(false);
     const [collectionPayment, setCollectionPayment] = useState<any>(null);
@@ -1720,7 +1725,7 @@ export default function FinanceApp() {
       setSettlementError('');
       try {
         await addDoc(collection(db, 'users', user.uid, 'personSettlements'), { person, desc, amount, date: settlementDraft.date, direction: settlementDraft.direction, createdAt: new Date().toISOString() });
-        setSettlementDraft({ person, desc: '', amount: '', date: new Date().toISOString().slice(0, 10), direction: 'i_owe' });
+        setSettlementDraft({ person, desc: '', amount: '', date: getLocalDateInputValue(), direction: 'i_owe' });
         setSettlementModalOpen(false);
       } catch (error) {
         console.error('Erro ao salvar acerto entre pessoas', error);
@@ -2004,9 +2009,11 @@ export default function FinanceApp() {
           {Object.keys(settlementGroups).length === 0 ? <p className="rounded-lg bg-white p-4 text-center text-sm text-gray-500 dark:bg-gray-800 dark:text-gray-400">Nenhum acerto cadastrado ainda.</p> : <div className="space-y-3">{Object.entries(settlementGroups).sort(([a], [b]) => a.localeCompare(b, 'pt-BR')).map(([person, entries]: [string, any[]]) => {
             const owedByMe = entries.filter(entry => entry.direction === 'i_owe').reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
             const owedToMe = entries.filter(entry => entry.direction === 'they_owe').reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+            const paidByMe = entries.filter(entry => entry.direction === 'i_paid').reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+            const paidByPerson = entries.filter(entry => entry.direction === 'they_paid').reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
             const net = settlementNet(entries);
             return <div key={person} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><strong className="text-sm text-gray-800 dark:text-gray-100">{person}</strong><span className={`text-xs font-bold ${Math.abs(net) < 0.005 ? 'text-green-700 dark:text-green-400' : 'text-indigo-700 dark:text-indigo-300'}`}>{Math.abs(net) < 0.005 ? 'Sem saldo pendente' : net > 0 ? `Saldo: você deve R$ ${formatBRL(net)}` : `Saldo: a pessoa deve R$ ${formatBRL(Math.abs(net))}`}</span></div>
-              <div className="mb-2 grid grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-gray-400"><span>Você deve: <strong className="text-gray-800 dark:text-gray-200">R$ {formatBRL(owedByMe)}</strong></span><span>A descontar: <strong className="text-gray-800 dark:text-gray-200">R$ {formatBRL(owedToMe)}</strong></span></div>
+              <div className="mb-2 grid grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-gray-400"><span>Eu devo: <strong className="text-gray-800 dark:text-gray-200">R$ {formatBRL(owedByMe)}</strong></span><span>A descontar: <strong className="text-gray-800 dark:text-gray-200">R$ {formatBRL(owedToMe)}</strong></span><span>Eu paguei: <strong className="text-gray-800 dark:text-gray-200">R$ {formatBRL(paidByMe)}</strong></span><span>Recebi: <strong className="text-gray-800 dark:text-gray-200">R$ {formatBRL(paidByPerson)}</strong></span></div>
               <div className="space-y-1.5">{entries.map(entry => <div key={entry.id} className="flex items-center justify-between gap-2 rounded-md bg-gray-50 px-2 py-1.5 text-xs dark:bg-gray-900/50"><div className="min-w-0"><span className="font-medium text-gray-700 dark:text-gray-200">{entry.desc}</span><span className="ml-1 text-[10px] text-gray-500 dark:text-gray-400">· {settlementDirectionLabels[entry.direction] || 'Movimento'} · {formatLocalDate(entry.date)}</span></div><div className="flex shrink-0 items-center gap-2"><span className="font-semibold text-gray-800 dark:text-gray-100">R$ {formatBRL(entry.amount)}</span><button type="button" onClick={() => deletePersonSettlement(entry.id)} aria-label={`Excluir ${entry.desc}`} title="Excluir movimento" className="text-red-500 hover:text-red-700">×</button></div></div>)}</div>
             </div>;
           })}</div>}
