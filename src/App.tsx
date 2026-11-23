@@ -1699,7 +1699,6 @@ export default function FinanceApp() {
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
     const [activeCollectionsView, setActiveCollectionsView] = useState<'collections' | 'settlements'>('collections');
-    const [activeCollectionsView, setActiveCollectionsView] = useState<'collections' | 'settlements'>('collections');
     const [settlementModalOpen, setSettlementModalOpen] = useState(false);
     const [settlementDraft, setSettlementDraft] = useState<any>({ person: '', desc: '', amount: '', date: getLocalDateInputValue(), direction: 'advance_by_me' });
     const [settlementError, setSettlementError] = useState('');
@@ -1725,12 +1724,6 @@ export default function FinanceApp() {
       return groups;
     }, {});
     const settlementDirectionLabels: Record<string, string> = { advance_by_me: 'Adiantamento meu · descontar', advance_by_person: 'Adiantamento da pessoa · somar ao que devo', i_owe: 'Eu devo', they_owe: 'Tenho a descontar', i_paid: 'Eu paguei', they_paid: 'A pessoa pagou' };
-    const settlementNet = (entries: any[]) => entries.reduce((sum: number, entry: any) => {
-      const amount = Number(entry.amount) || 0;
-      if (entry.direction === 'advance_by_me' || entry.direction === 'they_owe' || entry.direction === 'i_paid') return sum - amount;
-      if (entry.direction === 'advance_by_person' || entry.direction === 'i_owe' || entry.direction === 'they_paid') return sum + amount;
-      return sum;
-    }, 0);
     const savePersonSettlement = async (event: any) => {
       event.preventDefault();
       const person = String(settlementDraft.person || '').trim();
