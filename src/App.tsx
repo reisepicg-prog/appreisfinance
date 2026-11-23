@@ -313,6 +313,7 @@ export default function FinanceApp() {
   }))).filter(Boolean).sort() as string[];
   
   const allSplitNames = Array.from(new Set((transactions || []).flatMap(t => t?.splits?.map((s: any) => String(s?.name || '')) || []))).filter(Boolean).sort() as string[];
+  const allSettlementPeople = Array.from(new Set([...personSettlements.map((entry: any) => String(entry.person || '').trim()), ...transactions.filter((tx: any) => tx.isPersonSettlement).map((tx: any) => String(tx.settlementPerson || '').trim())].filter(Boolean))).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
   const allBuyerNames = Array.from(new Set([
     ...allSplitNames,
     ...(transactions || []).flatMap(t => t?.saleBuyers?.map((buyer: any) => String(buyer?.name || '').trim()) || [])
@@ -1584,7 +1585,7 @@ export default function FinanceApp() {
             )}
           </div>
 
-          {txType === 'expense' && personSettlementEnabled && <section className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/50 dark:bg-indigo-900/20"><label className="flex cursor-pointer items-start gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100"><input type="checkbox" checked={includeInPersonSettlement} onChange={event => setIncludeInPersonSettlement(event.target.checked)} className="mt-0.5 h-4 w-4 rounded text-indigo-600" /><span>Incluir em acerto com pessoa ou instituição</span></label>{includeInPersonSettlement && <div className="mt-3"><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa ou instituição</label><input required list="settlement-person-options" value={settlementPersonName} onChange={event => setSettlementPersonName(event.target.value)} placeholder="Ex.: Pai" className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="settlement-person-options">{settlementPeople.map(name => <option key={name} value={name} />)}</datalist><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Aparecerá em Cobrar › Acertos como valor a pagar.</p></div>}</section>}
+          {txType === 'expense' && personSettlementEnabled && <section className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/50 dark:bg-indigo-900/20"><label className="flex cursor-pointer items-start gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100"><input type="checkbox" checked={includeInPersonSettlement} onChange={event => setIncludeInPersonSettlement(event.target.checked)} className="mt-0.5 h-4 w-4 rounded text-indigo-600" /><span>Incluir em acerto com pessoa ou instituição</span></label>{includeInPersonSettlement && <div className="mt-3"><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa ou instituição</label><input required list="settlement-person-options" value={settlementPersonName} onChange={event => setSettlementPersonName(event.target.value)} placeholder="Ex.: Pai" className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="settlement-person-options">{allSettlementPeople.map(name => <option key={name} value={name} />)}</datalist><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Aparecerá em Cobrar › Acertos como valor a pagar.</p></div>}</section>}
           {txType === 'expense' && (
             <>
               <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
@@ -1697,6 +1698,7 @@ export default function FinanceApp() {
 
   const CollectionsTab = () => {
     const [qrCodeModal, setQrCodeModal] = useState<any>(null);
+    const [activeCollectionsView, setActiveCollectionsView] = useState<'collections' | 'settlements'>('collections');
     const [settlementModalOpen, setSettlementModalOpen] = useState(false);
     const [settlementDraft, setSettlementDraft] = useState<any>({ person: '', desc: '', amount: '', date: getLocalDateInputValue(), direction: 'i_owe' });
     const [settlementError, setSettlementError] = useState('');
@@ -1716,21 +1718,16 @@ export default function FinanceApp() {
     const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
     const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const myPixKey = String(cards.find((card: any) => card.isDefaultPix)?.pixKey || '').trim();
-    const settlementPeople = Array.from(new Set(personSettlements.map((entry: any) => String(entry.person || '').trim()).filter(Boolean))).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
-    const settlementGroups = personSettlements.reduce((groups: Record<string, any[]>, entry: any) => {
-      const name = String(entry.person || '').trim();
-      if (!name) return groups;
-      if (!groups[name]) groups[name] = [];
-      groups[name].push(entry);
+    const settlementPeople = Array.from(new Set([...personSettlements.map((entry: any) => String(entry.person || '').trim()), ...transactions.filter((tx: any) => tx.isPersonSettlement && !tx.isCardPaymentEntry).map((tx: any) => String(tx.settlementPerson || '').trim())].filter(Boolean))).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
+    const settlementGroups = settlementPeople.reduce((groups: Record<string, any>, name: string) => {
+      groups[name] = { expenses: transactions.filter((tx: any) => tx.type === 'expense' && tx.isPersonSettlement && !tx.isCardPaymentEntry && String(tx.settlementPerson || '').trim() === name), adjustments: personSettlements.filter((entry: any) => String(entry.person || '').trim() === name) };
       return groups;
     }, {});
-    const settlementDirectionLabels: Record<string, string> = { i_owe: 'Eu devo', they_owe: 'Tenho a descontar', i_paid: 'Eu paguei', they_paid: 'A pessoa pagou' };
+    const settlementDirectionLabels: Record<string, string> = { advance_by_me: 'Adiantamento meu · descontar', advance_by_person: 'Adiantamento da pessoa · somar ao que devo', i_owe: 'Eu devo', they_owe: 'Tenho a descontar', i_paid: 'Eu paguei', they_paid: 'A pessoa pagou' };
     const settlementNet = (entries: any[]) => entries.reduce((sum: number, entry: any) => {
       const amount = Number(entry.amount) || 0;
-      if (entry.direction === 'i_owe') return sum + amount;
-      if (entry.direction === 'they_owe') return sum - amount;
-      if (entry.direction === 'i_paid') return sum - amount;
-      if (entry.direction === 'they_paid') return sum + amount;
+      if (entry.direction === 'advance_by_me' || entry.direction === 'they_owe' || entry.direction === 'i_paid') return sum - amount;
+      if (entry.direction === 'advance_by_person' || entry.direction === 'i_owe' || entry.direction === 'they_paid') return sum + amount;
       return sum;
     }, 0);
     const savePersonSettlement = async (event: any) => {
@@ -1752,6 +1749,11 @@ export default function FinanceApp() {
         console.error('Erro ao salvar acerto entre pessoas', error);
         setSettlementError('Não foi possível salvar o acerto. Tente novamente.');
       } finally { setIsSavingSettlement(false); }
+    };
+    const togglePersonExpenseSettlementPaid = async (tx: any) => {
+      if (!user) return;
+      try { await updateDoc(doc(db, 'users', user.uid, 'transactions', tx.id), { settlementPaid: !tx.settlementPaid, settlementPaidDate: tx.settlementPaid ? '' : getLocalDateInputValue() }); }
+      catch (error) { console.error('Erro ao atualizar pagamento do acerto', error); }
     };
     const deletePersonSettlement = async (id: string) => {
       if (!user || !window.confirm('Deseja excluir este movimento do acerto?')) return;
@@ -2173,7 +2175,7 @@ export default function FinanceApp() {
         {settlementModalOpen && createPortal(
           <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/60 p-3 dark:bg-black/80"><form onSubmit={savePersonSettlement} role="dialog" aria-modal="true" className="my-auto max-h-[95vh] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
             <div className="flex items-center justify-between"><h3 className="font-bold text-gray-800 dark:text-gray-100">Novo acerto entre pessoas</h3><button type="button" onClick={() => setSettlementModalOpen(false)} className="px-2 py-1 font-bold text-gray-400">✕</button></div><p className="text-xs text-gray-500 dark:text-gray-400">Inclua uma dívida, um valor a descontar ou um pagamento. Os movimentos atualizam apenas este saldo entre vocês.</p>
-            <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa</label><input required list="settlement-person-options" value={settlementDraft.person} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, person: event.target.value }))} placeholder="Ex.: Pai" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="settlement-person-options">{settlementPeople.map(name => <option key={name} value={name} />)}</datalist></div>
+            <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa</label><input required list="settlement-person-options" value={settlementDraft.person} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, person: event.target.value }))} placeholder="Ex.: Pai" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="settlement-person-options">{allSettlementPeople.map(name => <option key={name} value={name} />)}</datalist></div>
             <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Tipo de movimento</label><select value={settlementDraft.direction} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, direction: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"><option value="i_owe">Eu devo à pessoa</option><option value="they_owe">A pessoa me deve (descontar)</option><option value="i_paid">Eu paguei à pessoa</option><option value="they_paid">A pessoa me pagou</option></select></div>
             <div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Descrição</label><input required value={settlementDraft.desc} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, desc: event.target.value }))} placeholder="Ex.: Spotify novembro, ajuda da casa" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /></div>
             <div className="grid grid-cols-2 gap-3"><div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label><input required inputMode="decimal" value={settlementDraft.amount} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, amount: formatCurrencyEntry(event.target.value, currencyMaskEnabled) }))} placeholder="0,00" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /></div><div><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Data</label><input required type="date" value={settlementDraft.date} onChange={event => setSettlementDraft((previous: any) => ({ ...previous, date: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /></div></div>
