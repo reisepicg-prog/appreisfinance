@@ -1726,7 +1726,7 @@ export default function FinanceApp() {
     };
     const monthlySettlementExpenses = transactions.filter((tx: any) =>
       tx.isPersonSettlement && !tx.isCardPaymentEntry &&
-      settlementMonthKey(tx.purchaseDate || tx.date) === settlementMonth
+      settlementMonthKey(tx.date) === settlementMonth
     );
     const monthlySettlementAdjustments = personSettlements.filter((entry: any) =>
       settlementMonthKey(entry.date) === settlementMonth
@@ -1740,12 +1740,12 @@ export default function FinanceApp() {
         expenses: monthlySettlementExpenses.filter((tx: any) => String(tx.settlementPerson || '').trim() === name),
         adjustments: monthlySettlementAdjustments.filter((entry: any) => String(entry.person || '').trim() === name),
         receivables: transactions.flatMap((tx: any) => (tx.isCardPaymentEntry ? [] : (tx.splits || []).map((split: any, index: number) => ({ tx, split, index }))))
-          .filter((item: any) => String(item.split?.name || '').trim() === name && !item.split?.paid)
+          .filter((item: any) => String(item.split?.name || '').trim() === name && !item.split?.paid && settlementMonthKey(item.tx.date) !== '' && settlementMonthKey(item.tx.date) <= settlementMonth)
           .map((item: any) => ({
             id: `${item.tx.id}-split-${item.index}`,
             desc: item.tx.desc || 'Despesa compartilhada',
             amount: Number(item.split.amount) || 0,
-            date: item.tx.purchaseDate || item.tx.date,
+            date: item.tx.date || item.tx.purchaseDate,
             method: item.tx.method || 'Pix/Conta',
             kind: 'collection'
           }))
