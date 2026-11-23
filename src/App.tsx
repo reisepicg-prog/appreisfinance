@@ -3742,7 +3742,9 @@ export default function FinanceApp() {
         totalAmount: Number.isFinite(editAmount) ? formatCurrencyValueForEntry(editAmount, currencyMaskEnabled) : '',
         date: tx.date || '',
         category: tx.category || '',
-        observation: tx.observation || ''
+        observation: tx.observation || '',
+        isPersonSettlement: Boolean(tx.isPersonSettlement),
+        settlementPerson: tx.settlementPerson || ''
       });
       const normalizedSplits = (Array.isArray(tx.splits) ? tx.splits : []).map((split: any) => ({
         ...split,
@@ -3853,6 +3855,7 @@ export default function FinanceApp() {
         : [];
       const buyerTotal = cleanedBuyers.reduce((sum: number, buyer: any) => sum + buyer.amount, 0);
 
+      if (personSettlementEnabled && editForm.isPersonSettlement && !String(editForm.settlementPerson || '').trim()) { setEditError('Informe a pessoa ou instituição deste acerto.'); return; }
       if (newTotal <= 0) {
         setEditError('Informe um valor total maior que zero.');
         return;
@@ -3914,6 +3917,9 @@ export default function FinanceApp() {
             date: updateScope === 'single' ? editForm.date : t.date,
             category: editForm.category,
             observation: editForm.observation.trim(),
+            isPersonSettlement: personSettlementEnabled ? Boolean(editForm.isPersonSettlement) : Boolean(t.isPersonSettlement),
+            settlementPerson: personSettlementEnabled ? (editForm.isPersonSettlement ? String(editForm.settlementPerson || '').trim() : '') : (t.settlementPerson || ''),
+            settlementPaid: personSettlementEnabled && editForm.isPersonSettlement && String(editForm.settlementPerson || '').trim() === String(t.settlementPerson || '').trim() ? Boolean(t.settlementPaid) : false,
             splits: updatedSplits
           };
           if (editingTx.type === 'income' && isSaleIncome) {
@@ -4463,6 +4469,12 @@ export default function FinanceApp() {
                     </div>
                   </div>
 
+                  {editingTx.type === 'expense' && personSettlementEnabled && (
+                    <section className="mb-3 rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/50 dark:bg-indigo-900/20">
+                      <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100"><input type="checkbox" checked={Boolean(editForm.isPersonSettlement)} onChange={event => setEditForm((previous: any) => ({ ...previous, isPersonSettlement: event.target.checked }))} className="h-4 w-4 rounded text-indigo-600" /> Incluir em acerto com pessoa ou instituição</label>
+                      {editForm.isPersonSettlement && <div className="mt-3"><label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pessoa ou instituição</label><input required list="edit-settlement-person-options" value={editForm.settlementPerson || ''} onChange={event => setEditForm((previous: any) => ({ ...previous, settlementPerson: event.target.value }))} className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" /><datalist id="edit-settlement-person-options">{allSettlementPeople.map(name => <option key={name} value={name} />)}</datalist></div>}
+                    </section>
+                  )}
                   {editingTx.type === 'expense' && (
                     <section className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20">
                       <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
@@ -4715,6 +4727,14 @@ export default function FinanceApp() {
               </label>
             </div>
             <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">A preferência fica salva na sua conta e vale para os campos monetários de lançamentos, contas, cartões e ativos.</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="mb-2 text-lg font-bold text-gray-800 dark:text-gray-100">Acertos entre pessoas</h3>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+              <input type="checkbox" checked={personSettlementEnabled} onChange={event => savePersonSettlementPreference(event.target.checked)} className="mt-1 h-4 w-4 rounded text-indigo-600" />
+              <span><strong className="block text-sm text-gray-800 dark:text-gray-100">Habilitar controle de acertos</strong><span className="text-xs text-gray-500 dark:text-gray-400">Mostra a subaba Acertos em Cobrar e a opção de vincular despesas a uma pessoa ou instituição.</span></span>
+            </label>
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
