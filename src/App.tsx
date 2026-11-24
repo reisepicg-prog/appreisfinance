@@ -302,9 +302,10 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
           GEMINI_MODEL_UNAVAILABLE: 'O modelo Gemini configurado não está disponível.',
           GEMINI_REQUEST_FAILED: 'O Gemini não conseguiu processar esta pergunta agora.',
           GEMINI_UNAVAILABLE: 'O serviço Gemini está temporariamente indisponível.',
+          GEMINI_INTERNAL_ERROR: 'O Gemini retornou um erro interno, mesmo após uma tentativa automática de repetição.',
           EMPTY_RESPONSE: 'O Gemini retornou uma resposta vazia.'
         };
-        throw new Error((messages[code] || 'Não foi possível gerar a resposta.') + ' (código: ' + code + ')');
+        throw new Error((messages[code] || 'Não foi possível gerar a resposta.') + ' (código: ' + code + (result.providerStatus ? ', HTTP Gemini ' + result.providerStatus : '') + ')');
       }
       setAssistantMessages([...nextMessages, { role: 'model', content: String(result.answer || 'Não consegui gerar uma resposta para esta pergunta.') }]);
       if (typeof result.remainingToday === 'number') setAssistantRemaining(result.remainingToday);
