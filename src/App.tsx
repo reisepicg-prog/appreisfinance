@@ -5109,25 +5109,29 @@ export default function FinanceApp() {
         </div>
       </nav>
 
-      {assistantOpen && aiAssistantEnabled && createPortal(
-        <div className="fixed inset-0 z-[10000] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80 animate-fadeIn">
-          <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <section role="dialog" aria-modal="true" aria-labelledby="assistant-title" className="my-auto flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
-              <header className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
-                <div>
-                  <h2 id="assistant-title" className="flex items-center gap-2 font-bold text-gray-800 dark:text-gray-100">
-                    <span className="text-blue-600 dark:text-blue-400">✦</span> Assistente financeiro
-                  </h2>
-                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Somente leitura • Analisa lançamentos dos últimos 12 meses</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => { setAssistantMessages([]); setAssistantError(''); }} className="rounded-lg px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/30">Nova conversa</button>
-                  <button type="button" onClick={() => setAssistantOpen(false)} aria-label="Fechar assistente" className="px-2 py-1 font-bold text-gray-400">✕</button>
-                </div>
-              </header>
-              <div className="flex min-h-0 flex-1 flex-col">
-                <div className="min-h-[180px] flex-1 space-y-3 overflow-y-auto p-4">
-                  {assistantMessages.length === 0 && <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-900/20 dark:text-blue-100">
-                    <p className="font-semibold">Olá! Posso analisar seus lançamentos e preparar resumos.</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button type="button" disabled={assistantLoading} onClick={() => sendAssistantMessage(undefined, 'Faça um resumo das minhas receitas e despesas do mês atual.')} className="rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs hover:bg-blue-100 disabled:opacity-50 dark      {assistantOpen && aiAssistantEnabled && <AIAssistantModal user={user} onClose={() => setAssistantOpen(false)} />}
+      {assistantOpen && aiAssistantEnabled && <AIAssistantModal user={user} onClose={() => setAssistantOpen(false)} />}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+        .pb-safe { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .dark { background-color: #111827 !important; color: #f3f4f6 !important; }
+        .dark .bg-slate-50 { background-color: #111827 !important; }
+        html[data-theme="dark"] #root, body[data-theme="dark"] #root { background-color: #111827 !important; color: #f3f4f6 !important; }
+        html[data-theme="light"] #root, body[data-theme="light"] #root { background-color: #f8fafc !important; color: #1f2937 !important; }
+        .dark .text-slate-900 { color: #f3f4f6 !important; }
+        .dark .bg-white { background-color: #1f2937 !important; border-color: #374151 !important; }
+        .dark .bg-gray-50 { background-color: #111827 !important; border-color: #374151 !important; }
+        .dark .bg-gray-100 { background-color: #374151 !important; }
+        .dark .bg-gray-200 { background-color: #4b5563 !important; }
+        .dark .text-gray-800 { color: #f3f4f6 !important; }
+        .dark .text-gray-700 { color: #d1d5db !important; }
+        .dark .text-gray-600 { color: #9ca3af !important; }
+        .dark .text-gray-500 { color: #6b7280 !important; }
+        .dark .border-gray-100, .dark .border-gray-200, .dark .border-gray-300 { border-color: #374151 !important; }
+        .dark input, .dark select, .dark textarea { background-color: #374151 !important; color: #f3f4f6 !important; border-color: #4b5563 !important; }
+      `}} />
+    </div>
+  );
+}
