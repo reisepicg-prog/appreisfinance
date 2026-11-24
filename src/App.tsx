@@ -303,7 +303,8 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
           GEMINI_REQUEST_FAILED: 'O Gemini não conseguiu processar esta pergunta agora.',
           GEMINI_UNAVAILABLE: 'O serviço Gemini está temporariamente indisponível.',
           GEMINI_INTERNAL_ERROR: 'O Gemini retornou um erro interno, mesmo após uma tentativa automática de repetição.',
-          EMPTY_RESPONSE: 'O Gemini retornou uma resposta vazia.'
+          EMPTY_RESPONSE: 'O Gemini retornou uma resposta vazia.',
+          GEMINI_OUTPUT_TRUNCATED: 'A resposta ultrapassou o limite de geração. Tente novamente com uma pergunta mais específica.'
         };
         throw new Error((messages[code] || 'Não foi possível gerar a resposta.') + ' (código: ' + code + (result.providerStatus ? ', HTTP Gemini ' + result.providerStatus : '') + (result.providerModel ? ', modelo ' + result.providerModel : '') + ')');
       }
