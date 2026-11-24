@@ -305,7 +305,7 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
           GEMINI_INTERNAL_ERROR: 'O Gemini retornou um erro interno, mesmo após uma tentativa automática de repetição.',
           EMPTY_RESPONSE: 'O Gemini retornou uma resposta vazia.'
         };
-        throw new Error((messages[code] || 'Não foi possível gerar a resposta.') + ' (código: ' + code + (result.providerStatus ? ', HTTP Gemini ' + result.providerStatus : '') + ')');
+        throw new Error((messages[code] || 'Não foi possível gerar a resposta.') + ' (código: ' + code + (result.providerStatus ? ', HTTP Gemini ' + result.providerStatus : '') + (result.providerModel ? ', modelo ' + result.providerModel : '') + ')');
       }
       setAssistantMessages([...nextMessages, { role: 'model', content: String(result.answer || 'Não consegui gerar uma resposta para esta pergunta.') }]);
       if (typeof result.remainingToday === 'number') setAssistantRemaining(result.remainingToday);
