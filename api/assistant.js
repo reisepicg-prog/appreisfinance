@@ -3,7 +3,8 @@ const FIREBASE_API_KEY = 'AIzaSyBBM1n7doAL_Hn7sN7Da0e-Mz05SYKVW2A';
 const DAILY_LIMIT = 5;
 const MONTHLY_LIMIT = 30;
 const MAX_TRANSACTIONS = 1500;
-const MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+const MODEL_FALLBACKS = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
 
 function decodeValue(value) {
   if (!value || typeof value !== 'object') return null;
@@ -357,16 +358,33 @@ module.exports = async function handler(req, res) {
     ].join('\n');
 
     const contents = history.concat([{ role: 'user', parts: [{ text: question }] }]);
-    const model = encodeURIComponent(MODEL);
-    const response = await fetchGeminiWithRetry('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents,
-        generationConfig: { maxOutputTokens: 700 }
-      })
-    });
+    const modelsToTry = Array.from(new Set([MODEL, ...MODEL_FALLBACKS]));
+    let response = null;
+    let selectedModel = MODEL;
+
+    for (let modelIndex = 0; modelIndex < modelsToTry.length; modelIndex += 1) {
+      selectedModel = modelsToTry[modelIndex];
+      const model = encodeURIComponent(selectedModel);
+      response = await fetchGeminiWithRetry('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents,
+          generationConfig: { maxOutputTokens: 700 }
+        })
+      });
+
+      const shouldTryFallback = [404, 500, 502, 503, 504].includes(response.status) && modelIndex < modelsToTry.length - 1;
+      if (shouldTryFallback) {
+        console.warn('Gemini model unavailable; trying fallback', { model: selectedModel, status: response.status });
+        await response.arrayBuffer();
+        continue;
+      }
+      break;
+    }
+
+    if (!response) return res.status(503).json({ code: 'GEMINI_UNAVAILABLE' });
 
     if (response.status === 429) {
       const retryAfter = response.headers.get('Retry-After');
@@ -374,14 +392,17 @@ module.exports = async function handler(req, res) {
       return res.status(429).json({ code: 'GEMINI_RATE_LIMIT', retryAfter: retryAfter || null });
     }
     if (response.status === 401 || response.status === 403) {
-      return res.status(502).json({ code: 'GEMINI_AUTH_ERROR' });
+      return res.status(502).json({ code: 'GEMINI_AUTH_ERROR', providerStatus: response.status, providerModel: selectedModel });
     }
-    if (response.status === 404) return res.status(502).json({ code: 'GEMINI_MODEL_UNAVAILABLE' });
+    if (response.status === 404) {
+      return res.status(502).json({ code: 'GEMINI_MODEL_UNAVAILABLE', providerStatus: response.status, providerModel: selectedModel });
+    }
     if (!response.ok) {
       const providerError = await response.json().catch(() => null);
       const providerMessage = String(providerError && providerError.error && providerError.error.message || '').slice(0, 300);
       const providerCode = providerError && providerError.error && providerError.error.status || null;
-      console.error('Gemini request failed', {
+      console.error('Gemini request failed after model fallbacks', {
+        model: selectedModel,
         status: response.status,
         providerCode,
         providerMessage
@@ -389,17 +410,18 @@ module.exports = async function handler(req, res) {
       if (response.status >= 500) {
         return res.status(503).json({
           code: response.status === 500 ? 'GEMINI_INTERNAL_ERROR' : 'GEMINI_UNAVAILABLE',
-          providerStatus: response.status
+          providerStatus: response.status,
+          providerModel: selectedModel
         });
       }
-      return res.status(502).json({ code: 'GEMINI_REQUEST_FAILED', providerStatus: response.status });
+      return res.status(502).json({ code: 'GEMINI_REQUEST_FAILED', providerStatus: response.status, providerModel: selectedModel });
     }
 
     const result = await response.json();
     const answer = (result.candidates && result.candidates[0] && result.candidates[0].content &&
       result.candidates[0].content.parts || []).map(part => part.text || '').join('').trim();
     if (!answer) return res.status(502).json({ code: 'EMPTY_RESPONSE' });
-    return res.status(200).json({ answer, remainingToday: quota.remainingToday, remainingThisMonth: quota.remainingThisMonth });
+    return res.status(200).json({ answer, model: selectedModel, remainingToday: quota.remainingToday, remainingThisMonth: quota.remainingThisMonth });
   } catch (error) {
     if (error && error.statusCode) return res.status(error.statusCode).json({ code: error.message });
     console.error('Financial assistant backend error', {
