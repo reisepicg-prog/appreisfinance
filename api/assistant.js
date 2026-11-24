@@ -299,6 +299,27 @@ function sanitizeHistory(history) {
   })).filter(message => message.parts[0].text);
 }
 
+async function fetchGeminiWithRetry(url, options) {
+  let response;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      response = await fetch(url, options);
+    } catch (error) {
+      if (attempt > 0) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.floor(Math.random() * 250)));
+      continue;
+    }
+    if (response.status < 500 || attempt > 0) return response;
+    const retryAfterSeconds = Number(response.headers.get('Retry-After'));
+    const delayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? Math.min(retryAfterSeconds * 1000, 2000)
+      : 1000 + Math.floor(Math.random() * 250);
+    await response.arrayBuffer();
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+  return response;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') {
@@ -337,13 +358,13 @@ module.exports = async function handler(req, res) {
 
     const contents = history.concat([{ role: 'user', parts: [{ text: question }] }]);
     const model = encodeURIComponent(MODEL);
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+    const response = await fetchGeminiWithRetry('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemInstruction }] },
         contents,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 700 }
+        generationConfig: { maxOutputTokens: 700 }
       })
     });
 
@@ -357,9 +378,21 @@ module.exports = async function handler(req, res) {
     }
     if (response.status === 404) return res.status(502).json({ code: 'GEMINI_MODEL_UNAVAILABLE' });
     if (!response.ok) {
-      console.error('Gemini request failed', { status: response.status });
-      if (response.status >= 500) return res.status(503).json({ code: 'GEMINI_UNAVAILABLE' });
-      return res.status(502).json({ code: 'GEMINI_REQUEST_FAILED' });
+      const providerError = await response.json().catch(() => null);
+      const providerMessage = String(providerError && providerError.error && providerError.error.message || '').slice(0, 300);
+      const providerCode = providerError && providerError.error && providerError.error.status || null;
+      console.error('Gemini request failed', {
+        status: response.status,
+        providerCode,
+        providerMessage
+      });
+      if (response.status >= 500) {
+        return res.status(503).json({
+          code: response.status === 500 ? 'GEMINI_INTERNAL_ERROR' : 'GEMINI_UNAVAILABLE',
+          providerStatus: response.status
+        });
+      }
+      return res.status(502).json({ code: 'GEMINI_REQUEST_FAILED', providerStatus: response.status });
     }
 
     const result = await response.json();
