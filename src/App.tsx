@@ -362,7 +362,8 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
             </section>
           </div>
         </div>,
-        document.body;
+        document.body
+  );
 };
 export default function FinanceApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
