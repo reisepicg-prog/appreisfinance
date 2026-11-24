@@ -4921,7 +4921,7 @@ export default function FinanceApp() {
             <h3 className="mb-2 text-lg font-bold text-gray-800 dark:text-gray-100">Assistente financeiro com IA</h3>
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
               <input type="checkbox" checked={aiAssistantEnabled} onChange={event => saveAiAssistantPreference(event.target.checked)} className="mt-1 h-4 w-4 rounded text-blue-600" />
-              <span><strong className="block text-sm text-gray-800 dark:text-gray-100">Habilitar uso de IA</strong><span className="text-xs text-gray-500 dark:text-gray-400">Permite consultar análises e resumos dos lançamentos. O assistente é somente de leitura e não altera seus dados.</span></span>
+              <span><strong className="block text-sm text-gray-800 dark:text-gray-100">Habilitar uso de IA</strong><span className="text-xs text-gray-500 dark:text-gray-400">Permite consultar análises e resumos dos lançamentos. O assistente é somente de leitura e não altera seus dados. A pergunta e os dados necessários para respondê-la são enviados à API do Gemini.</span></span>
             </label>
             <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">Quando habilitado, o ícone do assistente aparece ao lado do botão de tema. Você pode desativar esta opção a qualquer momento.</p>
           </div>
