@@ -453,7 +453,6 @@ export default function FinanceApp() {
       setPersonSettlementEnabled(false);
       setAiAssistantEnabled(false);
       setAssistantOpen(false);
-      setAssistantMessages([]);
       return;
     }
     const preferencesRef = doc(db, 'users', user.uid, 'settings', 'preferences');
@@ -5057,7 +5056,7 @@ export default function FinanceApp() {
             <button onClick={toggleDarkMode} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
               {isDarkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
             </button>
-            {aiAssistantEnabled && <button type="button" onClick={() => { setAssistantOpen(true); setAssistantError(''); }} title="Assistente financeiro com IA" aria-label="Abrir assistente financeiro com IA" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
+            {aiAssistantEnabled && <button type="button" onClick={() => setAssistantOpen(true)} title="Assistente financeiro com IA" aria-label="Abrir assistente financeiro com IA" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3z"/><path d="M19 14l1.2 2.8L23 18l-2.8 1.2L19 22l-1.2-2.8L15 18l2.8-1.2L19 14z"/></svg>
             </button>}
             <button onClick={() => setActiveTab('settings')} title="Configurações e Backup" className={`p-2.5 rounded-full transition-colors ${activeTab === 'settings' ? 'bg-blue-800 dark:bg-gray-600 text-white' : 'bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white'}`}>
