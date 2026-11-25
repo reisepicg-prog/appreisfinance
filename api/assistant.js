@@ -557,8 +557,9 @@ module.exports = async function handler(req, res) {
       if (preferenceFields.aiAssistantEnabled !== true) return res.status(403).json({ code: 'AI_DISABLED' });
 
       const accessToken = String(req.body && req.body.accessToken || '');
-      const month = String(req.body && req.body.month || '');
-      if (!accessToken || accessToken.length > 8192 || !/^\\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      const requestedQuestion = String(req.body && req.body.question || '').trim();
+      const month = resolveRequestedMonth(requestedQuestion, formatDateInSaoPaulo());
+      if (!accessToken || accessToken.length > 8192 || !requestedQuestion || requestedQuestion.length > 1000 || !/^\\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
         return res.status(400).json({ code: 'INVALID_SHEETS_REQUEST' });
       }
 
