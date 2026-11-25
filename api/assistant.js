@@ -455,8 +455,8 @@ function buildSpreadsheetRows(transactions, month) {
     const buyers = (transaction.saleBuyers || [])
       .filter(buyer => buyer && buyer.name)
       .map(buyer => String(buyer.name) + ': R$ ' + parseAmount(buyer.amount).toFixed(2).replace('.', ','));
-    const people = [...splitPeople, ...buyers];
-    if (transaction.buyerName) people.push(String(transaction.buyerName));
+    const people = buyers.length ? buyers : splitPeople;
+    if (transaction.buyerName && !people.length) people.push(String(transaction.buyerName));
     rows.push([
       String(transaction.date || ''),
       isExpense ? 'Despesa' : 'Receita',
