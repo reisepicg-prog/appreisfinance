@@ -419,6 +419,96 @@ function sanitizeHistory(history) {
   })).filter(message => message.parts[0].text);
 }
 
+async function lookupFirebaseUserEmail(idToken) {
+  const response = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_API_KEY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken })
+  });
+  if (!response.ok) return '';
+  const result = await response.json();
+  return result.users && result.users[0] ? String(result.users[0].email || '').toLowerCase() : '';
+}
+
+function buildSpreadsheetRows(transactions, month) {
+  const rows = [[
+    'Data', 'Tipo', 'Descrição', 'Categoria', 'Valor próprio/recebido (R$)',
+    'Valor total do lançamento (R$)', 'Situação', 'Conta/Cartão', 'Pessoas / compradores'
+  ]];
+  const monthTransactions = transactions
+    .filter(transaction =>
+      (transaction.type === 'expense' || transaction.type === 'income') &&
+      !transaction.isCardPaymentEntry &&
+      String(transaction.date || '').startsWith(month)
+    )
+    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+
+  monthTransactions.forEach(transaction => {
+    const isExpense = transaction.type === 'expense';
+    const total = parseAmount(transaction.totalAmount);
+    const ownAmount = isExpense ? getOwnExpenseAmount(transaction) : total;
+    const splitPeople = (transaction.splits || [])
+      .filter(split => split && split.name)
+      .map(split => String(split.name) + ': R$ ' + parseAmount(split.amount).toFixed(2).replace('.', ','));
+    const buyers = (transaction.saleBuyers || [])
+      .filter(buyer => buyer && buyer.name)
+      .map(buyer => String(buyer.name) + ': R$ ' + parseAmount(buyer.amount).toFixed(2).replace('.', ','));
+    const people = [...splitPeople, ...buyers];
+    if (transaction.buyerName) people.push(String(transaction.buyerName));
+    rows.push([
+      String(transaction.date || ''),
+      isExpense ? 'Despesa' : 'Receita',
+      String(transaction.desc || 'Sem descrição'),
+      String(transaction.category || 'Sem categoria'),
+      ownAmount,
+      total,
+      transaction.status === 'paid' ? 'Efetivado' : 'Pendente',
+      String(transaction.method || 'Não informado'),
+      people.join(' | ')
+    ]);
+  });
+  return rows;
+}
+
+async function createGoogleSpreadsheet(accessToken, month, rows) {
+  const title = 'Finanças - ' + month.slice(5, 7) + '/' + month.slice(0, 4);
+  const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      properties: { title },
+      sheets: [{ properties: { title: 'Lançamentos', gridProperties: { frozenRowCount: 1 } } }]
+    })
+  });
+  const spreadsheet = await createResponse.json().catch(() => ({}));
+  if (!createResponse.ok || !spreadsheet.spreadsheetId) {
+    const error = new Error(createResponse.status === 403 ? 'SHEETS_PERMISSION_DENIED' : 'SHEETS_CREATE_FAILED');
+    error.statusCode = createResponse.status === 403 ? 403 : 502;
+    throw error;
+  }
+
+  const range = encodeURIComponent("'Lançamentos'!A1:I" + rows.length);
+  const valuesResponse = await fetch(
+    'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(spreadsheet.spreadsheetId) +
+    '/values/' + range + '?valueInputOption=RAW',
+    {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: rows })
+    }
+  );
+  if (!valuesResponse.ok) {
+    const error = new Error('SHEETS_WRITE_FAILED');
+    error.statusCode = valuesResponse.status === 403 ? 403 : 502;
+    throw error;
+  }
+  return {
+    spreadsheetId: spreadsheet.spreadsheetId,
+    url: spreadsheet.spreadsheetUrl || ('https://docs.google.com/spreadsheets/d/' + spreadsheet.spreadsheetId + '/edit'),
+    title
+  };
+}
+
 async function fetchGeminiWithRetry(url, options) {
   let response;
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -447,19 +537,52 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ code: 'METHOD_NOT_ALLOWED' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(503).json({ code: 'MISSING_API_KEY' });
-
   const authorization = String(req.headers.authorization || '');
   const idToken = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
   if (!idToken) return res.status(401).json({ code: 'UNAUTHORIZED' });
 
+  const action = String(req.body && req.body.action || '');
   const question = String(req.body && req.body.question || '').trim();
-  if (!question || question.length > 1000) return res.status(400).json({ code: 'INVALID_QUESTION' });
+  if (action !== 'createSpreadsheet' && (!question || question.length > 1000)) {
+    return res.status(400).json({ code: 'INVALID_QUESTION' });
+  }
 
   try {
     const uid = await lookupFirebaseUser(idToken);
     if (!uid) return res.status(401).json({ code: 'UNAUTHORIZED' });
+
+    if (action === 'createSpreadsheet') {
+      const preferenceDoc = await readPreferences(idToken, uid);
+      const preferenceFields = decodeFields(preferenceDoc && preferenceDoc.fields || {});
+      if (preferenceFields.aiAssistantEnabled !== true) return res.status(403).json({ code: 'AI_DISABLED' });
+
+      const accessToken = String(req.body && req.body.accessToken || '');
+      const month = String(req.body && req.body.month || '');
+      if (!accessToken || accessToken.length > 8192 || !/^\\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+        return res.status(400).json({ code: 'INVALID_SHEETS_REQUEST' });
+      }
+
+      const tokenInfoResponse = await fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(accessToken));
+      const tokenInfo = await tokenInfoResponse.json().catch(() => ({}));
+      const firebaseEmail = await lookupFirebaseUserEmail(idToken);
+      const grantedScopes = String(tokenInfo.scope || '').split(' ');
+      const hasDriveFileScope = grantedScopes.includes('https://www.googleapis.com/auth/drive.file');
+      if (!tokenInfoResponse.ok || !firebaseEmail ||
+          String(tokenInfo.email || '').toLowerCase() !== firebaseEmail || !hasDriveFileScope) {
+        return res.status(403).json({ code: 'SHEETS_AUTH_REQUIRED' });
+      }
+
+      const today = formatDateInSaoPaulo();
+      const transactions = await fetchUserTransactions(idToken, uid, today);
+      const rows = buildSpreadsheetRows(transactions, month);
+      const spreadsheet = await createGoogleSpreadsheet(accessToken, month, rows);
+      return res.status(200).json({ ...spreadsheet, month, rowCount: Math.max(0, rows.length - 1) });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(503).json({ code: 'MISSING_API_KEY' });
+
+    if (!question || question.length > 1000) return res.status(400).json({ code: 'INVALID_QUESTION' });
 
     const quota = await reserveQuota(idToken, uid);
     const today = formatDateInSaoPaulo();
