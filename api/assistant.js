@@ -203,7 +203,7 @@ function resolveRequestedMonth(question, today) {
     maio: 5, mai: 5, junho: 6, jun: 6, julho: 7, jul: 7, agosto: 8, ago: 8,
     setembro: 9, set: 9, outubro: 10, out: 10, novembro: 11, nov: 11, dezembro: 12, dez: 12
   };
-  const numericMonth = normalized.match(/\\b(0?[1-9]|1[0-2])\\s*[/-]\\s*(20\\d{2})\\b/);
+  const numericMonth = normalized.match(/\b(0?[1-9]|1[0-2])\s*[/-]\s*(20\d{2})\b/);
   if (numericMonth) return numericMonth[2] + '-' + String(Number(numericMonth[1])).padStart(2, '0');
   const monthMatch = normalized.match(/\b(janeiro|jan|fevereiro|fev|marco|mar|abril|abr|maio|mai|junho|jun|julho|jul|agosto|ago|setembro|set|outubro|out|novembro|nov|dezembro|dez)\b/);
   if (!monthMatch) return todayMonth;
@@ -561,7 +561,7 @@ module.exports = async function handler(req, res) {
       const accessToken = String(req.body && req.body.accessToken || '');
       const requestedQuestion = String(req.body && req.body.question || '').trim();
       const month = resolveRequestedMonth(requestedQuestion, formatDateInSaoPaulo());
-      if (!accessToken || accessToken.length > 8192 || !requestedQuestion || requestedQuestion.length > 1000 || !/^\\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      if (!accessToken || accessToken.length > 8192 || !requestedQuestion || requestedQuestion.length > 1000 || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
         return res.status(400).json({ code: 'INVALID_SHEETS_REQUEST' });
       }
 
