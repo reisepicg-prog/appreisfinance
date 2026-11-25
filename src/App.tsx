@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, reauthenticateWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc, addDoc, writeBatch } from 'firebase/firestore';
 
 // --- Auto-Injeção do Tailwind CSS e Configuração do Modo Escuro ---
@@ -267,6 +267,7 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
   const [assistantLoading, setAssistantLoading] = useState(false);
   const [assistantError, setAssistantError] = useState('');
   const [assistantRemaining, setAssistantRemaining] = useState<number | null>(null);
+  const [assistantSheetLoadingQuestion, setAssistantSheetLoadingQuestion] = useState('');
   const assistantMessagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -310,16 +311,69 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
           GEMINI_UNAVAILABLE: 'O serviço Gemini está temporariamente indisponível.',
           GEMINI_INTERNAL_ERROR: 'O Gemini retornou um erro interno, mesmo após uma tentativa automática de repetição.',
           EMPTY_RESPONSE: 'O Gemini retornou uma resposta vazia.',
-          GEMINI_OUTPUT_TRUNCATED: 'A resposta ultrapassou o limite de geração. Tente novamente com uma pergunta mais específica.'
+          GEMINI_OUTPUT_TRUNCATED: 'A resposta ultrapassou o limite de geração. Tente novamente com uma pergunta mais específica.',
+          SHEETS_AUTH_REQUIRED: 'Autorize o acesso solicitado ao Google Drive usando a mesma conta Google do app.',
+          SHEETS_PERMISSION_DENIED: 'O Google recusou a criação. Confira se a API Google Sheets está habilitada e se a autorização foi concedida.',
+          SHEETS_CREATE_FAILED: 'Não foi possível criar a planilha no Google Sheets.',
+          SHEETS_WRITE_FAILED: 'A planilha foi criada, mas não foi possível preencher os lançamentos.',
+          INVALID_SHEETS_REQUEST: 'Não foi possível identificar o mês do relatório.'
         };
         throw new Error((messages[code] || 'Não foi possível gerar a resposta.') + ' (código: ' + code + (result.providerStatus ? ', HTTP Gemini ' + result.providerStatus : '') + (result.providerModel ? ', modelo ' + result.providerModel : '') + ')');
       }
-      setAssistantMessages([...nextMessages, { role: 'model', content: String(result.answer || 'Não consegui gerar uma resposta para esta pergunta.') }]);
+      setAssistantMessages([...nextMessages, { role: 'model', content: String(result.answer || 'Não consegui gerar uma resposta para esta pergunta.'), sourceQuestion: question }]);
       if (typeof result.remainingToday === 'number') setAssistantRemaining(result.remainingToday);
     } catch (error: any) {
       setAssistantError(error?.message || 'Falha ao consultar o assistente.');
     } finally {
       setAssistantLoading(false);
+    }
+  };
+
+  const createAssistantSpreadsheet = async (question: string) => {
+    if (!user || assistantSheetLoadingQuestion) return;
+    setAssistantSheetLoadingQuestion(question);
+    setAssistantError('');
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/drive.file');
+      provider.addScope('email');
+      const authResult = await reauthenticateWithPopup(user, provider);
+      const googleCredential = GoogleAuthProvider.credentialFromResult(authResult);
+      if (!googleCredential?.accessToken) throw new Error('SHEETS_AUTH_REQUIRED');
+
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ action: 'createSpreadsheet', question, accessToken: googleCredential.accessToken })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const messages: Record<string, string> = {
+          AI_DISABLED: 'Habilite o uso de IA em Configurações para continuar.',
+          SHEETS_AUTH_REQUIRED: 'A autorização do Google não corresponde à conta usada no app ou não incluiu a permissão necessária.',
+          SHEETS_PERMISSION_DENIED: 'A API Google Sheets não está habilitada ou a permissão foi recusada.',
+          SHEETS_CREATE_FAILED: 'O Google não conseguiu criar a planilha.',
+          SHEETS_WRITE_FAILED: 'O Google não conseguiu preencher a planilha.',
+          INVALID_SHEETS_REQUEST: 'Não foi possível identificar o mês dos lançamentos.'
+        };
+        throw new Error(messages[String(result.code || '')] || 'Não foi possível criar a planilha no Google Sheets.');
+      }
+      const periodLabel = String(result.month || '').split('-').reverse().join('/');
+      setAssistantMessages(messages => [...messages, {
+        role: 'model',
+        content: 'Planilha de ' + periodLabel + ' criada com ' + Number(result.rowCount || 0) + ' lançamentos.',
+        spreadsheetUrl: result.url
+      }]);
+    } catch (error: any) {
+      const code = String(error?.code || error?.message || '');
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setAssistantError('A autorização do Google foi cancelada.');
+      } else {
+        setAssistantError(error?.message || 'Falha ao criar a planilha.');
+      }
+    } finally {
+      setAssistantSheetLoadingQuestion('');
     }
   };
 
@@ -353,6 +407,13 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
                   {assistantMessages.map((message: any, index: number) => (
                     <div key={index} className={message.role === 'user' ? 'ml-auto max-w-[90%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white' : 'mr-auto max-w-[95%] rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-3 text-sm text-gray-800 dark:bg-gray-700 dark:text-gray-100'}>
                       <p className="whitespace-pre-wrap">{message.content}</p>
+                      {message.spreadsheetUrl && <a href={message.spreadsheetUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block font-semibold text-blue-700 underline dark:text-blue-300">Abrir planilha no Google Sheets</a>}
+                      {message.role === 'model' && message.sourceQuestion && <div className="mt-3 border-t border-gray-300 pt-2 dark:border-gray-600">
+                        <button type="button" disabled={Boolean(assistantSheetLoadingQuestion) || assistantLoading} onClick={() => createAssistantSpreadsheet(message.sourceQuestion)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
+                          {assistantSheetLoadingQuestion === message.sourceQuestion ? 'Criando planilha...' : 'Criar planilha no Google Sheets'}
+                        </button>
+                        <p className="mt-1 text-[10px] opacity-70">Será criada na mesma conta Google, após a autorização.</p>
+                      </div>}
                     </div>
                   ))}
                   {assistantLoading && <div className="mr-auto rounded-2xl bg-gray-100 px-4 py-3 text-sm text-gray-500 dark:bg-gray-700 dark:text-gray-300">Analisando seus lançamentos...</div>}
