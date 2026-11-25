@@ -267,6 +267,12 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
   const [assistantLoading, setAssistantLoading] = useState(false);
   const [assistantError, setAssistantError] = useState('');
   const [assistantRemaining, setAssistantRemaining] = useState<number | null>(null);
+  const assistantMessagesContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const container = assistantMessagesContainerRef.current;
+    if (container) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }, [assistantMessages, assistantLoading, assistantError]);
 
   const sendAssistantMessage = async (event?: any, presetQuestion?: string) => {
     if (event?.preventDefault) event.preventDefault();
@@ -334,7 +340,7 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
                 </div>
               </header>
               <div className="flex min-h-0 flex-1 flex-col">
-                <div className="min-h-[180px] flex-1 space-y-3 overflow-y-auto p-4">
+                <div ref={assistantMessagesContainerRef} className="min-h-[180px] flex-1 space-y-3 overflow-y-auto p-4">
                   {assistantMessages.length === 0 && <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-900/20 dark:text-blue-100">
                     <p className="font-semibold">Olá! Posso analisar seus lançamentos e preparar resumos.</p>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -355,7 +361,7 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
                 <form onSubmit={sendAssistantMessage} className="border-t border-gray-200 p-3 dark:border-gray-700">
                   {assistantRemaining !== null && <p className="mb-2 text-right text-[10px] text-gray-500 dark:text-gray-400">{assistantRemaining} perguntas restantes hoje</p>}
                   <div className="flex items-end gap-2">
-                    <textarea value={assistantInput} onChange={event => setAssistantInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendAssistantMessage(event); } }} maxLength={1000} rows={2} placeholder="Pergunte sobre receitas, despesas ou cobranças..." className="max-h-28 min-h-12 flex-1 resize-y rounded-xl border border-gray-300 bg-white p-3 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                    <textarea value={assistantInput} onChange={event => setAssistantInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendAssistantMessage(event); } }} maxLength={1000} rows={2} lang="pt-BR" spellCheck={false} placeholder="Pergunte sobre receitas, despesas ou cobranças..." className="max-h-28 min-h-12 flex-1 resize-y rounded-xl border border-gray-300 bg-white p-3 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
                     <button type="submit" disabled={assistantLoading || !assistantInput.trim()} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{assistantLoading ? '...' : 'Enviar'}</button>
                   </div>
                   <p className="mt-2 text-[10px] text-gray-400">A IA pode interpretar os dados incorretamente. Confira valores importantes nos lançamentos.</p>
