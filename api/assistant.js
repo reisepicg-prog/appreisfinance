@@ -203,6 +203,8 @@ function resolveRequestedMonth(question, today) {
     maio: 5, mai: 5, junho: 6, jun: 6, julho: 7, jul: 7, agosto: 8, ago: 8,
     setembro: 9, set: 9, outubro: 10, out: 10, novembro: 11, nov: 11, dezembro: 12, dez: 12
   };
+  const numericMonth = normalized.match(/\\b(0?[1-9]|1[0-2])\\s*[/-]\\s*(20\\d{2})\\b/);
+  if (numericMonth) return numericMonth[2] + '-' + String(Number(numericMonth[1])).padStart(2, '0');
   const monthMatch = normalized.match(/\b(janeiro|jan|fevereiro|fev|marco|mar|abril|abr|maio|mai|junho|jun|julho|jul|agosto|ago|setembro|set|outubro|out|novembro|nov|dezembro|dez)\b/);
   if (!monthMatch) return todayMonth;
   const explicitYear = normalized.match(/\b(20\d{2})\b/);
@@ -565,11 +567,15 @@ module.exports = async function handler(req, res) {
 
       const tokenInfoResponse = await fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(accessToken));
       const tokenInfo = await tokenInfoResponse.json().catch(() => ({}));
+      const identityResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+        headers: { Authorization: 'Bearer ' + accessToken }
+      });
+      const googleIdentity = await identityResponse.json().catch(() => ({}));
       const firebaseEmail = await lookupFirebaseUserEmail(idToken);
       const grantedScopes = String(tokenInfo.scope || '').split(' ');
       const hasDriveFileScope = grantedScopes.includes('https://www.googleapis.com/auth/drive.file');
-      if (!tokenInfoResponse.ok || !firebaseEmail ||
-          String(tokenInfo.email || '').toLowerCase() !== firebaseEmail || !hasDriveFileScope) {
+      if (!tokenInfoResponse.ok || !identityResponse.ok || !firebaseEmail ||
+          String(googleIdentity.email || '').toLowerCase() !== firebaseEmail || !hasDriveFileScope) {
         return res.status(403).json({ code: 'SHEETS_AUTH_REQUIRED' });
       }
 
