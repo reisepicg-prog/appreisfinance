@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, reauthenticateWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc, addDoc, writeBatch } from 'firebase/firestore';
 
 // --- Auto-Injeção do Tailwind CSS e Configuração do Modo Escuro ---
@@ -259,6 +259,181 @@ const CalculatorModal = ({ isOpen, onClose, onApply }: { isOpen: boolean; onClos
   );
 };
 
+
+
+const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void }) => {
+  const [assistantInput, setAssistantInput] = useState('');
+  const [assistantMessages, setAssistantMessages] = useState<any[]>([]);
+  const [assistantLoading, setAssistantLoading] = useState(false);
+  const [assistantError, setAssistantError] = useState('');
+  const [assistantRemaining, setAssistantRemaining] = useState<number | null>(null);
+  const [assistantSheetLoadingQuestion, setAssistantSheetLoadingQuestion] = useState('');
+  const assistantMessagesContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const container = assistantMessagesContainerRef.current;
+    if (container) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }, [assistantMessages, assistantLoading, assistantError]);
+
+  const sendAssistantMessage = async (event?: any, presetQuestion?: string) => {
+    if (event?.preventDefault) event.preventDefault();
+    const question = String(presetQuestion || assistantInput || '').trim();
+    if (!question || !user || assistantLoading) return;
+    const history = assistantMessages.slice(-8);
+    const nextMessages = [...assistantMessages, { role: 'user', content: question }];
+    setAssistantMessages(nextMessages);
+    setAssistantInput('');
+    setAssistantError('');
+    setAssistantLoading(true);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ question, history })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const code = String(result.code || 'UNKNOWN_ERROR');
+        const messages: Record<string, string> = {
+          INVALID_QUESTION: 'A pergunta está vazia ou excede o limite de 1.000 caracteres.',
+          UNAUTHORIZED: 'Sua sessão expirou. Saia e entre novamente.',
+          AI_DISABLED: 'Habilite o uso de IA em Configurações para continuar.',
+          USER_LIMIT: 'Você atingiu o limite de perguntas por enquanto. Tente novamente mais tarde.',
+          GEMINI_RATE_LIMIT: 'A cota gratuita da IA está temporariamente esgotada. Tente novamente mais tarde.',
+          MISSING_API_KEY: 'A chave da API do Gemini não foi encontrada neste ambiente da Vercel.',
+          TRANSACTIONS_READ_ERROR: 'Não foi possível ler seus lançamentos no Firebase.',
+          QUOTA_STORAGE_ERROR: 'Não foi possível registrar o limite de uso do assistente.',
+          QUOTA_CONFLICT: 'Houve uma disputa ao registrar o uso. Tente novamente.',
+          GEMINI_AUTH_ERROR: 'O Gemini recusou a chave da API. Confira a variável GEMINI_API_KEY na Vercel.',
+          GEMINI_MODEL_UNAVAILABLE: 'O modelo Gemini configurado não está disponível.',
+          GEMINI_REQUEST_FAILED: 'O Gemini não conseguiu processar esta pergunta agora.',
+          GEMINI_UNAVAILABLE: 'O serviço Gemini está temporariamente indisponível.',
+          GEMINI_INTERNAL_ERROR: 'O Gemini retornou um erro interno, mesmo após uma tentativa automática de repetição.',
+          EMPTY_RESPONSE: 'O Gemini retornou uma resposta vazia.',
+          GEMINI_OUTPUT_TRUNCATED: 'A resposta ultrapassou o limite de geração. Tente novamente com uma pergunta mais específica.',
+          SHEETS_AUTH_REQUIRED: 'Autorize o acesso solicitado ao Google Drive usando a mesma conta Google do app.',
+          SHEETS_PERMISSION_DENIED: 'O Google recusou a criação. Confira se a API Google Sheets está habilitada e se a autorização foi concedida.',
+          SHEETS_CREATE_FAILED: 'Não foi possível criar a planilha no Google Sheets.',
+          SHEETS_WRITE_FAILED: 'A planilha foi criada, mas não foi possível preencher os lançamentos.',
+          INVALID_SHEETS_REQUEST: 'Não foi possível identificar o mês do relatório.'
+        };
+        throw new Error((messages[code] || 'Não foi possível gerar a resposta.') + ' (código: ' + code + (result.providerStatus ? ', HTTP Gemini ' + result.providerStatus : '') + (result.providerModel ? ', modelo ' + result.providerModel : '') + ')');
+      }
+      setAssistantMessages([...nextMessages, { role: 'model', content: String(result.answer || 'Não consegui gerar uma resposta para esta pergunta.'), sourceQuestion: question }]);
+      if (typeof result.remainingToday === 'number') setAssistantRemaining(result.remainingToday);
+    } catch (error: any) {
+      setAssistantError(error?.message || 'Falha ao consultar o assistente.');
+    } finally {
+      setAssistantLoading(false);
+    }
+  };
+
+  const createAssistantSpreadsheet = async (question: string) => {
+    if (!user || assistantSheetLoadingQuestion) return;
+    setAssistantSheetLoadingQuestion(question);
+    setAssistantError('');
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/drive.file');
+      provider.addScope('email');
+      const authResult = await reauthenticateWithPopup(user, provider);
+      const googleCredential = GoogleAuthProvider.credentialFromResult(authResult);
+      if (!googleCredential?.accessToken) throw new Error('SHEETS_AUTH_REQUIRED');
+
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
+        body: JSON.stringify({ action: 'createSpreadsheet', question, accessToken: googleCredential.accessToken })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const messages: Record<string, string> = {
+          AI_DISABLED: 'Habilite o uso de IA em Configurações para continuar.',
+          SHEETS_AUTH_REQUIRED: 'A autorização do Google não corresponde à conta usada no app ou não incluiu a permissão necessária.',
+          SHEETS_PERMISSION_DENIED: 'A API Google Sheets não está habilitada ou a permissão foi recusada.',
+          SHEETS_CREATE_FAILED: 'O Google não conseguiu criar a planilha.',
+          SHEETS_WRITE_FAILED: 'O Google não conseguiu preencher a planilha.',
+          INVALID_SHEETS_REQUEST: 'Não foi possível identificar o mês dos lançamentos.'
+        };
+        throw new Error(messages[String(result.code || '')] || 'Não foi possível criar a planilha no Google Sheets.');
+      }
+      const periodLabel = String(result.month || '').split('-').reverse().join('/');
+      setAssistantMessages(messages => [...messages, {
+        role: 'model',
+        content: 'Planilha de ' + periodLabel + ' criada com ' + Number(result.rowCount || 0) + ' lançamentos.',
+        spreadsheetUrl: result.url
+      }]);
+    } catch (error: any) {
+      const code = String(error?.code || error?.message || '');
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setAssistantError('A autorização do Google foi cancelada.');
+      } else {
+        setAssistantError(error?.message || 'Falha ao criar a planilha.');
+      }
+    } finally {
+      setAssistantSheetLoadingQuestion('');
+    }
+  };
+
+  return createPortal(
+        <div className="fixed inset-0 z-[10000] overflow-hidden bg-black/60 p-2 sm:p-4 dark:bg-black/80 animate-fadeIn">
+          <div className="flex h-full items-start justify-center overflow-y-auto overscroll-contain sm:items-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <section role="dialog" aria-modal="true" aria-labelledby="assistant-title" className="my-auto flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+              <header className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+                <div>
+                  <h2 id="assistant-title" className="flex items-center gap-2 font-bold text-gray-800 dark:text-gray-100">
+                    <span className="text-blue-600 dark:text-blue-400">✦</span> Assistente financeiro
+                  </h2>
+                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Somente leitura • Analisa lançamentos dos últimos 12 meses</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => { setAssistantMessages([]); setAssistantError(''); }} className="rounded-lg px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/30">Nova conversa</button>
+                  <button type="button" onClick={() => onClose()} aria-label="Fechar assistente" className="px-2 py-1 font-bold text-gray-400">✕</button>
+                </div>
+              </header>
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div ref={assistantMessagesContainerRef} className="min-h-[180px] flex-1 space-y-3 overflow-y-auto p-4">
+                  {assistantMessages.length === 0 && <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-900/20 dark:text-blue-100">
+                    <p className="font-semibold">Olá! Posso analisar seus lançamentos e preparar resumos.</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button" disabled={assistantLoading} onClick={() => sendAssistantMessage(undefined, 'Faça um resumo das minhas receitas e despesas do mês atual.')} className="rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-gray-800 dark:hover:bg-blue-900/40">Resumo do mês atual</button>
+                      <button type="button" disabled={assistantLoading} onClick={() => sendAssistantMessage(undefined, 'Compare minhas receitas e despesas dos últimos três meses.')} className="rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-gray-800 dark:hover:bg-blue-900/40">Comparar 3 meses</button>
+                      <button type="button" disabled={assistantLoading} onClick={() => sendAssistantMessage(undefined, 'Quais foram minhas maiores despesas e em quais categorias?')} className="rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-gray-800 dark:hover:bg-blue-900/40">Maiores despesas</button>
+                    </div>
+                    <p className="mt-3 text-[10px] text-blue-800/70 dark:text-blue-200/70">Limite: até 10 perguntas por dia e 100 por mês.</p>
+                  </div>}
+                  {assistantMessages.map((message: any, index: number) => (
+                    <div key={index} className={message.role === 'user' ? 'ml-auto max-w-[90%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white' : 'mr-auto max-w-[95%] rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-3 text-sm text-gray-800 dark:bg-gray-700 dark:text-gray-100'}>
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      {message.spreadsheetUrl && <a href={message.spreadsheetUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block font-semibold text-blue-700 underline dark:text-blue-300">Abrir planilha no Google Sheets</a>}
+                      {message.role === 'model' && message.sourceQuestion && <div className="mt-3 border-t border-gray-300 pt-2 dark:border-gray-600">
+                        <button type="button" disabled={Boolean(assistantSheetLoadingQuestion) || assistantLoading} onClick={() => createAssistantSpreadsheet(message.sourceQuestion)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
+                          {assistantSheetLoadingQuestion === message.sourceQuestion ? 'Criando planilha...' : 'Criar planilha no Google Sheets'}
+                        </button>
+                        <p className="mt-1 text-[10px] opacity-70">Será criada na mesma conta Google, após a autorização.</p>
+                      </div>}
+                    </div>
+                  ))}
+                  {assistantLoading && <div className="mr-auto rounded-2xl bg-gray-100 px-4 py-3 text-sm text-gray-500 dark:bg-gray-700 dark:text-gray-300">Analisando seus lançamentos...</div>}
+                  {assistantError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300">{assistantError}</p>}
+                </div>
+                <form onSubmit={sendAssistantMessage} className="border-t border-gray-200 p-3 dark:border-gray-700">
+                  {assistantRemaining !== null && <p className="mb-2 text-right text-[10px] text-gray-500 dark:text-gray-400">{assistantRemaining} perguntas restantes hoje</p>}
+                  <div className="flex items-end gap-2">
+                    <textarea value={assistantInput} onChange={event => setAssistantInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendAssistantMessage(event); } }} maxLength={1000} rows={2} lang="pt-BR" spellCheck={false} placeholder="Pergunte sobre receitas, despesas ou cobranças..." className="max-h-28 min-h-12 flex-1 resize-y rounded-xl border border-gray-300 bg-white p-3 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                    <button type="submit" disabled={assistantLoading || !assistantInput.trim()} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{assistantLoading ? '...' : 'Enviar'}</button>
+                  </div>
+                  <p className="mt-2 text-[10px] text-gray-400">A IA pode interpretar os dados incorretamente. Confira valores importantes nos lançamentos.</p>
+                </form>
+              </div>
+            </section>
+          </div>
+        </div>,
+        document.body
+  );
+};
 export default function FinanceApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -271,6 +446,8 @@ export default function FinanceApp() {
   const [user, setUser] = useState<any>(null);
   const [currencyMaskEnabled, setCurrencyMaskEnabled] = useState(true);
   const [personSettlementEnabled, setPersonSettlementEnabled] = useState(false);
+  const [aiAssistantEnabled, setAiAssistantEnabled] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [loginError, setLoginError] = useState('');
@@ -343,14 +520,18 @@ export default function FinanceApp() {
     if (!user) {
       setCurrencyMaskEnabled(true);
       setPersonSettlementEnabled(false);
+      setAiAssistantEnabled(false);
+      setAssistantOpen(false);
       return;
     }
     const preferencesRef = doc(db, 'users', user.uid, 'settings', 'preferences');
     return onSnapshot(preferencesRef, snapshot => {
       const preference = snapshot.data()?.currencyMaskEnabled;
       const settlementPreference = snapshot.data()?.personSettlementEnabled;
+      const assistantPreference = snapshot.data()?.aiAssistantEnabled;
       if (typeof preference === 'boolean') setCurrencyMaskEnabled(preference);
       if (typeof settlementPreference === 'boolean') setPersonSettlementEnabled(settlementPreference);
+      setAiAssistantEnabled(assistantPreference === true);
     }, console.error);
   }, [user]);
 
@@ -360,6 +541,21 @@ export default function FinanceApp() {
     try { await setDoc(doc(db, 'users', user.uid, 'settings', 'preferences'), { personSettlementEnabled: enabled }, { merge: true }); }
     catch (err) { console.error('Erro ao salvar preferência de acertos entre pessoas', err); }
   };
+
+  const saveAiAssistantPreference = async (enabled: boolean) => {
+    setAiAssistantEnabled(enabled);
+    if (!enabled) {
+      setAssistantOpen(false);
+    }
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'settings', 'preferences'), { aiAssistantEnabled: enabled }, { merge: true });
+    } catch (err) {
+      console.error('Erro ao salvar preferência do assistente de IA', err);
+      setAiAssistantEnabled(!enabled);
+    }
+  };
+
 
   const saveCurrencyMaskPreference = async (enabled: boolean) => {
     setCurrencyMaskEnabled(enabled);
@@ -4853,6 +5049,15 @@ export default function FinanceApp() {
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="mb-2 text-lg font-bold text-gray-800 dark:text-gray-100">Assistente financeiro com IA</h3>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+              <input type="checkbox" checked={aiAssistantEnabled} onChange={event => saveAiAssistantPreference(event.target.checked)} className="mt-1 h-4 w-4 rounded text-blue-600" />
+              <span><strong className="block text-sm text-gray-800 dark:text-gray-100">Habilitar uso de IA</strong><span className="text-xs text-gray-500 dark:text-gray-400">Permite consultar análises e resumos dos lançamentos. O assistente é somente de leitura e não altera seus dados. A pergunta e os dados necessários para respondê-la são enviados à API do Gemini.</span></span>
+            </label>
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">Quando habilitado, o ícone do assistente aparece ao lado do botão de tema. Você pode desativar esta opção a qualquer momento.</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
             <h3 className="mb-2 text-lg font-bold text-gray-800 dark:text-gray-100">Acertos entre pessoas</h3>
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
               <input type="checkbox" checked={personSettlementEnabled} onChange={event => savePersonSettlementPreference(event.target.checked)} className="mt-1 h-4 w-4 rounded text-indigo-600" />
@@ -4920,6 +5125,9 @@ export default function FinanceApp() {
             <button onClick={toggleDarkMode} title="Alternar Tema" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
               {isDarkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
             </button>
+            {aiAssistantEnabled && <button type="button" onClick={() => setAssistantOpen(true)} title="Assistente financeiro com IA" aria-label="Abrir assistente financeiro com IA" className="p-2.5 rounded-full bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white transition-colors">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3z"/><path d="M19 14l1.2 2.8L23 18l-2.8 1.2L19 22l-1.2-2.8L15 18l2.8-1.2L19 14z"/></svg>
+            </button>}
             <button onClick={() => setActiveTab('settings')} title="Configurações e Backup" className={`p-2.5 rounded-full transition-colors ${activeTab === 'settings' ? 'bg-blue-800 dark:bg-gray-600 text-white' : 'bg-blue-600 dark:bg-gray-700 text-blue-100 dark:text-gray-300 hover:bg-blue-500 dark:hover:bg-gray-600 hover:text-white'}`}>
               <Icons.Settings size={24} />
             </button>
@@ -4969,6 +5177,7 @@ export default function FinanceApp() {
         </div>
       </nav>
 
+      {assistantOpen && aiAssistantEnabled && <AIAssistantModal user={user} onClose={() => setAssistantOpen(false)} />}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
