@@ -1,7 +1,7 @@
 const FIREBASE_PROJECT_ID = 'reisfinance';
 const FIREBASE_API_KEY = 'AIzaSyBBM1n7doAL_Hn7sN7Da0e-Mz05SYKVW2A';
 const DAILY_LIMIT = 10;
-const MONTHLY_LIMIT = 30;
+const MONTHLY_LIMIT = 100;
 const MAX_TRANSACTIONS = 1500;
 const MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const MODEL_FALLBACKS = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
