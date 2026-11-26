@@ -402,7 +402,7 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
                       <button type="button" disabled={assistantLoading} onClick={() => sendAssistantMessage(undefined, 'Compare minhas receitas e despesas dos últimos três meses.')} className="rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-gray-800 dark:hover:bg-blue-900/40">Comparar 3 meses</button>
                       <button type="button" disabled={assistantLoading} onClick={() => sendAssistantMessage(undefined, 'Quais foram minhas maiores despesas e em quais categorias?')} className="rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-gray-800 dark:hover:bg-blue-900/40">Maiores despesas</button>
                     </div>
-                    <p className="mt-3 text-[10px] text-blue-800/70 dark:text-blue-200/70">Limite: até 10 perguntas por dia e 30 por mês.</p>
+                    <p className="mt-3 text-[10px] text-blue-800/70 dark:text-blue-200/70">Limite: até 10 perguntas por dia e 100 por mês.</p>
                   </div>}
                   {assistantMessages.map((message: any, index: number) => (
                     <div key={index} className={message.role === 'user' ? 'ml-auto max-w-[90%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white' : 'mr-auto max-w-[95%] rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-3 text-sm text-gray-800 dark:bg-gray-700 dark:text-gray-100'}>
