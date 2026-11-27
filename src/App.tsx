@@ -367,10 +367,17 @@ const AIAssistantModal = ({ user, onClose }: { user: any; onClose: () => void })
       }]);
     } catch (error: any) {
       const code = String(error?.code || error?.message || '');
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        setAssistantError('A autorização do Google foi cancelada.');
+      console.warn('Google Sheets authorization failed', { code });
+      if (code === 'auth/popup-closed-by-user') {
+        setAssistantError('A janela do Google foi fechada antes de concluir. Tente novamente e aceite a permissão para criar a planilha.');
+      } else if (code === 'auth/cancelled-popup-request') {
+        setAssistantError('Já existe outra janela de autorização aberta. Conclua ou feche essa janela e tente novamente.');
+      } else if (code === 'auth/popup-blocked') {
+        setAssistantError('O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente novamente.');
+      } else if (code === 'auth/unauthorized-domain') {
+        setAssistantError('Este domínio ainda não está autorizado para login no Firebase. Adicione o domínio do preview aos domínios autorizados.');
       } else {
-        setAssistantError(error?.message || 'Falha ao criar a planilha.');
+        setAssistantError((error?.message || 'Falha ao criar a planilha.') + (code ? ' (código: ' + code + ')' : ''));
       }
     } finally {
       setAssistantSheetLoadingQuestion('');
@@ -1440,14 +1447,15 @@ export default function FinanceApp() {
     const [includeMe, setIncludeMe] = useState(true);
     const [splits, setSplits] = useState<any[]>([{ name: '', amount: 0, displayAmount: '', paid: false }]);
     const [errorMsg, setErrorMsg] = useState('');
-    const bankAccounts = cards.filter((card: any) => card.brand === 'Conta/Pix');
+    const availableCards = cards.filter((card: any) => !card.archived);
+    const bankAccounts = availableCards.filter((card: any) => card.brand === 'Conta/Pix');
     const defaultBankAccountId = bankAccounts.find((card: any) => card.isDefaultAccount)?.id || '';
     const [isSaving, setIsSaving] = useState(false);
     const categoryOptions = txType === 'income' ? ['Salário', 'Renda extra', 'Investimentos', 'Vendas', 'Reembolso', 'Outros'] : ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Contas e serviços', 'Compras', 'Impostos', 'Outros'];
     const isSaleCategory = txType === 'income' && category === 'Vendas';
     const isSaleReceivable = isSaleCategory && (salePending || purchaseDate > new Date().toISOString().split('T')[0]);
     const isPayingBillWithCard = txType === 'expense' && methodId === 'bill-credit';
-    const creditCards = cards.filter((card: any) => (parseFloat(card.limit) || 0) > 0);
+    const creditCards = availableCards.filter((card: any) => (parseFloat(card.limit) || 0) > 0);
     const selectedExpenseCardId = isPayingBillWithCard ? billCreditCardId : methodId;
     const selectedExpenseCard = cards.find((card: any) => card.id === selectedExpenseCardId) || null;
     const defaultCreditCardId = creditCards[0]?.id || '';
@@ -1827,7 +1835,7 @@ export default function FinanceApp() {
                   <option value="pix">Pix / Débito / Dinheiro</option>
                   <option value="bill-credit">Pix/Boleto pago com cartão de crédito</option>
                   <optgroup label="Minhas Contas e Cartões">
-                    {cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {availableCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </optgroup>
                 </select>
                 {isPayingBillWithCard && (
